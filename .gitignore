@@ -30,8 +30,30 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# secrets and local credentials
 .env*
+!.env.example
+*.key
+*.p12
+*.pfx
+*.jks
+credentials.json
+service-account*.json
+
+# private or locally stored data
+/data/
+/private/
+/backups/
+/uploads/
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.xls
+*.xlsx
+*.doc
+*.docx
+*.pdf
 
 # vercel
 .vercel
