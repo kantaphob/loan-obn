@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+//--------------------------------------------
+// admin user management
+//--------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  LOAN_OFFICER
+  REVIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id          String       @id @default(cuid())
+  acccode     String       @unique
+  password    String
+  role        UserRole     @default(LOAN_OFFICER)
+  level       Int          @default(9)
+  status      UserStatus   @default(ACTIVE)
+  userprofile UserProfile?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model UserProfile {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  firstName String
+  lastName  String
+  email     String  @unique
+  phone     String?
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+//--------------------------------------------
+
+model Province {
+  id        Int        @id @map("province_id")
+  nameTh    String     @map("name_th")
+  nameEn    String     @map("name_en")
+  districts District[]
+
+  @@map("province")
+}
+
+model District {
+  id           Int           @id @map("district_id")
+  provinceId   Int           @map("province_id")
+  nameTh       String        @map("name_th")
+  nameEn       String        @map("name_en")
+  province     Province      @relation(fields: [provinceId], references: [id], onDelete: Restrict)
+  subdistricts Subdistrict[]
+
+  @@index([provinceId])
+  @@map("district")
+}
+
+model Subdistrict {
+  id           Int       @id @map("subdistrict_id")
+  districtId   Int       @map("district_id")
+  nameTh       String    @map("name_th")
+  nameEn       String?   @map("name_en")
+  latitude     Float?    @map("lat")
+  longitude    Float?    @map("long")
+  postcodeCode String?   @map("zipcode")
+  district     District  @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  postcode     Postcode? @relation(fields: [postcodeCode], references: [code], onDelete: Restrict)
+
+  @@index([districtId])
+  @@index([postcodeCode])
+  @@map("subdistrict")
+}
+
+model Postcode {
+  code         String        @id
+  subdistricts Subdistrict[]
+
+  @@map("postcode")
+}
+
+model FinancialCategory {
+  code      String   @id
+  nameTh    String
+  nameEn    String?
+  group     String
+  direction String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([group, sortOrder])
+  @@map("financial_category")
+}
+
+model RiskRating {
+  code        String   @id
+  nameTh      String
+  score       Int
+  isBlacklist Boolean  @default(false)
+  isActive    Boolean  @default(true)
+
+  @@index([score])
+  @@map("risk_rating")
+}
+
+model PaymentChannel {
+  code     String  @id
+  nameTh   String
+  nameEn   String?
+  isActive Boolean @default(true)
+
+  @@map("payment_channel")
+}
+
+model Bank {
+  code      String   @id
+  nameTh    String
+  nameEn    String
+  shortName String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  @@index([sortOrder])
+  @@map("bank")
+}
