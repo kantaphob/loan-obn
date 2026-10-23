@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { ContractBorrowerStep } from './contract-borrower-step'
 
-export function CreateContractModal({ onClose, onSaved }: { onClose: () => void; onSaved?: (code: string) => void }) {
+export function CreateContractModal({ onClose, onSaved }: { onClose: () => void; onSaved?: (code: string, contractId: number, signingMethod: string | null) => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {

@@ -14,7 +14,7 @@ const money = (value: number) => new Intl.NumberFormat('th-TH').format(value) + 
 const fullName = (b: Borrower) => [b.titleTh, b.firstName, b.middleNameTh, b.lastName].filter(Boolean).join(' ') || b.nickname
 const maskedId = (value: string | null) => value ? '•'.repeat(Math.max(0, value.length - 4)) + value.slice(-4) : '—'
 
-export function ContractBorrowerStep({ onSaved }: { onSaved?: (code: string) => void } = {}) {
+export function ContractBorrowerStep({ onSaved }: { onSaved?: (code: string, contractId: number, signingMethod: string | null) => void } = {}) {
   const [step, setStep] = useState(0)
   const [lender, setLender] = useState<ContractLender | null>(null)
   const [query, setQuery] = useState('')

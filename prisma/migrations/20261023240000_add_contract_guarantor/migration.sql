@@ -1,0 +1,17 @@
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorName" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorAge" INTEGER;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorHouseNumber" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorSoi" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorRoad" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorSubdistrict" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorDistrict" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorProvince" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorProvinceId" INTEGER;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorDistrictId" INTEGER;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorSubdistrictId" INTEGER;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorPostcode" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guaranteeCollateralDescription" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorSignatureData" TEXT;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorSignedAt" DATETIME;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorConsentAt" DATETIME;
+ALTER TABLE "loan_contract" ADD COLUMN "guarantorCapturedBy" TEXT;

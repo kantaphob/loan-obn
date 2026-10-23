@@ -1,0 +1,41 @@
+.invoice-page { font-size: 13px; }
+.invoice-date { margin: 0 0 20px; color: #a8bac8; font-size: 11px; }
+.invoice-primary { display: inline-flex; align-items: center; gap: 10px; min-height: 42px; padding: 10px 17px; border: 1px solid #e8c58d55; border-radius: 11px; color: #efd5aa; background: #dfbd8514; font-size: 12px; }
+.borrower-metric--rose { --metric-accent: #f0a69f; }
+.invoice-panel { margin-top: 24px; overflow: hidden; border: 1px solid #aac9df26; border-radius: 18px; background: #0a1c2b; }
+.invoice-panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 22px 24px; color: #dfbd85; }
+.invoice-panel-heading h2 { margin: 0; font-size: 15px; color: #edf3f7; }
+.invoice-panel-heading h2 span { margin-left: 8px; }
+.invoice-panel-heading p { margin: 8px 0 0; color: #a8bac8; font-size: 11px; }
+.invoice-tabs { display: flex; overflow-x: auto; padding: 0 24px; gap: 24px; border-bottom: 1px solid #aac9df26; }
+.invoice-tabs a { white-space: nowrap; padding: 13px 0; color: #a8bac8; border-bottom: 2px solid transparent; }
+.invoice-tabs a[aria-current] { color: #efd5aa; border-color: #dfbd85; }
+.invoice-search { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 18px 24px; }
+.invoice-search label { display: flex; align-items: center; gap: 10px; padding: 0 12px; width: min(100%, 420px); border: 1px solid #aac9df35; border-radius: 10px; background: #061520; color: #a8bac8; }
+.invoice-search input:not([type=hidden]) { width: 100%; min-width: 0; height: 42px; background: transparent; color: #edf3f7; outline: none; }
+.invoice-search label:focus-within { outline: 2px solid #dfbd85; outline-offset: 2px; }
+.invoice-search button { min-height: 42px; padding: 0 18px; border-radius: 10px; border: 1px solid #aac9df35; background: #173346; cursor: pointer; }
+.invoice-search > a { color: #a8bac8; font-size: 12px; text-decoration: underline; }
+.invoice-table-wrap { overflow-x: auto; }
+.invoice-table { width: 100%; border-collapse: collapse; white-space: nowrap; text-align: left; }
+.invoice-table th { padding: 13px 20px; font-size: 11px; font-weight: 500; color: #a8bac8; background: #06152088; border-block: 1px solid #aac9df20; }
+.invoice-table td { padding: 19px 20px; border-bottom: 1px solid #aac9df18; }
+.invoice-table tr:hover td { background: #16314566; }
+.invoice-table strong { display: block; font-weight: 500; }
+.invoice-table small { display: block; margin-top: 6px; color: #a8bac8; font-size: 10px; }
+.invoice-table .invoice-number { text-align: right; font-variant-numeric: tabular-nums; }
+.invoice-net { color: #efd5aa; font-size: 16px; font-weight: 600; }
+.invoice-badge { display: inline-block; margin-top: 6px; padding: 4px 8px; border-radius: 6px; font-size: 10px; color: #a8bac8; background: #aac9df12; }
+.invoice-badge[data-tone=danger] { color: #ffb9b1; background: #f0a69f15; }
+.invoice-badge[data-tone=gold] { color: #efd5aa; background: #dfbd8515; }
+.invoice-badge[data-tone=green] { color: #a0e3c8; background: #89d9bc12; }
+.invoice-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px; color: #a8bac8; font-size: 12px; }
+.invoice-footer strong { font-size: 21px; color: #efd5aa; font-variant-numeric: tabular-nums; }
+.invoice-footer small { font-size: 11px; font-weight: 400; }
+.invoice-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 250px; padding: 24px; text-align: center; color: #a8bac8; }
+.invoice-empty h3 { margin-top: 16px; color: #edf3f7; font-size: 15px; }
+.invoice-empty p { margin-top: 8px; font-size: 12px; }
+.invoice-empty a { display: inline-flex; gap: 8px; align-items: center; margin-top: 18px; color: #efd5aa; }
+.invoice-note { margin: 16px 4px; color: #a8bac8; font-size: 11px; line-height: 1.8; }
+.invoice-page a:focus-visible, .invoice-page button:focus-visible { outline: 2px solid #dfbd85; outline-offset: 3px; }
+@media (max-width: 700px) { .invoice-panel-heading, .invoice-search, .invoice-footer { padding: 16px; } .invoice-tabs { padding-inline: 16px; gap: 20px; } .invoice-primary { width: 100%; justify-content: center; } }

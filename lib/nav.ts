@@ -37,6 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Borrower",
     items: [
       { label: "Borrowers", href: "/dashboard/borrower", icon: FolderUser },
+      { label: "AP", href: "/dashboard/ap", icon: FolderUser },
     ],
   },
   {
@@ -49,12 +50,16 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Contracts",
     items: [
       { label: "Contracts", href: "/dashboard/contracts", icon: ReceiptText },
+      { label: "บิลที่รอจ่ายเงินตามสัญญา", href: "/dashboard/invoice", icon: FileSignature },
+      { label: "Aging Analysis", href: "/dashboard/aging-analysis", icon: FileSignature },
       { label: "Applications", href: "/dashboard/applications", icon: FileSignature },
     ],
   },
   {
     title: "Accounting",
     items: [
+      { label: "Accounts Payable", href: "/dashboard/repayments", icon: HandCoins },
+      { label: "Account Receivable", href: "/dashboard/ar", icon: HandCoins },
       { label: "Ledger", href: "/dashboard/ledger", icon: ScrollText },
       { label: "Accounting", href: "/dashboard/accounting", icon: ScrollText },
     ],

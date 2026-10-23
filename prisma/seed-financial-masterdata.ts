@@ -12,6 +12,7 @@ const financialCategories = [
   { code: 'CAPITAL_INCREASE', nameTh: 'เงินทุนเพิ่ม', nameEn: 'Additional capital', group: 'CAPITAL', direction: 'IN', sortOrder: 20 },
   { code: 'CAPITAL_WITHDRAWAL', nameTh: 'ถอนทุน', nameEn: 'Capital withdrawal', group: 'CAPITAL', direction: 'OUT', sortOrder: 30 },
   { code: 'LOAN_DISBURSEMENT', nameTh: 'ปล่อยกู้', nameEn: 'Loan disbursement', group: 'LOAN', direction: 'OUT', sortOrder: 40 },
+  { code: 'CONTRACT_REPAYMENT', nameTh: 'รับชำระคืนตามสัญญา', nameEn: 'Contract repayment', group: 'LOAN', direction: 'IN', sortOrder: 45 },
   { code: 'PRINCIPAL_REPAYMENT', nameTh: 'รับชำระเงินต้น', nameEn: 'Principal repayment', group: 'LOAN', direction: 'IN', sortOrder: 50 },
   { code: 'INTEREST_RECEIVED', nameTh: 'รับดอกเบี้ย', nameEn: 'Interest received', group: 'INCOME', direction: 'IN', sortOrder: 60 },
   { code: 'FEE_RECEIVED', nameTh: 'รับค่าธรรมเนียม', nameEn: 'Fee received', group: 'INCOME', direction: 'IN', sortOrder: 70 },

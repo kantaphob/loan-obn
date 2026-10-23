@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { mkdtempSync, readdirSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -7,10 +7,10 @@ import { spawnSync } from 'node:child_process'
 const directory = mkdtempSync(path.join(tmpdir(), 'loan-contract-test-'))
 const filename = path.join(directory, 'test.db')
 const db = new Database(filename)
-for (const name of readdirSync('prisma/migrations').sort()) {
-  const migration = path.join('prisma/migrations', name, 'migration.sql')
-  if (existsSync(migration)) db.exec(readFileSync(migration, 'utf8'))
-}
+// Build fixtures from the current schema, including migrations authored out of order.
+const schema = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'diff', '--from-empty', '--to-schema', 'prisma/schema.prisma', '--script', '--config', 'prisma7.config.ts'], { encoding: 'utf8' })
+if (schema.status !== 0) throw new Error(schema.stderr || 'Cannot prepare fixture schema')
+db.exec(schema.stdout)
 db.close()
 const result = spawnSync(process.execPath, ['--import', './tests/contracts-register.mjs', '--import', 'tsx', '--test', 'tests/contracts.test.ts'], {
   env: { ...process.env, DATABASE_URL: `file:${filename}` }, stdio: 'inherit',

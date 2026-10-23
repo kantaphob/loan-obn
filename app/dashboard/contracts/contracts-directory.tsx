@@ -6,8 +6,12 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CreateContractModal } from './create-contract-modal'
 import { listContracts } from './actions'
-import { contractCode } from '@/lib/contracts'
+import { contractCode, contractSignaturesComplete, formatContractDate } from '@/lib/contracts'
 import { Modal } from '@/components/ui/modal'
+import { LoanAgreementTemplate } from './loan-agreement-template'
+import { ContractSignatureModal } from './contract-signature-modal'
+import { GuaranteeAgreementTemplate } from './guarantee-agreement-template'
+import { CollateralAgreementTemplate } from './collateral-agreement-template'
 
 const fieldClass = 'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none'
 
@@ -18,6 +22,7 @@ export function ContractsDirectory() {
   const [notice, setNotice] = useState('')
   const [page, setPage] = useState(1)
   const [viewing, setViewing] = useState<Awaited<ReturnType<typeof listContracts>>[number] | null>(null)
+  const [signing, setSigning] = useState<Awaited<ReturnType<typeof listContracts>>[number] | null>(null)
   useEffect(() => {
     let cancelled = false
     listContracts().then(values => { if (!cancelled) setRows(values) })
@@ -25,11 +30,16 @@ export function ContractsDirectory() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
-  async function saved(code: string) {
+  async function saved(code: string, contractId: number, signingMethod: string | null) {
     setCreating(false)
     setNotice(`บันทึกสัญญา ${code} สำเร็จ · รอจ่ายเงิน`)
     setQuery(''); setAppliedQuery(''); setStatus(''); setPage(1)
-    try { setRows(await listContracts()); setLoadError('') }
+    try {
+      const values = await listContracts()
+      setRows(values)
+      setLoadError('')
+      if (signingMethod === 'E_SIGNATURE') setSigning(values.find(row => row.id === contractId) ?? null)
+    }
     catch { setLoadError('บันทึกแล้ว แต่โหลดรายการไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ') }
   }
   const money = (value: number) => new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2 }).format(value / 100)
@@ -52,6 +62,11 @@ export function ContractsDirectory() {
 
   return <div className="borrower-workspace space-y-6">
     {creating && <CreateContractModal onClose={() => setCreating(false)} onSaved={saved} />}
+    {signing && <ContractSignatureModal contract={signing} onClose={() => setSigning(null)} onSigned={async () => {
+      const values = await listContracts()
+      setRows(values)
+      setSigning(values.find(row => row.id === signing.id) ?? null)
+    }} />}
     {notice && <p role="status" className="text-sm text-emerald-800">{notice}</p>}
     {loadError && <p role="alert" className="text-sm text-red-700">{loadError}</p>}
     {loading && <p role="status" className="text-sm text-slate-500">กำลังโหลดสัญญา…</p>}
@@ -79,17 +94,17 @@ export function ContractsDirectory() {
           <Button type="submit">ค้นหา</Button>
         </form>
         <label><span className="sr-only">กรองสถานะสัญญา</span><select className={fieldClass} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}>
-          <option value="">ทุกสถานะ</option><option value="WAITING_PAYMENT">รอจ่ายเงิน</option><option value="PAID">จ่ายเงินแล้ว</option>
+          <option value="">ทุกสถานะ</option><option value="WAITING_PAYMENT">รอจ่ายเงิน</option><option value="PAID">จ่ายเงินแล้ว</option><option value="CLOSED">ปิดยอดแล้ว</option>
         </select></label>
       </div>
       <div className="borrower-table-scroll overflow-x-auto">
         <table className="w-full whitespace-nowrap text-left text-xs">
           <caption className="sr-only">รายการสัญญาสินเชื่อ</caption>
-          <thead><tr>{['จัดการ', 'เลขสัญญา', 'วันที่ทำสัญญา', 'รหัสผู้กู้', 'ชื่อผู้กู้', 'ผู้ให้กู้', 'วงเงินสัญญา', 'สถานะ', 'วันที่จ่ายเงิน'].map(label => <th scope="col" key={label} className="px-4 py-4 font-medium">{label}</th>)}</tr></thead>
+          <thead><tr>{['จัดการ', 'เลขสัญญา', 'วันที่ทำสัญญา', 'รหัสผู้กู้', 'ชื่อผู้กู้', 'ผู้ให้กู้', 'วงเงินสัญญา', 'สถานะ', 'การลงนาม', 'วันที่จ่ายเงิน'].map(label => <th scope="col" key={label} className="px-4 py-4 font-medium">{label}</th>)}</tr></thead>
           <tbody>{visibleRows.map(row => <tr key={row.id}>
-            <td className="border-b px-4 py-3"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button></td>
-            {[contractCode(row.id), date(row.createdAt), row.borrowerCode, row.borrowerName, row.lenderName, money(row.principalSatang), row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : 'จ่ายเงินแล้ว', row.paidAt ? date(row.paidAt) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
-          </tr>)}{!matches.length && !loading && !loadError && <tr><td colSpan={9} className="!p-0">
+            <td className="border-b px-4 py-3"><div className="flex items-center gap-2"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button>{row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">พิมพ์สัญญา</a>}{row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}</div></td>
+            {[contractCode(row.id), date(row.createdAt), row.borrowerCode, row.borrowerName, row.lenderName, money(row.principalSatang), row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : row.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว', row.documentChoice !== 'CREATE' || row.signingMethod !== 'E_SIGNATURE' ? '—' : contractSignaturesComplete(row) ? 'ลงนามครบ' : 'รอลงนามให้ครบ', row.paidAt ? date(row.paidAt) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
+          </tr>)}{!matches.length && !loading && !loadError && <tr><td colSpan={10} className="!p-0">
             <div className="borrower-empty" role="status">
               <span className="borrower-empty-icon"><FileSignature size={30} aria-hidden="true" /></span>
               <h3>{filtered ? 'ไม่พบสัญญาที่ค้นหา' : 'ยังไม่มีสัญญาสินเชื่อ'}</h3>
@@ -106,14 +121,25 @@ export function ContractsDirectory() {
     <Modal open={Boolean(viewing)} title={viewing ? `สัญญา ${contractCode(viewing.id)}` : 'สัญญา'} onClose={() => setViewing(null)}>
       {viewing && <dl className="grid gap-4 text-sm sm:grid-cols-2">{[
         ['ผู้กู้', viewing.borrowerName], ['ผู้ให้กู้', viewing.lenderName],
-        ['สถานะ', viewing.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : 'จ่ายเงินแล้ว'],
+        ['สถานะ', viewing.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : viewing.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'],
+        ['ผู้ค้ำประกัน', viewing.guarantorName || '—'],
+        ['ที่อยู่ผู้ค้ำประกัน', viewing.guarantorName ? [viewing.guarantorHouseNumber, viewing.guarantorSoi, viewing.guarantorRoad, viewing.guarantorSubdistrict, viewing.guarantorDistrict, viewing.guarantorProvince].filter(Boolean).join(' ') : '—'],
+        ['ทรัพย์ที่มอบประกันในสัญญาค้ำ', viewing.guaranteeCollateralDescription || 'เว้นว่าง'],
+        ['พยานสัญญาเงินกู้ 3.1', viewing.documentChoice === 'CREATE' ? viewing.witnessCount === 0 ? 'ไม่มีพยาน' : `${viewing.witnessCount} คน` : '—'],
+        ...(viewing.documentPackage !== 'LOAN' ? [['พยานสัญญาค้ำประกัน 3.2', viewing.documentChoice === 'CREATE' ? viewing.guaranteeWitnessCount === 0 ? 'ไม่มีพยาน' : `${viewing.guaranteeWitnessCount} คน` : '—']] : []),
         ['เอกสาร', viewing.documentChoice === 'CREATE' ? 'ทำสัญญา' : 'ไม่ทำสัญญา'],
         ['วิธีลงนาม', viewing.signingMethod === 'PRINT' ? 'พิมพ์เซ็น' : viewing.signingMethod === 'E_SIGNATURE' ? 'e-signature' : '—'],
         ['ชุดเอกสาร', ({ LOAN: 'สัญญาเงินกู้', LOAN_GUARANTEE: 'สัญญาเงินกู้ & สัญญาค้ำเงินกู้', LOAN_GUARANTEE_COLLATERAL: 'สัญญาเงินกู้ & สัญญาค้ำเงินกู้ & สัญญาแบบมีหลักประกัน' } as Record<string, string>)[viewing.documentPackage ?? ''] || '—'],
         ['วิธีชำระดอกเบี้ย', viewing.interestMethod === 'INTEREST_UPFRONT' ? 'ชำระดอกเบี้ยล่วงหน้า' : 'ชำระต้นพร้อมดอกเบี้ย'],
+        ['กำหนดจ่ายเงิน', formatContractDate(viewing.scheduledDisbursementDate)], ['ครบกำหนดรับชำระ', formatContractDate(viewing.repaymentDueDate)],
+        ['รายละเอียดหลักประกัน', viewing.collateralDescription || 'เว้นว่างตามแบบเดิม'],
         ['เงินต้น', money(viewing.principalSatang) + ' บาท'], ['ดอกร้อยละ', viewing.interestPercent + '%'],
         ['ดอกเบี้ย', money(viewing.interestSatang) + ' บาท'], ['ยอดรับเงินจริง', money(viewing.netSatang) + ' บาท'], ['ยอดชำระเงินกู้', money(viewing.repaymentSatang) + ' บาท'],
+        ...(viewing.signingMethod === 'E_SIGNATURE' ? [['ผู้กู้ลงนามเมื่อ', viewing.borrowerSignedAt ? date(viewing.borrowerSignedAt) : 'ยังไม่ลงนาม'], ['ผู้ให้กู้ลงนามเมื่อ', viewing.lenderSignedAt ? date(viewing.lenderSignedAt) : 'ยังไม่ลงนาม']] : []),
       ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-1">{value}</dd></div>)}</dl>}
+      {viewing?.documentChoice === 'CREATE' && <LoanAgreementTemplate contractId={viewing.id} witnessCount={viewing.witnessCount} witnesses={viewing.witnesses} signingMethod={viewing.signingMethod} borrowerSignedAt={viewing.borrowerSignedAt} lenderSignedAt={viewing.lenderSignedAt} guarantorSignedAt={viewing.guarantorSignedAt} documentPackage={viewing.documentPackage} />}
+      {viewing?.documentChoice === 'CREATE' && viewing.documentPackage !== 'LOAN' && <GuaranteeAgreementTemplate contractId={viewing.id} signingMethod={viewing.signingMethod} borrowerSignedAt={viewing.borrowerSignedAt} lenderSignedAt={viewing.lenderSignedAt} guarantorSignedAt={viewing.guarantorSignedAt} witnessCount={viewing.guaranteeWitnessCount} witnesses={viewing.witnesses} documentSignatures={viewing.documentSignatures} />}
+      {viewing?.documentChoice === 'CREATE' && viewing.documentPackage === 'LOAN_GUARANTEE_COLLATERAL' && <CollateralAgreementTemplate contractId={viewing.id} signingMethod={viewing.signingMethod} signaturesComplete={contractSignaturesComplete(viewing)} />}
     </Modal>
   </div>
 }

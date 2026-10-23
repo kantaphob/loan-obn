@@ -1,0 +1,97 @@
+.repayment-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
+.repayment-workspace .repayment-metric { padding: 21px; background: linear-gradient(130deg,#173447,#0a1c2b); }
+.repayment-metric { --accent: #e8c58d; }
+.repayment-metric--rose { --accent: #f4a9ac; }
+.repayment-metric--blue { --accent: #9bc8ef; }
+.repayment-metric--green { --accent: #89d9bc; }
+.repayment-metric-top { display:flex; align-items:center; justify-content:space-between; gap:10px; color:#b6c8d6; font-size:12px; }
+.repayment-metric-top svg { color:var(--accent); }
+.repayment-metric-value { margin-top:15px; color:var(--accent); font-size:clamp(22px,2.1vw,32px); font-weight:600; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.repayment-metric-value span { font-size:11px; font-weight:400; color:#a8bac8; }
+.repayment-metric-detail { border-top:1px solid #aac9df20; padding-top:12px; margin-top:14px; font-size:11px; color:#a8bac8; }
+.repayment-directory-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; padding:22px 20px; }
+.repayment-directory-heading h2 { font-size:15px; font-weight:600; }
+.repayment-directory-heading h2 span { margin-left:8px; padding:2px 8px; border-radius:6px; background:#dfbd8515; color:#e8c58d; font-size:11px; }
+.repayment-directory-heading p { margin-top:5px; font-size:12px; color:#a8bac8; }
+.repayment-directory-heading a { font-size:12px; color:#b9d7ed; }
+.repayment-tabs { display:flex; gap:6px; padding:0 20px 16px; overflow-x:auto; border-bottom:1px solid #aac9df20; }
+.repayment-tabs button { white-space:nowrap; padding:9px 13px; border:1px solid transparent; border-radius:9px; color:#a8bac8; font-size:12px; cursor:pointer; }
+.repayment-tabs button[aria-pressed=true] { color:#e8c58d; background:#dfbd8512; border-color:#dfbd8540; }
+.repayment-workspace input { background:#071722; border-color:#aac9df30; color:#edf3f7; }
+.repayment-workspace input::placeholder { color:#869cab; }
+.repayment-table table { color:#d6e2eb; }
+.repayment-table thead { background:#122a3b; color:#b6c9d8; }
+.repayment-table tbody tr { border-color:#aac9df20; }
+.repayment-table tbody tr:hover { background:#18344966; }
+.repayment-table th:nth-child(3), .repayment-table td:nth-child(3), .repayment-table th:nth-child(5), .repayment-table td:nth-child(5) { text-align:right; }
+.repayment-table .text-rose-700 { color:#f4a9ac; }
+.repayment-table .text-emerald-700 { color:#89d9bc; }
+.repayment-progress { height:4px; min-width:100px; margin-top:8px; border-radius:4px; background:#aac9df20; overflow:hidden; }
+.repayment-progress span { display:block; height:100%; border-radius:inherit; background:#89d9bc; }
+.repayment-dialog { color-scheme:dark; color:#e7eff5; background:#0b1d2b; border-color:#aac9df33; box-shadow:0 32px 100px #0009; }
+.repayment-dialog input, .repayment-dialog select, .repayment-dialog textarea { color:#edf3f7; background:#061520; border-color:#aac9df30; }
+.repayment-dialog .bg-emerald-50 { background:#89d9bc0d; border:1px solid #89d9bc30; }
+.repayment-dialog .text-emerald-800 { color:#89d9bc; }
+.repayment-dialog .text-slate-500 { color:#a8bac8; }
+.repayment-dialog .text-rose-700 { color:#f4a9ac; }
+.repayment-dialog details { border-color:#aac9df30; }
+.repayment-dialog > button { color:#b9ccd9; background:#183346; border-color:#aac9df30; }
+.repayment-preview { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:14px; border:1px solid #89d9bc30; border-radius:12px; background:#89d9bc08; font-size:12px; }
+.repayment-preview strong { color:#89d9bc; font-variant-numeric:tabular-nums; }
+.repayment-history-entry { padding:15px; border:1px solid #aac9df25; border-radius:12px; font-size:13px; overflow-wrap:anywhere; }
+.repayment-history-entry p { color:#a8bac8; font-size:12px; margin-top:6px; }
+.repayment-history-entry span { color:#a8bac8; font-size:11px; }
+.repayment-tabs button:focus-visible, .repayment-directory-heading a:focus-visible { outline:2px solid #dfbd85; outline-offset:3px; }
+@media(max-width:1100px) { .repayment-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:540px) { .repayment-metrics { grid-template-columns:1fr; } .repayment-workspace .repayment-metric { padding:17px 20px; } }
+
+/* Match the daylight workspace, including repayment dialogs. */
+.workspace-theme .repayment-workspace {
+  --borrower-text: #243247;
+  --borrower-muted: #5d6b7d;
+  color: #243247;
+}
+.workspace-theme .repayment-workspace .repayment-metric {
+  background: linear-gradient(145deg, #ffffff, #f0f5fc);
+  border-color: #bdcce1;
+  box-shadow: inset 0 1px 0 #fff, 0 6px 20px #3447680c;
+}
+.workspace-theme .repayment-metric { --accent: #94631d; }
+.workspace-theme .repayment-metric--rose { --accent: #af3d52; }
+.workspace-theme .repayment-metric--blue { --accent: #2865a5; }
+.workspace-theme .repayment-metric--green { --accent: #147354; }
+.workspace-theme :is(.repayment-metric-top, .repayment-metric-value span, .repayment-metric-detail, .repayment-directory-heading p, .repayment-tabs button, .repayment-history-entry p, .repayment-history-entry span) { color: #5d6b7d; }
+.workspace-theme .repayment-metric-detail { border-color: #d7e1ed; }
+.workspace-theme .repayment-directory-heading h2 { color: #243247; }
+.workspace-theme .repayment-directory-heading h2 span { background: #e7eef9; color: #285c9a; }
+.workspace-theme .repayment-directory-heading a { color: #245f9f; }
+.workspace-theme .repayment-tabs { border-color: #d7e1ed; }
+.workspace-theme .repayment-tabs button:hover { background: #edf3fc; color: #245f9f; }
+.workspace-theme .repayment-tabs button[aria-pressed=true] { color: #2059a3; background: #e5efff; border-color: #9dbce5; }
+.workspace-theme .repayment-workspace input::placeholder { color: #6b7d92; }
+.workspace-theme .repayment-table table { color: #30435b; }
+.workspace-theme .repayment-table thead { background: #edf3fa; color: #506782; }
+.workspace-theme .repayment-table tbody tr { border-color: #dce5f0; }
+.workspace-theme .repayment-table tbody tr:hover { background: #eef4fd; }
+.workspace-theme .repayment-workspace :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #5d6b7d; }
+.workspace-theme .repayment-table .text-rose-700 { color: #af3d52; }
+.workspace-theme .repayment-table .text-emerald-700 { color: #147354; }
+.workspace-theme .repayment-progress { background: #dde7f1; }
+.workspace-theme .repayment-progress span { background: #218763; }
+.workspace-theme .repayment-dialog {
+  color-scheme: light;
+  color: #243247;
+  background: #f8faff;
+  border-color: #bdcce1;
+  box-shadow: 0 24px 70px #3b52754a;
+}
+.workspace-theme .repayment-dialog .bg-emerald-50 { background: #eaf6ef; border-color: #b8dccb; }
+.workspace-theme .repayment-dialog .text-emerald-800 { color: #147354; }
+.workspace-theme .repayment-dialog .text-slate-500 { color: #5d6b7d; }
+.workspace-theme .repayment-dialog .text-rose-700 { color: #af3d52; }
+.workspace-theme .repayment-dialog details { border-color: #c4d1e2; }
+.workspace-theme .repayment-dialog > button { color: #405e82; background: #e8eff9; border-color: #c4d1e2; }
+.workspace-theme .repayment-preview { background: #eaf6ef; border-color: #b8dccb; }
+.workspace-theme .repayment-preview strong { color: #147354; }
+.workspace-theme .repayment-history-entry { background: #fff; border-color: #d4dfed; }
+.workspace-theme .repayment-tabs button:focus-visible, .workspace-theme .repayment-directory-heading a:focus-visible { outline-color: #326cbd; }

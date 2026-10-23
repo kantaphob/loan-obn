@@ -255,6 +255,9 @@ model Lender {
 }
 
 model LoanContract {
+  ledgerEntries LedgerEntry[]
+  witnesses ContractWitness[]
+  documentSignatures ContractDocumentSignature[]
   id                Int      @id @default(autoincrement())
   requestKey        String   @unique
   borrowerId        Int
@@ -267,6 +270,8 @@ model LoanContract {
   documentChoice    String
   signingMethod     String?
   documentPackage   String?
+  witnessCount      Int      @default(2)
+  guaranteeWitnessCount Int   @default(2)
   interestMethod    String
   interestRateCode  String?
   interestPercent   Float
@@ -279,7 +284,93 @@ model LoanContract {
   createdBy         String
   createdAt         DateTime @default(now())
   paidAt            DateTime?
+  scheduledDisbursementDate String?
+  repaymentDueDate String?
+  collateralDescription String?
+  collateralAgreementData String?
+  guarantorName String?
+  guarantorAge Int?
+  guarantorHouseNumber String?
+  guarantorSoi String?
+  guarantorRoad String?
+  guarantorSubdistrict String?
+  guarantorDistrict String?
+  guarantorProvince String?
+  guarantorProvinceId Int?
+  guarantorDistrictId Int?
+  guarantorSubdistrictId Int?
+  guarantorPostcode String?
+  guaranteeCollateralDescription String?
+  guarantorSignatureData String?
+  guarantorSignedAt DateTime?
+  guarantorConsentAt DateTime?
+  guarantorCapturedBy String?
+  borrowerSignatureData String?
+  borrowerSignedAt      DateTime?
+  borrowerConsentAt     DateTime?
+  borrowerCapturedBy    String?
+  lenderSignatureData   String?
+  lenderSignedAt        DateTime?
+  lenderConsentAt       DateTime?
+  lenderCapturedBy      String?
+  signatureTermsHash    String?
 
   @@index([status, createdAt])
   @@map("loan_contract")
+}
+
+model ContractWitness {
+  contractId Int
+  position Int
+  contract LoanContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  name String
+  signatureData String
+  signedAt DateTime
+  consentAt DateTime
+  capturedBy String
+
+  @@id([contractId, position])
+  @@map("contract_witness")
+}
+
+model ContractDocumentSignature {
+  contractId Int
+  documentStage String
+  signer String
+  contract LoanContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  name String
+  signatureData String
+  signedAt DateTime
+  consentAt DateTime
+  capturedBy String
+
+  @@id([contractId, documentStage, signer])
+  @@map("contract_document_signature")
+}
+
+// Cash movements are immutable; voids retain the original record and operator.
+model LedgerEntry {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  contractId Int?
+  contract LoanContract? @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  kind String
+  direction String
+  categoryCode String
+  categoryName String
+  amountSatang Float
+  occurredOn String
+  channelCode String
+  channelName String
+  reference String @default("")
+  note String @default("")
+  createdBy String
+  createdAt DateTime @default(now())
+  voidedAt DateTime?
+  voidedBy String?
+  voidReason String?
+
+  @@index([contractId, voidedAt])
+  @@index([occurredOn])
+  @@map("ledger_entry")
 }

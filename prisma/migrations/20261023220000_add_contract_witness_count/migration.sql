@@ -1,0 +1,1 @@
+ALTER TABLE "loan_contract" ADD COLUMN "witnessCount" INTEGER NOT NULL DEFAULT 2;

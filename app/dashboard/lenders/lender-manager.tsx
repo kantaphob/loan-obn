@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Landmark, Plus, Search, Eye, Pencil, X, CreditCard } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
 import { lenderCode, lenderFields, lenderRoles, lenderStatuses, type LenderRow } from '@/lib/lender'
 
 const emptyForm = () => ({ ...Object.fromEntries(lenderFields.map(([key]) => [key, ''])) as Record<typeof lenderFields[number][0], string>, registeredAt: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()), promptPayType: '', paymentChannelCode: '', role: 'FUNDER', status: 'ACTIVE', bankCode: '', provinceId: '' })
@@ -15,6 +16,7 @@ const fieldClass = 'mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5
 
 export function LenderManager({ lenders, total, page, query: initialQuery, role: initialRole, status: initialStatus, metrics, provinces, banks, channels, canEdit }: { lenders: LenderRow[]; total: number; page: number; query: string; role: string; status: string; metrics: { total: number; funders: number; representatives: number }; provinces: { id: number; nameTh: string }[]; channels: { code: string; nameTh: string; isActive: boolean }[]; banks: { code: string; nameTh: string; isActive: boolean }[]; canEdit: boolean }) {
   const router = useRouter()
+  const { toast } = useToast()
   const [query, setQuery] = useState(initialQuery)
   const [role, setRole] = useState(initialRole)
   const [status, setStatus] = useState(initialStatus)
@@ -76,8 +78,13 @@ export function LenderManager({ lenders, total, page, query: initialQuery, role:
       if (!response.ok) throw new Error(result.message || 'อ่านบัตรไม่สำเร็จ')
       const incoming: ThaiIdCard = result.card
       setCard(incoming); setPendingCardToken(result.token)
+      toast({ title: 'อ่านบัตรสำเร็จ', description: 'ตรวจสอบข้อมูลแล้วกดใช้ข้อมูลนี้ เพื่อนำไปกรอกข้อมูลผู้ให้กู้', variant: 'success' })
 
-    } catch (err) { setReaderError(err instanceof DOMException && err.name === 'TimeoutError' ? 'เครื่องอ่านไม่ตอบสนอง กรุณาถอดและเสียบเครื่องอ่านใหม่ แล้วลองอีกครั้ง' : err instanceof Error ? err.message : 'เชื่อมต่อเครื่องอ่านไม่ได้') }
+    } catch (err) {
+      const message = err instanceof DOMException && err.name === 'TimeoutError' ? 'เครื่องอ่านไม่ตอบสนอง กรุณาถอดและเสียบเครื่องอ่านใหม่ แล้วลองอีกครั้ง' : err instanceof Error ? err.message : 'เชื่อมต่อเครื่องอ่านไม่ได้'
+      setReaderError(message)
+      toast({ title: 'อ่านบัตรไม่สำเร็จ', description: message, variant: 'error', duration: 7000 })
+    }
     finally { setReading(false); setDetecting(false) }
   }
   function applyCard() {

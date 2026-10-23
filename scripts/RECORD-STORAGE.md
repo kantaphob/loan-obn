@@ -33,3 +33,9 @@ also copied there. When Drive is unavailable, the local snapshot remains and a
 Drive copy is attempted again after the next successful update. Do not point
 this setting at a public or shared folder; backups contain personal and financial
 data.
+
+For contracts configured with `E_SIGNATURE`, each party can draw a signature in
+the contract screen. The system stores the signature image, signing timestamp,
+authenticated staff account that captured it, and a SHA-256 hash of the contract
+terms. This records an in-person e-signature workflow; it does not provide remote
+identity verification, a certificate-based digital signature, or an executed PDF.
