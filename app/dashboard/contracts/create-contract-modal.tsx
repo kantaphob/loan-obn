@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { ContractBorrowerStep } from './contract-borrower-step'
 
-export function CreateContractModal({ onClose }: { onClose: () => void }) {
+export function CreateContractModal({ onClose, onSaved }: { onClose: () => void; onSaved?: (code: string) => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function CreateContractModal({ onClose }: { onClose: () => void }) {
         </div>
         <button type="button" onClick={onClose} aria-label="ปิดหน้าต่างสร้างสัญญา" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white hover:bg-slate-100 focus-visible:outline-2"><X size={18} aria-hidden="true" /></button>
       </header>
-      <ContractBorrowerStep />
+      <ContractBorrowerStep onSaved={onSaved} />
     </div>
   </dialog>
 }

@@ -6,15 +6,17 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { availableBorrowerLimit, borrowerStatuses } from '@/lib/borrower'
 import { searchContractBorrowers } from './actions'
-import { ContractLenderStep } from './contract-lender-step'
+import { ContractLenderStep, type ContractLender } from './contract-lender-step'
+import { ContractDetailsStep } from './contract-details-step'
 
 type Borrower = Awaited<ReturnType<typeof searchContractBorrowers>>[number]
 const money = (value: number) => new Intl.NumberFormat('th-TH').format(value) + ' บาท'
 const fullName = (b: Borrower) => [b.titleTh, b.firstName, b.middleNameTh, b.lastName].filter(Boolean).join(' ') || b.nickname
 const maskedId = (value: string | null) => value ? '•'.repeat(Math.max(0, value.length - 4)) + value.slice(-4) : '—'
 
-export function ContractBorrowerStep() {
+export function ContractBorrowerStep({ onSaved }: { onSaved?: (code: string) => void } = {}) {
   const [step, setStep] = useState(0)
+  const [lender, setLender] = useState<ContractLender | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Borrower[]>([])
   const [selected, setSelected] = useState<Borrower | null>(null)
@@ -86,7 +88,7 @@ export function ContractBorrowerStep() {
                 {!eligible && <p className="mb-0 mt-2 text-xs text-red-700">เลือกไม่ได้: ผู้กู้มีสถานะ{borrowerStatuses[b.status]}</p>}
               </div>
             </div>
-            <Button disabled={!eligible} onClick={() => setSelected(b)} aria-label={`เลือก ${fullName(b)} เพื่อทำสัญญา`} aria-pressed={chosen} className="disabled:cursor-not-allowed disabled:opacity-50">{chosen && <Check size={15} aria-hidden="true" />}{chosen ? 'เลือกแล้ว' : 'เลือกทำสัญญา'}</Button>
+            <Button disabled={!eligible} onClick={() => { if (selected?.id !== b.id) setLender(null); setSelected(b) }} aria-label={`เลือก ${fullName(b)} เพื่อทำสัญญา`} aria-pressed={chosen} className="disabled:cursor-not-allowed disabled:opacity-50">{chosen && <Check size={15} aria-hidden="true" />}{chosen ? 'เลือกแล้ว' : 'เลือกทำสัญญา'}</Button>
           </article>
         })}</div>
       </div>
@@ -106,6 +108,7 @@ export function ContractBorrowerStep() {
       <div className="mt-6 flex justify-end"><Button variant="primary" onClick={() => setStep(1)}>ถัดไป: เลือกผู้ให้กู้</Button></div>
     </Card>}
     </div>
-    {selected && <div hidden={step !== 1}><ContractLenderStep key={selected.id} borrowerName={fullName(selected)} onBack={() => setStep(0)} /></div>}
+    {selected && <div hidden={step !== 1}><ContractLenderStep key={selected.id} borrowerName={fullName(selected)} onBack={() => setStep(0)} selected={lender} onSelect={setLender} onNext={() => setStep(2)} /></div>}
+    {selected && lender && <div hidden={step < 2}><ContractDetailsStep borrowerId={selected.id} lenderId={lender.id} onReview={(reviewing) => setStep(reviewing ? 3 : 2)} onSaved={onSaved} borrowerName={fullName(selected)} lenderName={[lender.firstName, lender.lastName].filter(Boolean).join(' ') || lender.nickname} onBack={() => setStep(1)} /></div>}
   </div>
 }

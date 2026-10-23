@@ -2,10 +2,10 @@
 
 import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react'
 import { promptPayTypes } from '@/lib/borrower'
-import Image from 'next/image'
-import { cardDate, cardDateInput, type ThaiIdCard } from '@/lib/thai-id'
+import { ReadCardModal } from '@/components/borrower/read-card-modal'
+import { cardDateInput, type ThaiIdCard } from '@/lib/thai-id'
 import { useRouter } from 'next/navigation'
-import { Landmark, Plus, Search, Eye, Pencil, X, CreditCard, LoaderCircle } from 'lucide-react'
+import { Landmark, Plus, Search, Eye, Pencil, X, CreditCard } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { lenderCode, lenderFields, lenderRoles, lenderStatuses, type LenderRow } from '@/lib/lender'
@@ -25,7 +25,9 @@ export function LenderManager({ lenders, total, page, query: initialQuery, role:
   const [busy, setBusy] = useState(false)
   const [reading, setReading] = useState(false)
   const [readerError, setReaderError] = useState('')
-  const [readerStatus, setReaderStatus] = useState('')
+  const [detecting, setDetecting] = useState(false)
+  const [readCardOpen, setReadCardOpen] = useState(false)
+  const [pendingCardToken, setPendingCardToken] = useState('')
   const [cardLoading, setCardLoading] = useState(false)
   const [card, setCard] = useState<ThaiIdCard | null>(null)
   const [cardReadToken, setCardReadToken] = useState('')
@@ -54,7 +56,7 @@ export function LenderManager({ lenders, total, page, query: initialQuery, role:
     return () => controller.abort()
   }, [open, selected])
   function show(lender?: LenderRow, viewing = false) {
-    setReaderError(''); setReaderStatus('');
+    setReaderError(''); setPendingCardToken(''); setReadCardOpen(false);
     setCard(null); setCardReadToken(''); setCardLoading(Boolean(lender?.cardReadAt));
     setSelected(lender ?? null); setReadOnly(viewing); setError(''); setNotice('')
     setForm(lender ? { ...emptyForm(), ...lender, provinceId: lender.provinceId === null ? '' : String(lender.provinceId) } : emptyForm())
@@ -62,22 +64,27 @@ export function LenderManager({ lenders, total, page, query: initialQuery, role:
   }
   async function readCard() {
     if (reading || cardLoading || busy || readOnly || !canEdit) return
-    setReading(true); setError(''); setReaderError(''); setReaderStatus('กำลังตรวจจับเครื่องอ่านและรอเสียบบัตร…')
+    setReadCardOpen(true); setReading(true); setDetecting(true); setError(''); setReaderError('')
     try {
       const detection = await fetch('/api/lenders/card', { cache: 'no-store', signal: AbortSignal.timeout(30000) })
       const detected = await detection.json()
       if (!detection.ok) throw new Error(detected.message || 'ตรวจจับเครื่องอ่านไม่สำเร็จ')
       if (!detected.cardPresent) throw new Error('ยังไม่พบบัตร กรุณาเสียบบัตรให้แน่น แล้วกดอ่านบัตรอีกครั้ง')
-      setReaderStatus('พบบัตรแล้ว กำลังอ่านข้อมูลและรูปจากชิป…')
+      setDetecting(false)
       const response = await fetch('/api/lenders/card', { method: 'POST', signal: AbortSignal.timeout(30000) })
       const result = await response.json()
       if (!response.ok) throw new Error(result.message || 'อ่านบัตรไม่สำเร็จ')
       const incoming: ThaiIdCard = result.card
-      setCard(incoming); setCardReadToken(result.token)
-      const province = provinces.find(p => incoming.address.replace(/\s/g, '').includes(p.nameTh.replace(/\s/g, '')))
-      setForm(current => ({ ...current, titleTh: incoming.titleTh || '', middleNameTh: incoming.middleNameTh || '', titleEn: incoming.titleEn || '', firstNameEn: incoming.firstNameEn || '', middleNameEn: incoming.middleNameEn || '', lastNameEn: incoming.lastNameEn || '', birthDate: cardDateInput(incoming.birthDate), cardIssueDate: cardDateInput(incoming.issueDate), cardExpiryDate: cardDateInput(incoming.expiryDate), nationalId: incoming.nationalId, firstName: incoming.firstName, lastName: incoming.lastName, address: incoming.address, provinceId: province ? String(province.id) : current.provinceId }))
+      setCard(incoming); setPendingCardToken(result.token)
+
     } catch (err) { setReaderError(err instanceof DOMException && err.name === 'TimeoutError' ? 'เครื่องอ่านไม่ตอบสนอง กรุณาถอดและเสียบเครื่องอ่านใหม่ แล้วลองอีกครั้ง' : err instanceof Error ? err.message : 'เชื่อมต่อเครื่องอ่านไม่ได้') }
-    finally { setReading(false); setReaderStatus('') }
+    finally { setReading(false); setDetecting(false) }
+  }
+  function applyCard() {
+    if (!card || !pendingCardToken) return
+      const province = provinces.find(p => card.address.replace(/\s/g, '').includes(p.nameTh.replace(/\s/g, '')))
+      setForm(current => ({ ...current, titleTh: card.titleTh || '', middleNameTh: card.middleNameTh || '', titleEn: card.titleEn || '', firstNameEn: card.firstNameEn || '', middleNameEn: card.middleNameEn || '', lastNameEn: card.lastNameEn || '', birthDate: cardDateInput(card.birthDate), cardIssueDate: cardDateInput(card.issueDate), cardExpiryDate: cardDateInput(card.expiryDate), nationalId: card.nationalId, firstName: card.firstName, lastName: card.lastName, address: card.address, provinceId: province ? String(province.id) : current.provinceId }))
+    setCardReadToken(pendingCardToken); setPendingCardToken(''); setReadCardOpen(false)
   }
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -102,13 +109,9 @@ export function LenderManager({ lenders, total, page, query: initialQuery, role:
       <div className="borrower-pagination flex items-center justify-between gap-3 border-t p-4 text-xs"><span>พบ {total} รายการ · หน้า {currentPage} / {pages}</span><div className="flex gap-2"><Button disabled={currentPage <= 1} onClick={() => navigate(currentPage - 1)}>ก่อนหน้า</Button><Button disabled={currentPage >= pages} onClick={() => navigate(currentPage + 1)}>ถัดไป</Button></div></div>
     </Card>
     {open && <dialog ref={openDialog} onCancel={e => { if (busy || reading) e.preventDefault(); else setOpen(false) }} className="borrower-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-3xl p-6" aria-labelledby="lender-title"><button type="button" disabled={busy || reading} className="borrower-close" aria-label="ปิดหน้าต่าง" onClick={() => setOpen(false)}><X size={18} /></button><h2 id="lender-title" className="pr-12 text-lg font-semibold">{readOnly ? 'รายละเอียดผู้ให้กู้' : selected ? 'แก้ไขผู้ให้กู้' : 'เพิ่มผู้ให้กู้'}</h2><p className="mb-6 mt-2 text-xs text-slate-400">{selected ? lenderCode(selected.id) : 'ระบุชื่อเล่นและเลือกบทบาท เพื่อบันทึกรายชื่อผู้ให้กู้'}</p>
-      <section className="borrower-card-panel" aria-label="ข้อมูลบัตรประชาชน">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-sm font-medium">ข้อมูลจากบัตรประชาชน</h3><p className="mt-1 text-xs text-slate-500">เสียบบัตรกับเครื่องอ่าน ACS บน Mac ที่รันระบบ แล้วกดอ่านบัตร</p></div>{!readOnly && <Button disabled={busy || reading || cardLoading} onClick={() => void readCard()}>{reading ? <LoaderCircle size={16} className="animate-spin" /> : <CreditCard size={16} />}{reading ? 'กำลังอ่านบัตร…' : card ? 'อ่านบัตรใหม่' : 'อ่านบัตรประชาชน'}</Button>}</div>
-        {reading && <p role="status" className="mt-3 text-sm" aria-live="polite">{readerStatus}</p>}
-        {readerError && <div role="alert" className="mt-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800"><p>{readerError}</p><p className="mt-1 text-xs">ตรวจว่าเครื่องอ่าน ACS เชื่อมต่อกับ Mac ที่รันระบบ และเสียบบัตรแล้ว จากนั้นกดอ่านบัตรอีกครั้ง</p></div>}
-        {card ? <div className="borrower-card-result"><Image unoptimized src={card.photo} width={100} height={128} alt="รูปผู้ให้กู้จากชิปบัตรประชาชน" className="borrower-card-photo" /><dl className="borrower-card-details">
-          {[[ 'เลขบัตรประชาชน', card.nationalId ], ['ชื่อ–นามสกุล', card.fullNameTh], ['ชื่อภาษาอังกฤษ', card.fullNameEn], ['วันเกิด', cardDate(card.birthDate)], ['วันที่ออกบัตร', cardDate(card.issueDate)], ['วันหมดอายุ', cardDate(card.expiryDate)], ['ที่อยู่ตามบัตร', card.address], ['อ่านบัตรเมื่อ', cardReadToken ? 'อ่านใหม่ รอการบันทึก' : selected?.cardReadAt ? new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(selected.cardReadAt)) : '—']].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}
-        </dl><p className="borrower-card-note">ตรวจสอบข้อมูลก่อนบันทึก · การอ่านชิปยังไม่ได้ยืนยันตัวบุคคลหรือสถานะบัตรกับหน่วยงานผู้ออกบัตร</p>{form.nationalId !== card.nationalId && <p role="alert" className="text-sm text-amber-200">เลขบัตรในฟอร์มไม่ตรงกับข้อมูลที่อ่าน กรุณาอ่านบัตรใหม่</p>}</div> : <p className="mt-4 text-xs text-slate-500">{readOnly ? 'ยังไม่มีข้อมูลจากชิปบัตรประชาชน' : 'ข้อมูลชื่อ เลขบัตร และที่อยู่จะเติมให้อัตโนมัติ กรุณาระบุชื่อเล่นก่อนบันทึก'}</p>}
+      <section className="borrower-card-panel flex flex-wrap items-center justify-between gap-3" aria-label="ข้อมูลบัตรประชาชน">
+        <div><h3 className="text-sm font-medium">ข้อมูลจากบัตรประชาชน</h3><p className="mt-1 text-xs text-slate-500">เปิดหน้าต่างอ่านบัตร ตรวจสอบข้อมูล แล้วกด “ใช้ข้อมูลนี้”</p>{cardReadToken && <p role="status" className="mt-2 text-xs">นำข้อมูลบัตรเข้าฟอร์มแล้ว · รอการบันทึก</p>}</div>
+        <Button disabled={busy || reading || cardLoading} onClick={() => { if (readOnly || card) setReadCardOpen(true); else void readCard() }}><CreditCard size={16} />{cardLoading ? 'กำลังโหลดข้อมูลบัตร…' : readOnly ? 'ดูข้อมูลบัตร' : 'อ่านบัตรประชาชน'}</Button>
       </section>
       <form onSubmit={submit}><fieldset disabled={busy || reading || readOnly} className="grid gap-4 sm:grid-cols-2"><legend className="borrower-form-section">ข้อมูลผู้ให้กู้และการทำสัญญา</legend>
         <label className="text-xs">บทบาท *<select className={fieldClass} value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>{Object.entries(lenderRoles).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
@@ -120,5 +123,6 @@ export function LenderManager({ lenders, total, page, query: initialQuery, role:
 
       </fieldset>{error && <p role="alert" className="mt-4 text-sm text-rose-300">{error}</p>}<div className="mt-6 flex justify-end gap-3"><Button disabled={busy || reading} onClick={() => setOpen(false)}>{readOnly ? 'ปิด' : 'ยกเลิก'}</Button>{!readOnly && <Button type="submit" variant="primary" disabled={busy || reading}>{busy ? 'กำลังบันทึก…' : 'บันทึกผู้ให้กู้'}</Button>}</div></form>
     </dialog>}
+    {readCardOpen && <ReadCardModal subjectLabel="ผู้ให้กู้" open={readCardOpen} card={card} reading={reading && !detecting} detecting={detecting} error={readerError} pendingSave={Boolean(pendingCardToken)} savedAt={selected?.cardReadAt ?? null} readAllowed={!readOnly} onClose={() => { if (!reading) setReadCardOpen(false) }} onRetry={() => void readCard()} onUse={applyCard} />}
   </div>
 }

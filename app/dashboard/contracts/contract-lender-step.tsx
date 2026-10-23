@@ -7,13 +7,12 @@ import { Button } from '@/components/ui/button'
 import { lenderCode, lenderRoles, lenderStatuses } from '@/lib/lender'
 import { searchContractLenders } from './actions'
 
-type Lender = Awaited<ReturnType<typeof searchContractLenders>>[number]
-const name = (lender: Lender) => [lender.firstName, lender.lastName].filter(Boolean).join(' ') || lender.nickname
+export type ContractLender = Awaited<ReturnType<typeof searchContractLenders>>[number]
+const name = (lender: ContractLender) => [lender.firstName, lender.lastName].filter(Boolean).join(' ') || lender.nickname
 
-export function ContractLenderStep({ borrowerName, onBack }: { borrowerName: string; onBack: () => void }) {
+export function ContractLenderStep({ borrowerName, onBack, selected, onSelect, onNext }: { borrowerName: string; onBack: () => void; selected: ContractLender | null; onSelect: (lender: ContractLender | null) => void; onNext: () => void }) {
   const [query, setQuery] = useState('')
-  const [rows, setRows] = useState<Lender[]>([])
-  const [selected, setSelected] = useState<Lender | null>(null)
+  const [rows, setRows] = useState<ContractLender[]>([])
   const [pending, setPending] = useState(true)
   const [error, setError] = useState('')
 
@@ -60,20 +59,21 @@ export function ContractLenderStep({ borrowerName, onBack }: { borrowerName: str
           <div className="min-w-0 flex-1"><h3 className="m-0 text-sm font-semibold">{name(lender)} {lender.nickname && `(${lender.nickname})`}</h3>
             <p className="mb-0 mt-1 text-xs text-slate-500">{lenderCode(lender.id)} · {lender.phone || 'ไม่มีเบอร์โทร'} · {lenderRoles[lender.role] || lender.role} · {lenderStatuses[lender.status] || lender.status}</p>
           </div>
-          <Button disabled={lender.status !== 'ACTIVE'} aria-pressed={selected?.id === lender.id} aria-label={`เลือกผู้ให้กู้ ${name(lender)}`} onClick={() => setSelected(lender)}>
+          <Button disabled={lender.status !== 'ACTIVE'} aria-pressed={selected?.id === lender.id} aria-label={`เลือกผู้ให้กู้ ${name(lender)}`} onClick={() => onSelect(lender)}>
             {selected?.id === lender.id && <Check size={15} aria-hidden="true" />}{selected?.id === lender.id ? 'เลือกแล้ว' : 'เลือกผู้ให้กู้'}
           </Button>
         </article>)}</div>
       </div>
     </Card>
     {selected && <Card as="section" className="p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-base font-semibold">ผู้ให้กู้ที่เลือก</h2><Button onClick={() => setSelected(null)}>ยกเลิกการเลือกผู้ให้กู้</Button></div>
+      <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-base font-semibold">ผู้ให้กู้ที่เลือก</h2><Button onClick={() => onSelect(null)}>ยกเลิกการเลือกผู้ให้กู้</Button></div>
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         {[
           ['ชื่อผู้ให้กู้', name(selected)], ['รหัสผู้ให้กู้', lenderCode(selected.id)],
           ['บทบาท', lenderRoles[selected.role]], ['เบอร์โทร', selected.phone], ['ที่อยู่', selected.address],
         ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-1">{value || '—'}</dd></div>)}
       </dl>
+      <div className="mt-6 flex justify-end"><Button variant="primary" onClick={onNext}>ถัดไป: รายละเอียดสัญญา</Button></div>
     </Card>}
   </div>
 }

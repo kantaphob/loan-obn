@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cardDate, type ThaiIdCard } from '@/lib/thai-id'
 
 type ReadCardModalProps = {
+  subjectLabel?: string
   open: boolean
   card: ThaiIdCard | null
   reading: boolean
@@ -29,7 +30,7 @@ function readDate(value: string) {
   }).format(new Date(value))
 }
 
-export function ReadCardModal({ open, card, reading, detecting, error = '', pendingSave, savedAt, readAllowed, onClose, onRetry, onUse }: ReadCardModalProps) {
+export function ReadCardModal({ subjectLabel = 'ผู้กู้ยืม', open, card, reading, detecting, error = '', pendingSave, savedAt, readAllowed, onClose, onRetry, onUse }: ReadCardModalProps) {
   const titleId = useId()
   const descriptionId = useId()
   const state = error ? 'error' : reading ? 'reading' : detecting ? 'detecting' : card ? 'success' : 'idle'
@@ -58,7 +59,7 @@ export function ReadCardModal({ open, card, reading, detecting, error = '', pend
       {readAllowed ? <button type="button" aria-label="ตรวจจับบัตรอีกครั้ง" title="ตรวจจับบัตรอีกครั้ง" disabled={reading || detecting} onClick={onRetry} className="read-card-close"><RefreshCw size={17} /></button> : <button type="button" aria-label="ปิดหน้าต่างอ่านบัตร" disabled={reading} onClick={onClose} className="read-card-close"><X size={17} /></button>}
       <header className="mb-5 pr-9">
         <h2 id={titleId} className="read-card-title">อ่านบัตรประชาชน</h2>
-        <p id={descriptionId} className="read-card-description">ตรวจสอบข้อมูลจากชิปบัตรก่อนนำไปกรอกในข้อมูลผู้กู้</p>
+        <p id={descriptionId} className="read-card-description">ตรวจสอบข้อมูลจากชิปบัตรก่อนนำไปกรอกในข้อมูล{subjectLabel}</p>
       </header>
       <div className="read-card-status" role="status"><span aria-hidden="true" />{status}</div>
       <div className="space-y-4">
@@ -99,7 +100,7 @@ export function ReadCardModal({ open, card, reading, detecting, error = '', pend
               </dl>
             </div>
             <p className="read-card-note">
-              ข้อมูลจะบันทึกพร้อมประวัติการอ่านเมื่อกด “บันทึกผู้กู้ยืม” ในฟอร์มหลัก ยังไม่ได้ยืนยันตัวบุคคลหรือสถานะบัตรกับหน่วยงานผู้ออกบัตร
+              ข้อมูลจะบันทึกพร้อมประวัติการอ่านเมื่อกด “บันทึก{subjectLabel}” ในฟอร์มหลัก ยังไม่ได้ยืนยันตัวบุคคลหรือสถานะบัตรกับหน่วยงานผู้ออกบัตร
               {pendingSave ? ' การอ่านครั้งนี้ยังรอบันทึก' : savedAt ? ` อ่านล่าสุด ${readDate(savedAt)}` : ''}
             </p>
           </div>
