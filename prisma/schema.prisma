@@ -51,6 +51,7 @@ model Province {
   id        Int        @id @map("province_id")
   nameTh    String     @map("name_th")
   nameEn    String     @map("name_en")
+  borrowers Borrower[]
   districts District[]
 
   @@map("province")
@@ -136,4 +137,57 @@ model Bank {
 
   @@index([sortOrder])
   @@map("bank")
+}
+
+model InterestRate {
+  code      String  @id
+  percent   Int     @unique
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  @@map("interest_rate")
+}
+
+model LoanStatus {
+  code      String  @id
+  nameTh    String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  @@map("loan_status")
+}
+
+model Borrower {
+  borrowerId         String? @unique
+  cardData           String?
+  cardReadAt         DateTime?
+  id                 Int      @id @default(autoincrement())
+  provinceId         Int?
+  province           Province? @relation(fields: [provinceId], references: [id], onDelete: Restrict)
+  nickname           String
+  firstName          String
+  lastName           String
+  phone              String
+  nationalId         String?  @unique
+  workplace          String   @default("")
+  status             String   @default("ACTIVE")
+  bankAccount        String   @default("")
+  bankCode           String   @default("")
+  bankAccountName    String   @default("")
+  promptPayType      String   @default("")
+  promptPayNumber    String   @default("")
+  paymentChannelCode String   @default("")
+  registeredAt       DateTime @default(now())
+  durationMonths     Int      @default(0)
+  facebook           String   @default("")
+  instagram          String   @default("")
+  line               String   @default("")
+  riskRatingCode     String   @default("")
+  approvedLimit      Int      @default(0)
+  usedLimit          Int      @default(0)
+  referrer           String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("borrower")
 }

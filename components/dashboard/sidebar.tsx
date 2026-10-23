@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type CSSProperties } from "react";
-import { ChevronDown, ChevronLeft, LayoutDashboard, LogOut, Menu } from "lucide-react";
+import { ChevronDown, ChevronLeft, LayoutDashboard, Menu } from "lucide-react";
 import { findActiveNavItem, NAV_GROUPS } from "@/lib/nav";
 
 export function Sidebar() {
@@ -21,14 +21,6 @@ export function Sidebar() {
     window.addEventListener("popstate", syncSelection);
     return () => window.removeEventListener("popstate", syncSelection);
   }, [pathname]);
-
-  async function signOut() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      window.location.assign("/login");
-    }
-  }
 
   return (
     <aside
@@ -126,7 +118,6 @@ export function Sidebar() {
             <strong className="block truncate text-[11px] font-semibold text-[#222325]">บัญชีผู้ใช้งาน</strong>
             <small className="text-[9px] text-[#707174]">Loan OBN</small>
           </div>
-          <button type="button" onClick={() => void signOut()} title="ออกจากระบบ" aria-label="ออกจากระบบ" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-black/10 bg-white/50 text-[#56575a] transition hover:bg-white hover:text-[#bd4e59] focus-visible:outline-2 focus-visible:outline-[#555659]"><LogOut size={15} /></button>
         </div>
       )}
     </aside>

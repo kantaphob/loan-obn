@@ -31,7 +31,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Borrower",
     items: [
-      { label: "ผู้กู้", href: "/dashboard/applications", icon: Users },
+      { label: "ผู้กู้", href: "/dashboard/borrower", icon: Users },
     ],
   },
   {

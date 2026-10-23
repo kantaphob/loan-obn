@@ -10,7 +10,10 @@ const adapter = new PrismaBetterSqlite3({
   url: process.env.DATABASE_URL ?? 'file:./ProgressSQL.db',
 })
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter })
+// Recreate a cached development client when newly generated models are added.
+export const prisma = globalForPrisma.prisma && 'interestRate' in globalForPrisma.prisma && 'loanStatus' in globalForPrisma.prisma && 'borrower' in globalForPrisma.prisma
+  ? globalForPrisma.prisma
+  : new PrismaClient({ adapter })
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma

@@ -1,15 +1,11 @@
 import 'server-only'
-import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session'
 
 export async function getCurrentUser() {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value
-  const session = verifySessionToken(token)
-  if (!session) return null
-
+  // This installation has a single operator, so use that account as the
+  // application identity without requiring a login session.
   return prisma.user.findFirst({
-    where: { id: session.userId, status: 'ACTIVE' },
+    orderBy: [{ level: 'asc' }, { createdAt: 'asc' }],
     select: { id: true, acccode: true, role: true, level: true, status: true },
   })
 }

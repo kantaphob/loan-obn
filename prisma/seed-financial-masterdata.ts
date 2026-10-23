@@ -17,6 +17,28 @@ const financialCategories = [
   { code: 'FEE_RECEIVED', nameTh: 'รับค่าธรรมเนียม', nameEn: 'Fee received', group: 'INCOME', direction: 'IN', sortOrder: 70 },
   { code: 'LATE_FEE_RECEIVED', nameTh: 'รับค่าปรับล่าช้า', nameEn: 'Late fee received', group: 'INCOME', direction: 'IN', sortOrder: 80 },
   { code: 'OPERATING_EXPENSE', nameTh: 'ค่าใช้จ่ายดำเนินงาน', nameEn: 'Operating expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 90 },
+  { code: 'BORROWED_CAPITAL_RECEIVED', nameTh: 'รับเงินทุนจากผู้ให้ทุน', nameEn: 'Funding received', group: 'CAPITAL', direction: 'IN', sortOrder: 100 },
+  { code: 'BORROWED_CAPITAL_REPAID', nameTh: 'คืนเงินต้นผู้ให้ทุน', nameEn: 'Funding principal repaid', group: 'CAPITAL', direction: 'OUT', sortOrder: 110 },
+  { code: 'ADDITIONAL_DISBURSEMENT', nameTh: 'จ่ายเงินกู้เพิ่มเติม', nameEn: 'Additional loan disbursement', group: 'LOAN', direction: 'OUT', sortOrder: 120 },
+  { code: 'EARLY_PRINCIPAL_REPAYMENT', nameTh: 'รับชำระเงินต้นก่อนกำหนด', nameEn: 'Early principal repayment', group: 'LOAN', direction: 'IN', sortOrder: 130 },
+  { code: 'CLOSING_PRINCIPAL_REPAYMENT', nameTh: 'รับเงินต้นปิดสัญญา', nameEn: 'Closing principal repayment', group: 'LOAN', direction: 'IN', sortOrder: 140 },
+  { code: 'DISBURSEMENT_RETURNED', nameTh: 'รับคืนเงินปล่อยกู้ที่ยกเลิก', nameEn: 'Cancelled disbursement returned', group: 'LOAN', direction: 'IN', sortOrder: 150 },
+  { code: 'PRINCIPAL_OVERPAYMENT_REFUND', nameTh: 'คืนเงินต้นที่รับเกิน', nameEn: 'Principal overpayment refund', group: 'LOAN', direction: 'OUT', sortOrder: 160 },
+  { code: 'COLLECTION_FEE_RECEIVED', nameTh: 'รับค่าติดตามชำระ', nameEn: 'Collection fee received', group: 'INCOME', direction: 'IN', sortOrder: 170 },
+  { code: 'CONTRACT_FEE_RECEIVED', nameTh: 'รับค่าดำเนินการสัญญา', nameEn: 'Contract fee received', group: 'INCOME', direction: 'IN', sortOrder: 180 },
+  { code: 'INTEREST_REFUND', nameTh: 'คืนดอกเบี้ยที่รับเกิน', nameEn: 'Interest refund', group: 'EXPENSE', direction: 'OUT', sortOrder: 190 },
+  { code: 'FEE_REFUND', nameTh: 'คืนค่าธรรมเนียม', nameEn: 'Fee refund', group: 'EXPENSE', direction: 'OUT', sortOrder: 200 },
+  { code: 'LATE_FEE_REFUND', nameTh: 'คืนค่าปรับล่าช้า', nameEn: 'Late fee refund', group: 'EXPENSE', direction: 'OUT', sortOrder: 210 },
+  { code: 'FUNDING_INTEREST_PAID', nameTh: 'จ่ายดอกเบี้ยผู้ให้ทุน', nameEn: 'Funding interest paid', group: 'EXPENSE', direction: 'OUT', sortOrder: 220 },
+  { code: 'PROFIT_DISTRIBUTION', nameTh: 'จ่ายส่วนแบ่งกำไรผู้ให้ทุน', nameEn: 'Funding profit distribution', group: 'CAPITAL', direction: 'OUT', sortOrder: 230 },
+  { code: 'BANK_TRANSFER_FEE', nameTh: 'ค่าธรรมเนียมโอนเงิน', nameEn: 'Bank transfer fee', group: 'EXPENSE', direction: 'OUT', sortOrder: 240 },
+  { code: 'COLLECTION_EXPENSE', nameTh: 'ค่าใช้จ่ายติดตามชำระ', nameEn: 'Collection expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 250 },
+  { code: 'LEGAL_EXPENSE', nameTh: 'ค่าใช้จ่ายทางกฎหมาย', nameEn: 'Legal expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 260 },
+  { code: 'CONTRACT_EXPENSE', nameTh: 'ค่าเอกสารและจัดทำสัญญา', nameEn: 'Contract preparation expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 270 },
+  { code: 'CREDIT_CHECK_EXPENSE', nameTh: 'ค่าตรวจสอบข้อมูลผู้กู้', nameEn: 'Borrower verification expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 280 },
+  { code: 'COLLATERAL_APPRAISAL_EXPENSE', nameTh: 'ค่าประเมินหลักประกัน', nameEn: 'Collateral appraisal expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 290 },
+  { code: 'COLLATERAL_REGISTRATION_EXPENSE', nameTh: 'ค่าจดทะเบียนหลักประกัน', nameEn: 'Collateral registration expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 300 },
+  { code: 'TAX_PAID', nameTh: 'จ่ายภาษีและอากร', nameEn: 'Tax and stamp duty paid', group: 'EXPENSE', direction: 'OUT', sortOrder: 310 },
 ] as const
 
 const riskRatings = [
@@ -32,6 +54,7 @@ const riskRatings = [
 const paymentChannels = [
   { code: 'BANKING', nameTh: 'ธนาคาร', nameEn: 'Bank transfer' },
   { code: 'CASH', nameTh: 'เงินสด', nameEn: 'Cash' },
+  { code: 'PROMPTPAY', nameTh: 'พร้อมเพย์', nameEn: 'PromptPay' },
 ] as const
 
 const banks = [
@@ -56,21 +79,42 @@ const banks = [
   { code: 'TCRB', nameTh: 'ธนาคารไทยเครดิต', nameEn: 'Thai Credit Bank', shortName: 'ไทยเครดิต', sortOrder: 190 },
 ] as const
 
+const interestRates = [0, 5, 10, 15, 20].map((percent, index) => ({
+  code: `RATE_${percent}`, percent, sortOrder: (index + 1) * 10,
+}))
+
+const loanStatuses = [
+  { code: 'AWAITING_FUNDS', nameTh: 'รอรับยอด', sortOrder: 10 },
+  { code: 'AWAITING_REPAYMENT', nameTh: 'รอส่งคืน', sortOrder: 20 },
+  { code: 'OVERDUE', nameTh: 'เกินกำหนดชำระ', sortOrder: 30 },
+  { code: 'RETURNED', nameTh: 'ส่งคืน', sortOrder: 40 },
+  { code: 'CLOSED', nameTh: 'ปิดยอด', sortOrder: 50 },
+  { code: 'UNDER_REVIEW', nameTh: 'พิจารณา', sortOrder: 60 },
+  { code: 'CONTRACT_RESERVED', nameTh: 'จองสัญญา', sortOrder: 70 },
+]
+
 async function main() {
   for (const category of financialCategories) {
-    await prisma.financialCategory.upsert({ where: { code: category.code }, create: category, update: category })
+    await prisma.financialCategory.upsert({ where: { code: category.code }, create: category, update: {} })
   }
   for (const rating of riskRatings) {
-    await prisma.riskRating.upsert({ where: { code: rating.code }, create: rating, update: rating })
+    await prisma.riskRating.upsert({ where: { code: rating.code }, create: rating, update: {} })
   }
   for (const channel of paymentChannels) {
-    await prisma.paymentChannel.upsert({ where: { code: channel.code }, create: channel, update: channel })
+    await prisma.paymentChannel.upsert({ where: { code: channel.code }, create: channel, update: {} })
   }
   for (const bank of banks) {
-    await prisma.bank.upsert({ where: { code: bank.code }, create: bank, update: bank })
+    await prisma.bank.upsert({ where: { code: bank.code }, create: bank, update: {} })
   }
 
-  console.log(`Seeded ${financialCategories.length} transaction categories, ${riskRatings.length} risk ratings, ${paymentChannels.length} payment channels, and ${banks.length} banks.`)
+  for (const rate of interestRates) {
+    await prisma.interestRate.upsert({ where: { code: rate.code }, create: rate, update: {} })
+  }
+  for (const status of loanStatuses) {
+    await prisma.loanStatus.upsert({ where: { code: status.code }, create: status, update: {} })
+  }
+
+  console.log(`Seeded ${financialCategories.length} transaction categories, ${riskRatings.length} risk ratings, ${paymentChannels.length} payment channels, and ${banks.length} banks, ${interestRates.length} interest rates, and ${loanStatuses.length} loan statuses.`)
 }
 
 main()
