@@ -1,3 +1,5 @@
+import 'dotenv/config'
+import { syncRecordFiles } from './lib/record-files.mjs'
 import { createServer } from 'node:http'
 import next from 'next'
 import { WebSocket, WebSocketServer } from 'ws'
@@ -13,7 +15,17 @@ const handle = app.getRequestHandler()
 await app.prepare()
 const handleUpgrade = app.getUpgradeHandler()
 
-const server = createServer((request, response) => handle(request, response))
+const recordDatabaseUrl = process.env.DATABASE_URL ?? 'file:./private/database/ProgressSQL.db'
+syncRecordFiles(recordDatabaseUrl)
+const server = createServer((request, response) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+    response.once('finish', () => {
+      try { syncRecordFiles(recordDatabaseUrl) }
+      catch (error) { console.error('Record file sync failed; run npm run storage:sync to repair:', error.code ?? error.name) }
+    })
+  }
+  return handle(request, response)
+})
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 1024 })
 
 server.on('upgrade', (request, socket, head) => {

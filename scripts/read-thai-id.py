@@ -17,6 +17,14 @@ class IORequest(c.Structure):
     _fields_ = [('protocol', c.c_uint32), ('length', c.c_uint32)]
 
 
+class ReaderState(c.Structure):
+    _fields_ = [
+        ('reader', c.c_char_p), ('user_data', c.c_void_p),
+        ('current_state', c.c_uint32), ('event_state', c.c_uint32),
+        ('atr_length', c.c_uint32), ('atr', c.c_ubyte * 36),
+    ]
+
+
 class CardReader:
     def __init__(self):
         if sys.platform != 'darwin':
@@ -37,6 +45,7 @@ class CardReader:
             'SCardEndTransaction': [c.c_int32, c.c_uint32],
             'SCardStatus': [c.c_int32, c.c_void_p, c.POINTER(c.c_uint32), c.POINTER(c.c_uint32), c.POINTER(c.c_uint32), c.c_void_p, c.POINTER(c.c_uint32)],
             'SCardTransmit': [c.c_int32, c.POINTER(IORequest), c.c_void_p, c.c_uint32, c.c_void_p, c.c_void_p, c.POINTER(c.c_uint32)],
+            'SCardGetStatusChange': [c.c_int32, c.c_uint32, c.POINTER(ReaderState), c.c_uint32],
         }
         for name, args in signatures.items():
             function = getattr(self.lib, name)
@@ -49,10 +58,10 @@ class CardReader:
         code = result & 0xffffffff
         if code:
             messages = {
-                0x8010002e: 'ไม่พบเครื่องอ่าน กรุณาเสียบ ACS และตรวจสอบไดรเวอร์ PC/SC',
-                0x8010000c: 'ยังไม่พบบัตร กรุณาเสียบบัตรประชาชนลงในเครื่องอ่าน',
+                0x8010002e: 'ไม่พบเครื่องอ่าน ACS กรุณาตรวจสอบการเชื่อมต่อและไดรเวอร์ PC/SC',
+                0x8010000c: 'ยังไม่พบบัตรในเครื่องอ่าน',
                 0x80100017: 'เครื่องอ่านไม่พร้อมใช้งาน กรุณาเชื่อมต่อใหม่',
-                0x80100069: 'บัตรถูกนำออก กรุณาเสียบบัตรแล้วอ่านใหม่',
+                0x80100069: 'บัตรถูกนำออกก่อนอ่านเสร็จ กรุณาลองใหม่',
                 0x8010001d: 'บริการ PC/SC ยังไม่พร้อม กรุณาตรวจสอบเครื่องอ่านหรือไดรเวอร์',
             }
             raise ReaderError(messages.get(code, 'สื่อสารกับเครื่องอ่านไม่ได้ (PC/SC %08X)' % code))
@@ -61,10 +70,31 @@ class CardReader:
         size = c.c_uint32()
         self.check(self.lib.SCardListReaders(self.context, None, None, c.byref(size)))
         if size.value < 2:
-            raise ReaderError('ไม่พบเครื่องอ่าน กรุณาเสียบ ACS')
+            raise ReaderError('ไม่พบเครื่องอ่าน ACS')
         names = c.create_string_buffer(size.value)
         self.check(self.lib.SCardListReaders(self.context, None, names, c.byref(size)))
         return [name.decode('utf-8') for name in names.raw.split(b'\0') if name]
+
+    def wait_for_card(self, timeout_ms=20000):
+        """Wait for a card insertion event; also reports cards already present."""
+        names = self.readers()
+        names.sort(key=lambda name: ('PICC' in name.upper(), 'ACS' not in name.upper()))
+        state = ReaderState()
+        state.reader = names[0].encode('utf-8')
+        state.current_state = 0  # SCARD_STATE_UNAWARE: query current availability first.
+        result = self.lib.SCardGetStatusChange(self.context, 0, c.byref(state), 1)
+        if result:
+            self.check(result)
+        if state.event_state & 0x20:  # SCARD_STATE_PRESENT
+            return True
+
+        state.current_state = state.event_state
+        result = self.lib.SCardGetStatusChange(self.context, timeout_ms, c.byref(state), 1)
+        if (result & 0xffffffff) == 0x8010000a:  # SCARD_E_TIMEOUT
+            return False
+        if result:
+            self.check(result)
+        return bool(state.event_state & 0x20)
 
     def transmit(self, command):
         send = (c.c_ubyte * len(command))(*command)
@@ -124,11 +154,16 @@ class CardReader:
             photo = b''.join(read_bytes(0x17b + part * 255, 255) for part in range(20))
             start, end = photo.find(b'\xff\xd8'), photo.rfind(b'\xff\xd9')
             if start < 0 or end < start:
-                raise ReaderError('อ่านรูปจากบัตรไม่สำเร็จ กรุณาเสียบบัตรให้แน่นแล้วอ่านใหม่')
+                raise ReaderError('อ่านรูปจากบัตรไม่สำเร็จ กรุณาลองใหม่')
             return {
                 'nationalId': national_id, 'titleTh': thai_name[0].strip(),
                 'firstName': thai_name[1].strip() if len(thai_name) > 1 else '',
                 'lastName': thai_name[-1].strip() if len(thai_name) > 2 else '',
+                'middleNameTh': ' '.join(p.strip() for p in thai_name[2:-1] if p.strip()),
+                'titleEn': english_name[0].strip(),
+                'firstNameEn': english_name[1].strip() if len(english_name) > 1 else '',
+                'middleNameEn': ' '.join(p.strip() for p in english_name[2:-1] if p.strip()),
+                'lastNameEn': english_name[-1].strip() if len(english_name) > 2 else '',
                 'fullNameTh': ' '.join(part.strip() for part in thai_name if part.strip()),
                 'fullNameEn': ' '.join(part.strip() for part in english_name if part.strip()),
                 'birthDate': text(0xd9, 8), 'gender': text(0xe1, 1), 'issuer': text(0xf6, 100),
@@ -149,7 +184,12 @@ def main():
     reader = None
     try:
         reader = CardReader()
-        result = {'readers': reader.readers()} if '--list' in sys.argv else {'card': reader.read()}
+        if '--list' in sys.argv:
+            result = {'readers': reader.readers()}
+        elif '--wait' in sys.argv:
+            result = {'cardPresent': reader.wait_for_card()}
+        else:
+            result = {'card': reader.read()}
         print(json.dumps(result, ensure_ascii=False))
     except ReaderError as error:
         print(json.dumps({'message': str(error)}, ensure_ascii=False))

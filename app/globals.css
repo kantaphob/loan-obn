@@ -592,3 +592,43 @@ body {
   .users-page-container > .page-header { position: static; }
 }
 
+
+.file-transfer-card {
+  --transfer-accent: #b6acff;
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid #b9b2ff30;
+  border-radius: 22px;
+  color: #f3f2ff;
+  background: radial-gradient(ellipse at 55% 115%, #5435d84a, transparent 70%), linear-gradient(145deg, #19202beb, #0a0d18f2);
+  box-shadow: inset 0 1px 0 #ffffff14, 0 12px 36px #00000050, 0 8px 25px #6045ff16;
+  backdrop-filter: blur(24px);
+}
+.file-transfer-card[data-status='complete'] { --transfer-accent: #7ee2bc; }
+.file-transfer-card[data-status='error'] { --transfer-accent: #f0a2ad; }
+.file-transfer-close { position: absolute; right: 10px; top: 10px; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #ffffff15; border-radius: 50%; background: #ffffff05; color: #bcc3d0; cursor: pointer; transition: background .2s, color .2s; }
+.file-transfer-close:hover { background: #ffffff15; color: white; }
+.file-transfer-close:focus-visible { outline: 2px solid var(--transfer-accent); outline-offset: 2px; }
+.file-transfer-heading { display: flex; align-items: center; gap: 13px; padding-right: 24px; }
+.file-transfer-icon { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 46px; height: 52px; border: 1px solid #b9b2ff30; border-radius: 12px; background: linear-gradient(145deg, #7d80c82b, #22243b55); color: #d4d0f8; box-shadow: inset 0 1px 0 #ffffff15; }
+.file-transfer-icon > svg:last-child { position: absolute; right: -5px; bottom: 2px; box-sizing: content-box; padding: 4px; border-radius: 6px; background: #292b42; border: 1px solid #ffffff20; }
+.file-transfer-name { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; font-weight: 600; }
+.file-transfer-size { margin: 5px 0 0; color: #a5acc0; font-size: 10px; }
+.file-transfer-meter { margin-top: 16px; padding: 12px; border: 1px solid #c8c1ff12; border-radius: 14px; background: #03051450; }
+.file-transfer-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 11px; }
+.file-transfer-caption > span:first-child { display: inline-flex; align-items: center; gap: 7px; }
+.file-transfer-caption > span:last-child { color: var(--transfer-accent); font-variant-numeric: tabular-nums; }
+.file-transfer-track { overflow: hidden; height: 5px; border-radius: 99px; background: #ffffff12; }
+.file-transfer-track > span { display: block; height: 100%; border-radius: inherit; background: var(--transfer-accent); box-shadow: 0 0 10px var(--transfer-accent); transition: width .25s ease; }
+.file-transfer-track .is-indeterminate { animation: transfer-slide 1.5s ease-in-out infinite alternate; }
+.file-transfer-spinner { animation: transfer-spin 1.2s linear infinite; }
+.file-transfer-message { margin: 9px 0 0; font-size: 10px; color: #bdc3d5; overflow-wrap: anywhere; }
+@keyframes transfer-spin { to { transform: rotate(360deg); } }
+@keyframes transfer-slide { to { transform: translateX(185%); } }
+@media (prefers-reduced-motion: reduce) {
+  .file-transfer-spinner, .file-transfer-track .is-indeterminate { animation: none; }
+  .file-transfer-track > span { transition: none; }
+}
+

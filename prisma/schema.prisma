@@ -158,6 +158,20 @@ model LoanStatus {
 }
 
 model Borrower {
+  titleTh            String @default("")
+  middleNameTh       String @default("")
+  titleEn            String @default("")
+  firstNameEn        String @default("")
+  middleNameEn       String @default("")
+  lastNameEn         String @default("")
+  birthDate          String @default("")
+  address            String @default("")
+  houseNumber        String @default("")
+  villageNumber      String @default("")
+  districtId         Int?
+  subdistrictId      Int?
+  cardIssueDate      String @default("")
+  cardExpiryDate     String @default("")
   borrowerId         String? @unique
   cardData           String?
   cardReadAt         DateTime?
@@ -195,6 +209,8 @@ model Borrower {
 
 // Lenders are separate from borrowers; one person can fund and/or sign contracts.
 model Lender {
+  cardData        String?
+  cardReadAt      DateTime?
   id              Int      @id @default(autoincrement())
   nickname        String
   firstName       String   @default("")

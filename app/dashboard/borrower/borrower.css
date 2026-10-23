@@ -71,3 +71,19 @@
 .borrower-qr-dialog { max-height: 90dvh; overflow-y: auto; }
 .borrower-qr-upload input[type="file"] { border: 0; background: transparent; }
 .borrower-qr-upload input::file-selector-button { padding: 7px 12px; margin-right: 10px; background: #1d3944; border: 1px solid #91d6b64a; border-radius: 8px; color: #bbe9d6; cursor: pointer; }
+.borrower-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.borrower-dialog-tools { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.borrower-dialog-tools .borrower-close { position: static; display: grid; place-items: center; width: 40px; height: 40px; }
+.borrower-card-trigger { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid #dfbd8545; border-radius: 10px; background: #dfbd8510; color: #e7ca99; cursor: pointer; transition: background .15s; }
+.borrower-card-trigger:hover { background: #dfbd8525; }
+.borrower-card-trigger:focus-visible { outline: 2px solid #dfbd85; outline-offset: 3px; }
+.borrower-dialog-tools button:disabled { opacity: .45; cursor: not-allowed; }
+.borrower-card-indicator { position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 50%; background: #8bd9b9; }
+.borrower-identity-photo { display: flex; align-items: center; gap: 22px; padding: 20px; border: 1px solid #aac9df2b; border-radius: 16px; background: #061520; }
+.borrower-identity-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; width: 120px; height: 152px; flex-shrink: 0; border-radius: 12px; border: 1px dashed #aac9df40; color: #9bb8cb; font-size: 12px; }
+.borrower-middle-toggle { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 12px; }
+.borrower-middle-toggle input { width: 17px; height: 17px; accent-color: #dfbd85; }
+.borrower-dialog textarea { background: #061520; border-color: #aac9df30; color: #edf3f7; }
+.borrower-name-row { display: grid; grid-template-columns: minmax(125px, .65fr) minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.borrower-name-row > label { min-width: 0; }
+@media (max-width: 639px) { .borrower-name-row { grid-template-columns: 1fr; gap: 16px; } }

@@ -6,5 +6,5 @@ export const lenderFields = [
   ['address', 'ที่อยู่สำหรับทำสัญญา'], ['bankAccount', 'เลขบัญชีธนาคาร'],
   ['bankAccountName', 'ชื่อบัญชีธนาคาร'], ['line', 'Line'], ['facebook', 'Facebook'], ['notes', 'หมายเหตุ / รายละเอียดการทำสัญญาแทน'],
 ] as const
-export type LenderRow = Record<typeof lenderFields[number][0], string> & { id: number; provinceId: number | null; role: string; status: string; bankCode: string; createdAt: string }
-export const lenderCode = (id: number) => `LN-${String(id).padStart(5, '0')}`
+export type LenderRow = Record<typeof lenderFields[number][0], string> & { id: number; cardReadAt: string | null; provinceId: number | null; role: string; status: string; bankCode: string; createdAt: string }
+export const lenderCode = (id: number) => `LN-${String(id).padStart(4, '0')}`

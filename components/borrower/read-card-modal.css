@@ -1,0 +1,28 @@
+dialog.read-card-modal { --reader-accent: #e1bd80; position: fixed; inset: 0; margin: auto; width: calc(100% - 2rem); max-width: 672px; max-height: 90dvh; overflow-y: auto; padding: 26px; border: 2px solid var(--reader-accent); border-radius: 26px; color-scheme: dark; color: #edf4fa; background: #0b1d2b; box-shadow: 0 0 0 4px color-mix(in srgb, var(--reader-accent) 12%, transparent), 0 0 34px color-mix(in srgb, var(--reader-accent) 25%, transparent), 0 28px 90px #0009; transition: border-color .2s, box-shadow .2s; }
+.read-card-modal::backdrop { background: #020b15b3; backdrop-filter: blur(7px); }
+dialog.read-card-modal[data-state="detecting"], dialog.read-card-modal[data-state="reading"] { --reader-accent: #79c8ff; animation: reader-status-glow 1.8s ease-in-out infinite; }
+dialog.read-card-modal[data-state="success"] { --reader-accent: #7adbb3; }
+.read-card-title { margin: 0; font-size: 19px; font-weight: 600; color: #f3f7fb; }
+.read-card-description { margin: 6px 0 0; font-size: 12px; line-height: 1.8; color: #b5c7d6; }
+.read-card-close { position: absolute; top: 18px; right: 18px; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #a6c3d538; border-radius: 11px; color: #d7e5ef; background: #1b3446; cursor: pointer; }
+.read-card-close:hover { background: #28465c; }
+.read-card-modal button:focus-visible { outline: 2px solid var(--reader-accent); outline-offset: 3px; }
+.read-card-modal button:disabled { opacity: .5; cursor: not-allowed; }
+.read-card-status { display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px; margin: 0 0 18px; border: 1px solid color-mix(in srgb, var(--reader-accent) 35%, transparent); border-radius: 30px; color: var(--reader-accent); background: color-mix(in srgb, var(--reader-accent) 8%, transparent); font-size: 12px; }
+.read-card-status > span { width: 7px; height: 7px; border-radius: 50%; background: var(--reader-accent); box-shadow: 0 0 10px var(--reader-accent); }
+.read-card-device { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; padding: 18px; border: 1px solid #a6c3d530; border-radius: 16px; background: #122a3b; }
+.read-card-device-icon { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #e1bd8038; border-radius: 12px; color: #e9c993; background: #e1bd8010; }
+.read-card-device-title { margin: 0; font-size: 13px; font-weight: 600; color: #edf4fa; }
+.read-card-help { margin: 5px 0 0; font-size: 11px; line-height: 1.8; color: #b5c7d6; }
+.read-card-modal .read-card-button { min-height: 40px; color: #e5edf6; background: #233e52; border: 1px solid #a6c3d547; }
+.read-card-modal .read-card-button-primary { color: #f6d9a6; background: #e1bd8015; border-color: #e1bd8066; }
+.read-card-result { padding: 20px; border: 1px solid #a6c3d530; border-radius: 16px; background: #102635; }
+.read-card-field-label { font-size: 11px; color: #a6bed0; }
+.read-card-field-value { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 500; color: #eef5fa; }
+.read-card-note { margin: 18px 0 0; padding: 12px; border-radius: 12px; background: #7ac9ef0d; border: 1px solid #7ac9ef26; font-size: 11px; line-height: 1.9; color: #badff4; }
+.read-card-empty { padding: 34px 20px; text-align: center; border: 1px dashed #89abc14d; border-radius: 16px; background: #071721; }
+.read-card-empty-icon { margin: 0 auto; color: #a5c5db; }
+.read-card-empty-title { margin: 14px 0 0; font-size: 13px; font-weight: 500; color: #e3edf5; }
+@keyframes reader-status-glow { 50% { box-shadow: 0 0 0 5px #79c8ff20, 0 0 42px #79c8ff55, 0 28px 90px #0009; } }
+@media (prefers-reduced-motion: reduce) { dialog.read-card-modal { animation: none !important; transition: none; } }
+@media (max-width: 640px) { dialog.read-card-modal { padding: 21px; } }

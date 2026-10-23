@@ -3,6 +3,7 @@ import {
   House,
   Landmark,
   LayoutDashboard,
+  DatabaseBackup,
   ScrollText,
   Users,
   type LucideIcon,
@@ -52,12 +53,19 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Ledger", href: "/dashboard/ledger", icon: ScrollText },
       { label: "Accounting", href: "/dashboard/accounting", icon: ScrollText },
-      { label: "Accounting", href: "/dashboard/accounting", icon: ScrollText },
     ],
   },
   {
     title: "Logs",
     items: [{ label: "Logs", href: "/dashboard/logs", icon: ScrollText }],
+  },
+  {
+    title: "Backups",
+    items: [
+      { label: "สำรองข้อมูล", href: "/dashboard/admin/backups", icon: DatabaseBackup },
+
+    ],
+
   },
 ];
 

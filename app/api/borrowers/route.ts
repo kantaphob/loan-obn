@@ -1,3 +1,4 @@
+import { storeBorrowerImage, removeBorrowerImage, cardPhotoReference } from '@/lib/borrower-files'
 import { prepareLineQr } from '@/lib/line-qr'
 import { socialKeys, socialUrl } from '@/lib/borrower-social'
 import { verifyCardRead } from '@/lib/thai-id-token'
@@ -34,11 +35,19 @@ async function saveBorrower(request: Request, editing: boolean) {
     try { qrValues = { lineQrImage: await prepareLineQr(input.lineQrImage) } }
     catch (error) { return invalid(error instanceof Error ? error.message : 'รูป QR ไม่ถูกต้อง') }
   }
+  if (existing && (existing.cardReadAt || existing.cardData) && (existing.nationalId || '') !== data.nationalId) return invalid('เลขบัตรที่อ่านจากบัตรประชาชนแล้วไม่สามารถแก้ไขได้')
   if (cardRead && cardRead.card.nationalId !== data.nationalId) return invalid('เลขบัตรไม่ตรงกับข้อมูลที่อ่าน กรุณาอ่านบัตรใหม่')
   if (!data.nickname) return invalid('กรุณาระบุชื่อเล่น')
   if (data.phone && !/^0\d{8,9}$/.test(data.phone)) return invalid('เบอร์โทรต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก')
   if (data.nationalId && !/^\d{13}$/.test(data.nationalId)) return invalid('เลขบัตรประชาชนต้องมี 13 หลัก')
   if (data.bankAccount && !/^\d{6,20}$/.test(data.bankAccount)) return invalid('เลขบัญชีธนาคารต้องเป็นตัวเลข 6–20 หลัก')
+  for (const key of ['birthDate', 'cardIssueDate', 'cardExpiryDate'] as const) {
+    if (!data[key]) continue
+    const date = new Date(data[key] + 'T00:00:00Z')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data[key]) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== data[key]) return invalid('วันที่ในข้อมูลบัตรไม่ถูกต้อง')
+  }
+  if (data.birthDate && data.birthDate > new Date().toISOString().slice(0, 10)) return invalid('วันเกิดต้องไม่เป็นวันในอนาคต')
+  if (data.cardIssueDate && data.cardExpiryDate && data.cardIssueDate > data.cardExpiryDate) return invalid('วันหมดอายุต้องไม่ก่อนวันออกบัตร')
   const bankCode = typeof input.bankCode === 'string' ? input.bankCode.trim() : ''
   const promptPayType = typeof input.promptPayType === 'string' ? input.promptPayType : ''
   const promptPayNumber = typeof input.promptPayNumber === 'string' ? input.promptPayNumber.trim() : ''
@@ -61,8 +70,14 @@ async function saveBorrower(request: Request, editing: boolean) {
   const riskRatingCode = typeof input.riskRatingCode === 'string' ? input.riskRatingCode : ''
   const provinceId = input.provinceId === null || input.provinceId === undefined || input.provinceId === '' ? null : input.provinceId
   if (provinceId !== null && (typeof provinceId !== 'number' || !Number.isSafeInteger(provinceId) || provinceId <= 0)) return invalid('จังหวัดไม่ถูกต้อง')
+  const locationId = (value: unknown) => value === '' || value === null || value === undefined ? null : typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : NaN
+  const districtId = locationId(input.districtId), subdistrictId = locationId(input.subdistrictId)
+  if (Number.isNaN(districtId) || Number.isNaN(subdistrictId)) return invalid('อำเภอหรือตำบลไม่ถูกต้อง')
+  const newFiles: string[] = []
   try {
     if (provinceId !== null && !await prisma.province.findUnique({ where: { id: provinceId as number } })) return invalid('ไม่พบจังหวัดในข้อมูลหลัก')
+    if (districtId !== null && !await prisma.district.findFirst({ where: { id: districtId, provinceId: Number(provinceId) } })) return invalid('อำเภอไม่ตรงกับจังหวัดที่เลือก')
+    if (subdistrictId !== null && !await prisma.subdistrict.findFirst({ where: { id: subdistrictId, districtId: Number(districtId) } })) return invalid('ตำบลไม่ตรงกับอำเภอที่เลือก')
     const [channel, risk, bank] = await Promise.all([
       paymentChannelCode ? prisma.paymentChannel.findFirst({ where: { code: paymentChannelCode, isActive: true } }) : null,
       riskRatingCode ? prisma.riskRating.findFirst({ where: { code: riskRatingCode, isActive: true } }) : null,
@@ -71,14 +86,28 @@ async function saveBorrower(request: Request, editing: boolean) {
     if (bankCode && !bank && bankCode !== existing?.bankCode) return invalid('ไม่พบธนาคารที่เลือกในข้อมูลหลัก')
     if (paymentChannelCode && !channel && paymentChannelCode !== existing?.paymentChannelCode) return invalid('ช่องรับเงินไม่ถูกต้อง')
     if (riskRatingCode && !risk && riskRatingCode !== existing?.riskRatingCode) return invalid('Risk Rating ไม่ถูกต้อง')
+    if (qrValues.lineQrImage) {
+      const reference = await storeBorrowerImage(qrValues.lineQrImage)
+      newFiles.push(reference); qrValues.lineQrImage = reference
+    }
+    if (cardRead) {
+      const reference = await storeBorrowerImage(cardRead.card.photo)
+      newFiles.push(reference); cardRead.card.photo = reference
+    }
     const cardValues = cardRead ? { cardData: JSON.stringify(cardRead.card), cardReadAt: new Date(cardRead.readAt) } : existing && existing.nationalId !== data.nationalId ? { cardData: null, cardReadAt: null } : {}
-    const values = { ...data, ...qrValues, nationalId: data.nationalId || null, ...cardValues, bankCode, promptPayType, promptPayNumber, provinceId: provinceId as number | null, status, registeredAt, paymentChannelCode, riskRatingCode, approvedLimit: Number(approved), usedLimit: Number(used), durationMonths: months }
+    const values = { ...data, districtId, subdistrictId, ...qrValues, nationalId: data.nationalId || null, ...cardValues, bankCode, promptPayType, promptPayNumber, provinceId: provinceId as number | null, status, registeredAt, paymentChannelCode, riskRatingCode, approvedLimit: Number(approved), usedLimit: Number(used), durationMonths: months }
     const borrower = editing ? await prisma.borrower.update({ where: { id: Number(input.id) }, data: values }) : await prisma.$transaction(async tx => {
       const created = await tx.borrower.create({ data: values })
       return tx.borrower.update({ where: { id: created.id }, data: { borrowerId: `BR-${String(created.id).padStart(5, '0')}` } })
     })
+    const replacedFiles = [
+      existing && Object.hasOwn(qrValues, 'lineQrImage') ? existing.lineQrImage : '',
+      existing && Object.hasOwn(cardValues, 'cardData') ? cardPhotoReference(existing.cardData) : '',
+    ]
+    await Promise.allSettled(replacedFiles.filter(Boolean).map(removeBorrowerImage))
     return Response.json({ id: borrower.id }, { status: editing ? 200 : 201 })
   } catch (error) {
+    await Promise.allSettled(newFiles.map(removeBorrowerImage))
     if (typeof error === 'object' && error && 'code' in error && error.code === 'P2025') return Response.json({ message: 'ไม่พบผู้กู้ยืม' }, { status: 404 })
     if (typeof error === 'object' && error && 'code' in error && error.code === 'P2002') return Response.json({ message: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
     console.error('Create borrower failed:', typeof error === 'object' && error && 'code' in error ? error.code : 'Unknown database error')
@@ -94,8 +123,15 @@ export async function DELETE(request: Request) {
   try { id = (await request.json())?.id } catch { return Response.json({ message: 'ข้อมูลคำขอไม่ถูกต้อง' }, { status: 400 }) }
   if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) return Response.json({ message: 'รหัสผู้กู้ยืมไม่ถูกต้อง' }, { status: 400 })
   try {
-    const deleted = await prisma.borrower.deleteMany({ where: { id, usedLimit: 0 } })
-    if (deleted.count) return Response.json({ success: true })
+    const removed = await prisma.$transaction(async tx => {
+      const row = await tx.borrower.findUnique({ where: { id }, select: { lineQrImage: true, cardData: true } })
+      const result = await tx.borrower.deleteMany({ where: { id, usedLimit: 0 } })
+      return result.count ? row : null
+    })
+    if (removed) {
+      await Promise.allSettled([removed.lineQrImage, cardPhotoReference(removed.cardData)].filter(Boolean).map(removeBorrowerImage))
+      return Response.json({ success: true })
+    }
     const existing = await prisma.borrower.findUnique({ where: { id } })
     return Response.json({ message: existing ? 'ไม่สามารถลบผู้กู้ยืมที่ยังมีวงเงินใช้งาน กรุณาตรวจสอบยอดก่อน' : 'ไม่พบผู้กู้ยืม' }, { status: existing ? 409 : 404 })
   } catch {

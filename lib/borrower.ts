@@ -1,4 +1,6 @@
 export const borrowerFields = [
+  ['titleTh', 'คำนำหน้าภาษาไทย'], ['middleNameTh', 'ชื่อกลางภาษาไทย'], ['titleEn', 'คำนำหน้าภาษาอังกฤษ'], ['firstNameEn', 'ชื่อภาษาอังกฤษ'], ['middleNameEn', 'ชื่อกลางภาษาอังกฤษ'], ['lastNameEn', 'สกุลภาษาอังกฤษ'],
+  ['birthDate', 'วันเกิด'], ['address', 'ที่อยู่'], ['houseNumber', 'เลขที่บ้าน'], ['villageNumber', 'หมู่ที่'], ['cardIssueDate', 'วันออกบัตร'], ['cardExpiryDate', 'วันหมดอายุ'],
   ['nickname', 'ชื่อเล่น'], ['firstName', 'ชื่อ'], ['lastName', 'สกุล'],
   ['phone', 'เบอร์โทร'], ['nationalId', 'เลขบัตร'], ['workplace', 'ที่ทำงาน'],
   ['bankAccount', 'เลขบัญชีธนาคาร'], ['bankAccountName', 'ชื่อบัญชีธนาคาร'], ['facebook', 'FB'], ['instagram', 'IG'], ['line', 'Line'], ['referrer', 'คนแนะนำ'],
@@ -6,6 +8,8 @@ export const borrowerFields = [
 export const promptPayTypes: Record<string, string> = { PHONE: 'เบอร์โทรศัพท์', NATIONAL_ID: 'เลขบัตรประชาชน' }
 export const borrowerStatuses: Record<string, string> = { ACTIVE: 'ใช้งาน', INACTIVE: 'ไม่ใช้งาน', BLACKLIST: 'บัญชีดำ', WAITING_RETURN: 'รอส่งคืน', UNDER_REVIEW: 'พิจารณา', SETTLED: 'ปิดยอด', WAITING_PAYMENT: 'รอรับยอด' }
 export type BorrowerRow = {
+  titleTh: string; middleNameTh: string; titleEn: string; firstNameEn: string; middleNameEn: string; lastNameEn: string;
+  birthDate: string; address: string; houseNumber: string; villageNumber: string; districtId: number | null; subdistrictId: number | null; cardIssueDate: string; cardExpiryDate: string;
   hasLineQr: boolean;
   cardData: string | null; cardReadAt: string | null;
   borrowerId: string | null;

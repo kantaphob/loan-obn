@@ -1,3 +1,4 @@
+import { isBorrowerFile } from '@/lib/borrower-files'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
 
@@ -9,5 +10,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!borrower) return Response.json({ message: 'ไม่พบผู้กู้ยืม' }, { status: 404 })
   let card = null
   try { card = borrower.cardData ? JSON.parse(borrower.cardData) : null } catch { /* Ignore malformed legacy card data. */ }
-  return Response.json({ card })
+  if (card?.photo && isBorrowerFile(card.photo)) card.photo = `/api/borrowers/${id}/card/photo`
+  return Response.json({ card }, { headers: { 'Cache-Control': 'private, no-store' } })
 }
