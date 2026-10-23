@@ -1,20 +1,24 @@
-import 'dotenv/config'
+import { getDatabaseUrl } from './database-config'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '@/generated/prisma/client'
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
+  databaseUrl?: string
 }
 
+const databaseUrl = getDatabaseUrl()
+
 const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL ?? 'file:./ProgressSQL.db',
+  url: databaseUrl,
 })
 
 // Recreate a cached development client when newly generated models are added.
-export const prisma = globalForPrisma.prisma && 'interestRate' in globalForPrisma.prisma && 'loanStatus' in globalForPrisma.prisma && 'borrower' in globalForPrisma.prisma
+export const prisma = globalForPrisma.databaseUrl === databaseUrl && globalForPrisma.prisma && 'interestRate' in globalForPrisma.prisma && 'loanStatus' in globalForPrisma.prisma && 'borrower' in globalForPrisma.prisma && 'lender' in globalForPrisma.prisma
   ? globalForPrisma.prisma
   : new PrismaClient({ adapter })
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma
+  globalForPrisma.databaseUrl = databaseUrl
 }

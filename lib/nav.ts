@@ -31,23 +31,32 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Borrower",
     items: [
-      { label: "ผู้กู้", href: "/dashboard/borrower", icon: Users },
+      { label: "Borrowers", href: "/dashboard/borrower", icon: Users },
     ],
   },
   {
-    title: "ผู้ให้กู้",
+    title: "Lenders",
     items: [
-      { label: "รายชื่อผู้ให้กู้", href: "/dashboard/lenders", icon: Landmark },
+      { label: "Creditors", href: "/dashboard/lenders", icon: Landmark },
     ],
   },
   {
-    title: "สัญญากู้",
+    title: "Contracts",
     items: [
-      { label: "สัญญาทั้งหมด", href: "/dashboard/contracts", icon: FileSignature },
+      { label: "Contracts", href: "/dashboard/contracts", icon: FileSignature },
+      { label: "Applications", href: "/dashboard/applications", icon: FileSignature },
     ],
   },
   {
-    title: "บันทึกการทำงาน",
+    title: "Accounting",
+    items: [
+      { label: "Ledger", href: "/dashboard/ledger", icon: ScrollText },
+      { label: "Accounting", href: "/dashboard/accounting", icon: ScrollText },
+      { label: "Accounting", href: "/dashboard/accounting", icon: ScrollText },
+    ],
+  },
+  {
+    title: "Logs",
     items: [{ label: "Logs", href: "/dashboard/logs", icon: ScrollText }],
   },
 ];

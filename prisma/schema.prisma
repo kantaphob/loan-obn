@@ -182,6 +182,7 @@ model Borrower {
   facebook           String   @default("")
   instagram          String   @default("")
   line               String   @default("")
+  lineQrImage        String   @default("")
   riskRatingCode     String   @default("")
   approvedLimit      Int      @default(0)
   usedLimit          Int      @default(0)
@@ -190,4 +191,30 @@ model Borrower {
   updatedAt          DateTime @updatedAt
 
   @@map("borrower")
+}
+
+// Lenders are separate from borrowers; one person can fund and/or sign contracts.
+model Lender {
+  id              Int      @id @default(autoincrement())
+  nickname        String
+  firstName       String   @default("")
+  lastName        String   @default("")
+  nationalId      String?  @unique
+  phone           String   @default("")
+  workplace       String   @default("")
+  address         String   @default("")
+  provinceId      Int?
+  role            String   @default("FUNDER")
+  status          String   @default("ACTIVE")
+  bankCode        String   @default("")
+  bankAccount     String   @default("")
+  bankAccountName String   @default("")
+  line            String   @default("")
+  facebook        String   @default("")
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([role, status])
+  @@map("lender")
 }

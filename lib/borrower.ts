@@ -6,6 +6,7 @@ export const borrowerFields = [
 export const promptPayTypes: Record<string, string> = { PHONE: 'เบอร์โทรศัพท์', NATIONAL_ID: 'เลขบัตรประชาชน' }
 export const borrowerStatuses: Record<string, string> = { ACTIVE: 'ใช้งาน', INACTIVE: 'ไม่ใช้งาน', BLACKLIST: 'บัญชีดำ', WAITING_RETURN: 'รอส่งคืน', UNDER_REVIEW: 'พิจารณา', SETTLED: 'ปิดยอด', WAITING_PAYMENT: 'รอรับยอด' }
 export type BorrowerRow = {
+  hasLineQr: boolean;
   cardData: string | null; cardReadAt: string | null;
   borrowerId: string | null;
   provinceId: number | null;

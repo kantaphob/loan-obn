@@ -3,7 +3,6 @@
 import { PageContainer } from '@/components/ui/page-container'
 import { Button } from '@/components/ui/button'
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Icon } from '@/components/dashboard/icon'
 import { Card } from '@/components/ui/card'
 import { Header } from '@/components/ui/header'
 import { Modal } from '@/components/ui/modal'
@@ -60,23 +59,29 @@ export default function AdminUsersPage() {
   const [deleting, setDeleting] = useState(false)
   const { toast } = useToast()
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (signal?: AbortSignal) => {
+    if (signal?.aborted) return
     setLoading(true)
     setLoadError('')
     try {
-      const response = await fetch('/api/admin/users', { cache: 'no-store' })
+      const response = await fetch('/api/admin/users', { cache: 'no-store', signal })
       const result = await readResult(response)
       if (!response.ok) throw new Error(result.message || 'โหลดรายชื่อผู้ใช้ไม่สำเร็จ')
       setUsers(result.users ?? [])
     } catch (error) {
+      if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) return
       setLoadError(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการโหลดข้อมูล')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    queueMicrotask(() => { void loadUsers() })
+    const controller = new AbortController()
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) void loadUsers(controller.signal)
+    })
+    return () => controller.abort()
   }, [loadUsers])
 
   const filteredUsers = useMemo(() => users.filter((user) => {

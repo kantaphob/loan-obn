@@ -3,7 +3,9 @@ import next from 'next'
 import { WebSocket, WebSocketServer } from 'ws'
 
 const dev = process.env.NODE_ENV !== 'production'
-const hostname = process.env.HOSTNAME ?? '0.0.0.0'
+// The app intentionally has no login for its single-user workflow. Keep it
+// private to this machine unless the operator explicitly configures a host.
+const hostname = process.env.LOAN_HOSTNAME ?? '127.0.0.1'
 const port = Number.parseInt(process.env.PORT ?? '3000', 10)
 const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()

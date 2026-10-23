@@ -7,16 +7,29 @@ import { SubpageHeader } from '@/components/ui/subpage-header'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
 import { BorrowerManager } from './borrower-manager'
+import { borrowerStatuses } from '@/lib/borrower'
 
-export default function BorrowerPage() {
-  return <Suspense fallback={<PageContainer className="borrower-page"><p role="status" className="p-6 text-sm text-slate-300">กำลังโหลดข้อมูลผู้กู้ยืม…</p></PageContainer>}><BorrowerContent /></Suspense>
+export default function BorrowerPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
+  return <Suspense fallback={<PageContainer className="borrower-page"><p role="status" className="p-6 text-sm text-slate-300">กำลังโหลดข้อมูลผู้กู้ยืม…</p></PageContainer>}><BorrowerContent searchParams={searchParams} /></Suspense>
 }
 
-async function BorrowerContent() {
+async function BorrowerContent({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
   await connection()
+  const params = await searchParams
+  const query = (params.q ?? '').trim().slice(0, 100)
+  const status = Object.hasOwn(borrowerStatuses, params.status ?? '') ? params.status! : ''
+  const page = Math.max(1, Math.min(100000, Number.parseInt(params.page ?? '1', 10) || 1))
+  const where = {
+    ...(status ? { status } : {}),
+    ...(query ? { OR: ['borrowerId', 'nickname', 'firstName', 'lastName', 'phone', 'nationalId', 'workplace', 'referrer'].map(field => ({ [field]: { contains: query } })) } : {}),
+  }
   const user = await getCurrentUser()
-  const [borrowers, channels, ratings, provinces, banks] = await Promise.all([
-    prisma.borrower.findMany({ orderBy: { id: 'desc' } }),
+  const [borrowers, total, allCount, totals, activeCount, channels, ratings, provinces, banks] = await Promise.all([
+    prisma.borrower.findMany({ where, omit: { cardData: true }, orderBy: { id: 'desc' }, skip: (page - 1) * 25, take: 25 }),
+    prisma.borrower.count({ where }),
+    prisma.borrower.count(),
+    prisma.borrower.aggregate({ _sum: { approvedLimit: true, usedLimit: true } }),
+    prisma.borrower.count({ where: { status: 'ACTIVE' } }),
     prisma.paymentChannel.findMany({ orderBy: { code: 'asc' } }),
     prisma.riskRating.findMany({ orderBy: { score: 'asc' } }),
     prisma.province.findMany({ select: { id: true, nameTh: true }, orderBy: { nameTh: 'asc' } }),
@@ -24,6 +37,6 @@ async function BorrowerContent() {
   ])
   return <PageContainer className="borrower-page">
     <SubpageHeader title="ระบบผู้กู้ยืม" eyebrow="Borrowers" description="จัดการข้อมูลผู้กู้ยืม ช่องทางติดต่อ และวงเงิน" icon={<UsersRound size={21} />} />
-    <BorrowerManager borrowers={borrowers.map(b => ({ ...b, registeredAt: b.registeredAt.toISOString(), cardReadAt: b.cardReadAt?.toISOString() ?? null, createdAt: undefined, updatedAt: undefined }))} today={new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())} banks={banks} provinces={provinces} channels={channels} ratings={ratings} canCreate={user?.role !== 'REVIEWER'} />
+    <BorrowerManager key={`${page}:${query}:${status}`} borrowers={borrowers.map(b => ({ ...b, cardData: null, hasLineQr: Boolean(b.lineQrImage), lineQrImage: undefined, registeredAt: b.registeredAt.toISOString(), cardReadAt: b.cardReadAt?.toISOString() ?? null, createdAt: undefined, updatedAt: undefined }))} total={total} page={page} query={query} status={status} aggregate={{ approved: totals._sum.approvedLimit ?? 0, used: totals._sum.usedLimit ?? 0, active: activeCount, total: allCount }} today={new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())} banks={banks} provinces={provinces} channels={channels} ratings={ratings} canCreate={user?.role !== 'REVIEWER'} />
   </PageContainer>
 }

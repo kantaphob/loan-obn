@@ -1,3 +1,5 @@
+import { prepareLineQr } from '@/lib/line-qr'
+import { socialKeys, socialUrl } from '@/lib/borrower-social'
 import { verifyCardRead } from '@/lib/thai-id-token'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
@@ -23,7 +25,15 @@ async function saveBorrower(request: Request, editing: boolean) {
   if (input.cardReadToken && !cardRead) return Response.json({ message: 'ข้อมูลอ่านบัตรหมดอายุหรือไม่ถูกต้อง กรุณาอ่านบัตรใหม่' }, { status: 400 })
   const data = Object.fromEntries(borrowerFields.map(([key]) => [key, typeof input[key] === 'string' ? input[key].trim() : ''])) as Record<typeof borrowerFields[number][0], string>
   const invalid = (message: string) => Response.json({ message }, { status: 400 })
-  if (Object.values(data).some(value => value.length > 200)) return invalid('ข้อมูลแต่ละช่องต้องไม่เกิน 200 ตัวอักษร')
+  if (Object.entries(data).some(([key, value]) => value.length > (socialKeys.includes(key as typeof socialKeys[number]) ? 2048 : 200))) return invalid('ข้อมูลทั่วไปต้องไม่เกิน 200 ตัวอักษร และลิงก์ต้องไม่เกิน 2,048 ตัวอักษร')
+  for (const key of socialKeys) {
+    if (data[key] && !socialUrl(data[key]) && existing?.[key] !== data[key]) return invalid(`${key === 'facebook' ? 'Facebook' : key === 'instagram' ? 'Instagram' : 'Line'} ต้องเป็นลิงก์ที่ขึ้นต้นด้วย https:// หรือ http://`)
+  }
+  let qrValues: { lineQrImage?: string } = {}
+  if (Object.hasOwn(input, 'lineQrImage')) {
+    try { qrValues = { lineQrImage: await prepareLineQr(input.lineQrImage) } }
+    catch (error) { return invalid(error instanceof Error ? error.message : 'รูป QR ไม่ถูกต้อง') }
+  }
   if (cardRead && cardRead.card.nationalId !== data.nationalId) return invalid('เลขบัตรไม่ตรงกับข้อมูลที่อ่าน กรุณาอ่านบัตรใหม่')
   if (!data.nickname) return invalid('กรุณาระบุชื่อเล่น')
   if (data.phone && !/^0\d{8,9}$/.test(data.phone)) return invalid('เบอร์โทรต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก')
@@ -62,7 +72,7 @@ async function saveBorrower(request: Request, editing: boolean) {
     if (paymentChannelCode && !channel && paymentChannelCode !== existing?.paymentChannelCode) return invalid('ช่องรับเงินไม่ถูกต้อง')
     if (riskRatingCode && !risk && riskRatingCode !== existing?.riskRatingCode) return invalid('Risk Rating ไม่ถูกต้อง')
     const cardValues = cardRead ? { cardData: JSON.stringify(cardRead.card), cardReadAt: new Date(cardRead.readAt) } : existing && existing.nationalId !== data.nationalId ? { cardData: null, cardReadAt: null } : {}
-    const values = { ...data, nationalId: data.nationalId || null, ...cardValues, bankCode, promptPayType, promptPayNumber, provinceId: provinceId as number | null, status, registeredAt, paymentChannelCode, riskRatingCode, approvedLimit: Number(approved), usedLimit: Number(used), durationMonths: months }
+    const values = { ...data, ...qrValues, nationalId: data.nationalId || null, ...cardValues, bankCode, promptPayType, promptPayNumber, provinceId: provinceId as number | null, status, registeredAt, paymentChannelCode, riskRatingCode, approvedLimit: Number(approved), usedLimit: Number(used), durationMonths: months }
     const borrower = editing ? await prisma.borrower.update({ where: { id: Number(input.id) }, data: values }) : await prisma.$transaction(async tx => {
       const created = await tx.borrower.create({ data: values })
       return tx.borrower.update({ where: { id: created.id }, data: { borrowerId: `BR-${String(created.id).padStart(5, '0')}` } })
