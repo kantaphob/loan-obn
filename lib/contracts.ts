@@ -41,25 +41,38 @@ export function collateralSignatureSetupReady(collateralAgreementData?: string |
 
 export function collateralAgreementSigners(contract: Pick<ContractSignatureStatus, 'borrowerName' | 'lenderName' | 'guarantorName' | 'witnessCount' | 'collateralAgreementData'>): RequiredContractSigner[] {
   const details = (() => { try { return JSON.parse(contract.collateralAgreementData || '{}') as Record<string, string> } catch { return {} } })()
+  const account = details.assetAccount || 'BOTH'
+  const hasMortgage = account === 'MORTGAGE' || account === 'BOTH'
+  const hasPledge = account === 'PLEDGE' || account === 'BOTH'
   const signers: RequiredContractSigner[] = [
-    { signer: 'BORROWER', name: contract.borrowerName ?? 'ผู้กู้', label: 'ลูกหนี้/ผู้กู้' },
-    { signer: 'LENDER', name: contract.lenderName ?? 'ผู้ให้กู้', label: 'เจ้าหนี้/ผู้ให้กู้' },
+    { signer: 'BORROWER', name: contract.borrowerName ?? 'ผู้กู้', label: 'ลูกหนี้/ผู้กู้ · ข้อ 9' },
+    { signer: 'LENDER', name: contract.lenderName ?? 'ผู้ให้กู้', label: `เจ้าหนี้/ผู้ให้กู้ · ข้อ 9${hasMortgage ? ' / บัญชี ก' : ''}${hasPledge ? ' / เจ้าหนี้ผู้รับจำนำ · บัญชี ข' : ''}` },
   ]
-  if (contract.guarantorName) signers.push({ signer: 'GUARANTOR', name: contract.guarantorName, label: 'ผู้ค้ำประกัน' })
+  if (contract.guarantorName) signers.push({ signer: 'GUARANTOR', name: contract.guarantorName, label: 'ผู้ค้ำประกัน · ข้อ 9' })
   const knownPeople = new Set([contract.borrowerName, contract.lenderName, contract.guarantorName].filter(Boolean).map(name => name!.trim()))
   const providerName = details.providerName?.trim() || (details.providerRole === 'บุคคลภายนอก' ? '' : contract.borrowerName ?? '')
-  if (details.providerRole === 'บุคคลภายนอก' && providerName && !knownPeople.has(providerName)) {
-    signers.push({ signer: 'PROVIDER', name: providerName, label: 'ผู้ให้หลักประกัน/ผู้จำนอง/ผู้จำนำ' })
+  const providerRoles = `ผู้ให้หลักประกัน${hasMortgage ? ' / ผู้จำนอง · บัญชี ก' : ''}${hasPledge ? ' / ผู้ส่งมอบ/ผู้จำนำ · บัญชี ข' : ''}`
+  const knownProvider = signers.find(item => providerName && item.name.trim() === providerName)
+  if (knownProvider) knownProvider.label += ` / ${providerRoles}`
+  else if (details.providerRole === 'บุคคลภายนอก' && providerName) {
+    signers.push({ signer: 'PROVIDER', name: providerName, label: `${providerRoles} · ข้อ 9` })
     knownPeople.add(providerName)
   }
-  const account = details.assetAccount || 'BOTH'
   const custodianName = details.custodianName?.trim() || ''
-  if ((account === 'PLEDGE' || account === 'BOTH') && details.custodianRole === 'บุคคลภายนอกที่คู่สัญญาตกลงร่วมกัน' && custodianName && !knownPeople.has(custodianName)) {
-    signers.push({ signer: 'CUSTODIAN', name: custodianName, label: 'ผู้รับมอบ/ผู้เก็บรักษาทรัพย์' })
+  if (hasPledge && details.custodianRole === 'เจ้าหนี้ผู้รับจำนำ') {
+    const lender = signers.find(item => item.signer === 'LENDER')
+    if (lender) lender.label += ' / ผู้รับมอบ/ผู้เก็บรักษาทรัพย์ · บัญชี ข'
+  } else if (hasPledge && details.custodianRole === 'บุคคลภายนอกที่คู่สัญญาตกลงร่วมกัน' && custodianName && !knownPeople.has(custodianName)) {
+    signers.push({ signer: 'CUSTODIAN', name: custodianName, label: 'ผู้รับมอบ/ผู้เก็บรักษาทรัพย์ · บัญชี ข' })
+  } else if (hasPledge && knownPeople.has(custodianName)) {
+    const custodian = signers.find(item => item.name.trim() === custodianName)
+    if (custodian) custodian.label += ' / ผู้รับมอบ/ผู้เก็บรักษาทรัพย์ · บัญชี ข'
   }
-  for (let index = 0; index < contract.witnessCount; index++) {
+  const requestedWitnessCount = Number(details.collateralWitnessCount ?? contract.witnessCount)
+  const collateralWitnessCount = Number.isFinite(requestedWitnessCount) ? Math.max(0, Math.min(2, Math.floor(requestedWitnessCount))) : contract.witnessCount
+  for (let index = 0; index < collateralWitnessCount; index++) {
     const signer = `WITNESS_${index + 1}` as 'WITNESS_1' | 'WITNESS_2'
-    signers.push({ signer, name: `พยานคนที่ ${index + 1}`, label: `พยานคนที่ ${index + 1}` })
+    signers.push({ signer, name: `พยานคนที่ ${index + 1}`, label: `พยานคนที่ ${index + 1} · ข้อ 9${hasPledge ? ' / บัญชี ข' : ''}` })
   }
   return signers
 }

@@ -15,7 +15,7 @@ const adapter = new PrismaBetterSqlite3({
 })
 
 // Recreate a cached development client when newly generated models are added.
-const schemaVersion = 'contract-witnesses-v2'
+const schemaVersion = 'trade-payables-v1'
 export const prisma = globalForPrisma.schemaVersion === schemaVersion && globalForPrisma.databaseUrl === databaseUrl && globalForPrisma.prisma && 'interestRate' in globalForPrisma.prisma && 'loanStatus' in globalForPrisma.prisma && 'borrower' in globalForPrisma.prisma && 'lender' in globalForPrisma.prisma && 'loanContract' in globalForPrisma.prisma
   ? globalForPrisma.prisma
   : new PrismaClient({ adapter })

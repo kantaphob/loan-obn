@@ -224,7 +224,7 @@ export function ContractSignatureModal({ contract, onClose, onSigned }: { contra
       {notice && <p role="status" className="mb-0 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">{notice}</p>}
       <>
         <fieldset hidden={sheetOpen} className="m-0 border-0 p-0" disabled={saving}>
-          {contract.documentPackage !== 'LOAN' && <><p className="mb-2 text-sm font-medium">เลือกเอกสารที่ต้องการลงนาม</p><div className="mb-4 grid grid-cols-2 gap-2">
+          {contract.documentPackage !== 'LOAN' && <><p className="mb-2 text-sm font-medium">เลือกเอกสารที่ต้องการลงนาม</p><div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {(['LOAN', 'GUARANTEE', ...(contract.documentPackage === 'LOAN_GUARANTEE_COLLATERAL' ? ['COLLATERAL' as const] : [])] as const).map(stage => <button key={stage} type="button" onClick={() => { setDocumentStage(stage); setError(''); setAccepted(false); setSigner(stage === 'LOAN' || stage === 'COLLATERAL' ? 'BORROWER' : 'GUARANTOR'); clearSignature(); setTypedName(''); setWitnessName('') }} className={`rounded-xl border p-3 text-sm ${documentStage === stage ? 'border-emerald-700 bg-emerald-50/80 font-semibold text-emerald-950' : 'border-slate-200 bg-white/50'}`}>
               {stage === 'LOAN' ? '3.1 · สัญญาเงินกู้' : stage === 'GUARANTEE' ? '3.2 · สัญญาค้ำประกัน' : '3.3 · สัญญาหลักประกัน'}
               <span className="mt-1 block text-xs font-normal text-slate-500">{contractDocumentSignaturesComplete(contract, stage) ? 'ลงนามครบ' : 'ยังลงนามไม่ครบ'}</span>

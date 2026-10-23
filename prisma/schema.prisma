@@ -350,6 +350,8 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  payableId Int?
+  payable TradePayable? @relation(fields: [payableId], references: [id], onDelete: Restrict)
   id Int @id @default(autoincrement())
   requestKey String @unique
   contractId Int?
@@ -373,4 +375,22 @@ model LedgerEntry {
   @@index([contractId, voidedAt])
   @@index([occurredOn])
   @@map("ledger_entry")
+}
+
+model TradePayable {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  supplier String
+  invoiceNumber String
+  description String
+  amountSatang Float
+  invoiceDate String
+  dueDate String
+  createdBy String
+  createdAt DateTime @default(now())
+  payments LedgerEntry[]
+
+  @@unique([supplier, invoiceNumber])
+  @@index([dueDate])
+  @@map("trade_payable")
 }

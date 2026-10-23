@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '../lib/prisma'
-import { contractAmounts, contractSignaturesComplete, type ContractDraft } from '../lib/contracts'
+import { collateralAgreementSigners, contractAmounts, contractSignaturesComplete, type ContractDraft } from '../lib/contracts'
 import { saveContract, listContracts } from '../app/dashboard/contracts/actions'
 
 if (!process.env.DATABASE_URL?.includes('loan-contract-test-')) throw new Error('Tests require an isolated loan-contract-test database')
@@ -16,6 +16,17 @@ test('interest timing and rounding', () => {
   assert.throws(() => contractAmounts('-10', 20, 'INTEREST_UPFRONT'))
   assert.throws(() => contractAmounts('100.001', 20, 'INTEREST_UPFRONT'))
   assert.throws(() => contractAmounts('100', Number.NaN, 'INTEREST_UPFRONT'))
+})
+
+test('collateral signers cover selected annex roles and deduplicate people', () => {
+  const signers = collateralAgreementSigners({
+    borrowerName: 'ผู้กู้ ตัวอย่าง', lenderName: 'ผู้ให้กู้ ตัวอย่าง', guarantorName: 'ผู้ค้ำ ตัวอย่าง', witnessCount: 0,
+    collateralAgreementData: JSON.stringify({ assetAccount: 'BOTH', providerRole: 'บุคคลภายนอก', providerName: 'ผู้ค้ำ ตัวอย่าง', custodianRole: 'บุคคลภายนอกที่คู่สัญญาตกลงร่วมกัน', custodianName: 'ผู้เก็บรักษา ตัวอย่าง', collateralWitnessCount: '1' }),
+  })
+  assert.deepEqual(signers.map(person => person.signer), ['BORROWER', 'LENDER', 'GUARANTOR', 'CUSTODIAN', 'WITNESS_1'])
+  assert.match(signers.find(person => person.signer === 'GUARANTOR')!.label, /ผู้จำนอง · บัญชี ก.*ผู้จำนำ · บัญชี ข/)
+  assert.match(signers.find(person => person.signer === 'CUSTODIAN')!.label, /ผู้รับมอบ\/ผู้เก็บรักษาทรัพย์ · บัญชี ข/)
+  assert.match(signers.find(person => person.signer === 'WITNESS_1')!.label, /ข้อ 9 \/ บัญชี ข/)
 })
 
 test('save, retry, validation and persisted listing', async () => {
@@ -232,12 +243,23 @@ test('collateral agreement has a separate e-signature set based on its selected 
   const signatureData = `data:image/png;base64,${png.toString('base64')}`
   for (const signer of ['BORROWER', 'LENDER', 'WITNESS_1'] as const) assert.ok((await signContract({ contractId: result.id, documentStage: 'LOAN', signer, signatureData, accepted: true, ...(signer === 'WITNESS_1' ? { witnessName: 'พยานเงินกู้' } : {}) })).success)
   for (const signer of ['GUARANTOR', 'LENDER', 'WITNESS_1'] as const) assert.ok((await signContract({ contractId: result.id, documentStage: 'GUARANTEE', signer, signatureData, accepted: true, ...(signer === 'WITNESS_1' ? { witnessName: 'พยานค้ำประกัน' } : {}) })).success)
+  assert.equal((await GET(request(), context)).status, 409, '3.1 and 3.2 signatures do not replace the separate 3.3 signature set')
   for (const signer of ['BORROWER', 'LENDER', 'GUARANTOR', 'PROVIDER', 'CUSTODIAN', 'WITNESS_1'] as const) assert.ok((await signContract({ contractId: result.id, documentStage: 'COLLATERAL', signer, signatureData, accepted: true, ...(signer === 'WITNESS_1' ? { witnessName: 'พยานหลักประกัน' } : {}) })).success)
   assert.equal(contractSignaturesComplete(await prisma.loanContract.findUniqueOrThrow({ where: { id: result.id }, include: { witnesses: true, documentSignatures: true } })), true)
   const response = await GET(request(), context)
   assert.equal(response.status, 200)
-  const { PDFDocument } = await import('pdf-lib')
-  assert.ok((await PDFDocument.load(await response.arrayBuffer())).getPageCount() >= 1)
+  const { PDFDocument, PDFName, PDFDict, PDFRawStream } = await import('pdf-lib')
+  const pdf = await PDFDocument.load(await response.arrayBuffer())
+  assert.ok(pdf.getPageCount() >= 1)
+  let signatureImages = 0
+  for (const page of pdf.getPages()) {
+    const objects = page.node.Resources()?.lookup(PDFName.of('XObject'), PDFDict)
+    for (const [, ref] of objects?.entries() ?? []) {
+      const object = pdf.context.lookup(ref)
+      if (object instanceof PDFRawStream && object.dict.get(PDFName.of('Subtype')) === PDFName.of('Image')) signatureImages++
+    }
+  }
+  assert.ok(signatureImages >= 11, '3.3 signature images are embedded at the contract and selected annex signature lines')
   const saved = await prisma.contractDocumentSignature.findMany({ where: { contractId: result.id, documentStage: 'COLLATERAL' } })
   assert.equal(saved.length, 6)
   assert.deepEqual(saved.map(signature => signature.signer).sort(), ['BORROWER', 'CUSTODIAN', 'GUARANTOR', 'LENDER', 'PROVIDER', 'WITNESS_1'])

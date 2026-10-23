@@ -41,8 +41,8 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
     if (line) print(); y -= gap
   }
   function field(label: string, text: string) { paragraph(`${label}: ${text || blank}`, { gap: 1 }) }
-  async function signature(role: string, signer: Signature) {
-    if (y < margin + 90) addPage()
+  async function signature(role: string, signer: Signature, includeDate = false) {
+    if (y < margin + (includeDate ? 105 : 90)) addPage()
     const line = `ลงชื่อ ${blank} ${role}`
     draw(line, margin + 16, y)
     const png = signer.signatureData?.match(/^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/)?.[1]
@@ -54,6 +54,7 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
     y -= lineHeight
     paragraph(`(${signer.name || blank})`, { indent: 75, gap: 0 })
     if (signer.signedAt) { paragraph(`ลงนามอิเล็กทรอนิกส์เมื่อ ${new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' }).format(signer.signedAt)}`, { indent: 45, gap: 2 }) }
+    if (includeDate) paragraph(`วันที่ ${signer.signedAt ? new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'long' }).format(signer.signedAt) : blank}`, { indent: 75, gap: 2 })
   }
 
   draw('สัญญาค้ำประกันและข้อตกลงจัดให้มีทรัพย์สินเป็นหลักประกัน', margin, y, 16, bold); y -= 24
@@ -70,6 +71,7 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
   }
   field('ผู้ให้หลักประกัน', value('providerName') === blank ? (value('providerRole') === 'ลูกหนี้' ? data.borrowerName : '') : value('providerName'))
   const providerRole = details.providerRole || 'ลูกหนี้'
+  const custodianName = details.custodianName?.trim() || (details.custodianRole === 'เจ้าหนี้ผู้รับจำนำ' ? data.lenderName : '')
   field('เลขประจำตัว/ทะเบียนนิติบุคคลผู้ให้หลักประกัน', details.providerNationalId || (providerRole === 'ลูกหนี้' ? data.borrowerId : '') || blank)
   field('ที่อยู่ผู้ให้หลักประกัน', details.providerAddress || (providerRole === 'ลูกหนี้' ? data.borrowerAddress : '') || blank)
   field('โทรศัพท์ผู้ให้หลักประกัน', details.providerPhone || (providerRole === 'ลูกหนี้' ? data.borrowerPhone : '') || blank)
@@ -103,7 +105,7 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
   if (details.assetAccount === 'PLEDGE' || details.assetAccount === 'BOTH') {
     paragraph('6. สังหาริมทรัพย์ที่นำมาจำนำ · บัญชี ข', { heading: true })
     paragraph('ผู้ให้หลักประกันตกลงจำนำทรัพย์ตามบัญชี ข โดยส่งมอบทรัพย์ให้เจ้าหนี้ผู้รับจำนำ หรือบุคคลภายนอกที่ตกลงให้เก็บรักษาตามบัญชีนั้น และจัดทำหลักฐานรับมอบพร้อมกัน การระบุรายการทรัพย์หรือส่งมอบสำเนาทะเบียน โดยมิได้ส่งมอบทรัพย์ ไม่ทำให้การจำนำเสร็จสมบูรณ์')
-    for (const [label, key] of [['รายการที่','pledgeItemNumber'],['ประเภททรัพย์','pledgedAssetType'],['เจ้าของกรรมสิทธิ์','movableOwner'],['หลักฐานการได้มา','acquisitionEvidence'],['ยี่ห้อ/รุ่น','brandModel'],['หมายเลขเครื่อง/ตัวถัง/ทะเบียน','serialOrRegistration'],['รายละเอียดทรัพย์/น้ำหนัก/ขนาด/จำนวน','assetDescription'],['สภาพทรัพย์และอุปกรณ์ที่ส่งมอบ','assetCondition'],['ราคาประเมินร่วมกัน (บาท)','movableAppraisalValue'],['วันที่ประเมิน/ผู้ประเมิน',`${value('movableAppraisalDate')} / ${value('appraiser')}`],['ภาระผูกพัน/ข้อจำกัด/สิทธิบุคคลอื่น','movableEncumbrances'],['ภาพถ่ายและเอกสารประกอบเลขที่','attachmentReferences'],['วันและเวลาส่งมอบ',`${value('handoverDate')} ${value('handoverTime')}`],['สถานที่ส่งมอบ','handoverPlace'],['ผู้รับมอบ/ผู้เก็บรักษา','custodianName'],['เลขประจำตัวผู้รับมอบ','custodianNationalId'],['ที่อยู่/โทรศัพท์ผู้รับมอบ',`${value('custodianAddress')} / ${value('custodianPhone')}`],['ฐานะผู้เก็บรักษา','custodianRole'],['สถานที่เก็บรักษา','storagePlace'],['รายการยกเว้นขณะรับมอบ','handoverExceptions'],['ค่าดูแล/ประกันภัยที่ตกลง','careAndInsurance'],['วันคืนทรัพย์/ผู้รับคืน/สภาพทรัพย์',`${value('returnDate')} / ${value('returnRecipient')} / ${value('returnCondition')}`]] as const) field(label, key.includes(' / ') || key.includes(' /') ? key : value(key))
+    for (const [label, key] of [['รายการที่','pledgeItemNumber'],['ประเภททรัพย์','pledgedAssetType'],['เจ้าของกรรมสิทธิ์','movableOwner'],['หลักฐานการได้มา','acquisitionEvidence'],['ยี่ห้อ/รุ่น','brandModel'],['หมายเลขเครื่อง/ตัวถัง/ทะเบียน','serialOrRegistration'],['รายละเอียดทรัพย์/น้ำหนัก/ขนาด/จำนวน','assetDescription'],['สภาพทรัพย์และอุปกรณ์ที่ส่งมอบ','assetCondition'],['ราคาประเมินร่วมกัน (บาท)','movableAppraisalValue'],['วันที่ประเมิน/ผู้ประเมิน',`${value('movableAppraisalDate')} / ${value('appraiser')}`],['ภาระผูกพัน/ข้อจำกัด/สิทธิบุคคลอื่น','movableEncumbrances'],['ภาพถ่ายและเอกสารประกอบเลขที่','attachmentReferences'],['วันและเวลาส่งมอบ',`${value('handoverDate')} ${value('handoverTime')}`],['สถานที่ส่งมอบ','handoverPlace'],['ผู้รับมอบ/ผู้เก็บรักษา','custodianName'],['เลขประจำตัวผู้รับมอบ','custodianNationalId'],['ที่อยู่/โทรศัพท์ผู้รับมอบ',`${value('custodianAddress')} / ${value('custodianPhone')}`],['ฐานะผู้เก็บรักษา','custodianRole'],['สถานที่เก็บรักษา','storagePlace'],['รายการยกเว้นขณะรับมอบ','handoverExceptions'],['ค่าดูแล/ประกันภัยที่ตกลง','careAndInsurance'],['วันคืนทรัพย์/ผู้รับคืน/สภาพทรัพย์',`${value('returnDate')} / ${value('returnRecipient')} / ${value('returnCondition')}`]] as const) field(label, key === 'custodianName' ? custodianName : key.includes(' / ') || key.includes(' /') ? key : value(key))
   }
 
   paragraph('7. การดูแลและการบังคับหลักประกัน', { heading: true })
@@ -121,7 +123,7 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
   const providerIsGuarantor = value('providerName') === data.guarantorName
   const providerIsLender = value('providerName') === data.lenderName
   const providerSignature = providerIsBorrower ? data.borrowerSignature : providerIsGuarantor ? data.guarantorSignature : providerIsLender ? data.lenderSignature : data.providerSignature
-  const custodianSignature = details.custodianName === data.lenderName ? data.lenderSignature : details.custodianName === data.borrowerName ? data.borrowerSignature : details.custodianName === data.guarantorName ? data.guarantorSignature : details.custodianName === value('providerName') ? providerSignature : data.custodianSignature
+  const custodianSignature = custodianName === data.lenderName ? data.lenderSignature : custodianName === data.borrowerName ? data.borrowerSignature : custodianName === data.guarantorName ? data.guarantorSignature : custodianName === value('providerName') ? providerSignature : data.custodianSignature
   const collateralWitnesses = data.collateralWitnesses ?? data.loanWitnesses ?? []
   await signature('ผู้ให้หลักประกัน/ผู้จำนอง/ผู้จำนำ', providerSignature ?? { name: value('providerName') === blank ? data.borrowerName : value('providerName') })
   for (const witness of collateralWitnesses) await signature('พยาน', witness)
@@ -132,9 +134,9 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
   }
   if (details.assetAccount === 'PLEDGE' || details.assetAccount === 'BOTH') {
     paragraph('หลักฐานส่งมอบและการเก็บรักษาทรัพย์จำนำ', { heading: true })
-    await signature('ผู้ส่งมอบ/ผู้จำนำ', providerSignature ?? { name: value('providerName') === blank ? data.borrowerName : value('providerName') })
-    await signature('ผู้รับมอบ/ผู้เก็บรักษา', custodianSignature ?? { name: details.custodianName || data.lenderName || blank })
-    await signature('เจ้าหนี้ผู้รับจำนำ', data.lenderSignature ?? { name: data.lenderName })
+    await signature('ผู้ส่งมอบ/ผู้จำนำ', providerSignature ?? { name: value('providerName') === blank ? data.borrowerName : value('providerName') }, true)
+    await signature('ผู้รับมอบ/ผู้เก็บรักษา', custodianSignature ?? { name: custodianName || blank }, true)
+    await signature('เจ้าหนี้ผู้รับจำนำ', data.lenderSignature ?? { name: data.lenderName }, true)
     for (const witness of collateralWitnesses) await signature('พยาน', witness)
     paragraph(`บันทึกคืนทรัพย์: วันที่ ${value('returnDate')} · ผู้รับคืน ${value('returnRecipient')} · สภาพ/รายการ ${value('returnCondition')}`)
     await signature('ผู้คืน', { name: blank })
