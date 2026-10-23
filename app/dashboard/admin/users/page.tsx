@@ -186,7 +186,7 @@ export default function AdminUsersPage() {
 }
 
 function StatCard({ label, value, description, symbol, tone }: { label: string; value: number; description: string; symbol: string; tone: string }) {
-  return <Card className="rounded-[19px] p-[17px]"><div className="flex items-start justify-between gap-3"><div><p className="m-0 text-[10px] font-medium text-[#77787b]">{label}</p><p className="mb-0 mt-2 text-[25px] font-bold tracking-[-.7px] text-[#263b33]">{String(value).padStart(2, '0')}</p></div><span className={`grid h-9 w-9 place-items-center rounded-xl text-[14px] font-bold ${tone}`}>{symbol}</span></div><p className="mb-0 mt-3 text-[10px] text-[#77787b]">{description}</p></Card>
+  return <Card className="compact-stat-card rounded-[12px] p-3"><div className="flex items-start justify-between gap-3"><div><p className="m-0 text-[10px] font-medium text-[#77787b]">{label}</p><p className="mb-0 mt-2 text-[25px] font-bold tracking-[-.7px] text-[#263b33]">{String(value).padStart(2, '0')}</p></div><span className={`grid h-9 w-9 place-items-center rounded-xl text-[14px] font-bold ${tone}`}>{symbol}</span></div><p className="mb-0 mt-3 text-[10px] text-[#77787b]">{description}</p></Card>
 }
 
 function avatarTone(index: number) {

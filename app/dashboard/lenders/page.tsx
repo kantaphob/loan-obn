@@ -23,14 +23,15 @@ async function LenderContent({ searchParams }: { searchParams: Promise<{ q?: str
     ...(role ? { role: role === 'BOTH' ? 'BOTH' : { in: [role, 'BOTH'] } } : {}),
     ...(query ? { OR: ['nickname', 'firstName', 'lastName', 'phone', 'nationalId'].map(field => ({ [field]: { contains: query } })) } : {}),
   }
-  const [user, lenders, total, allLenders, provinces, banks] = await Promise.all([
+  const [user, lenders, total, allLenders, provinces, banks, channels] = await Promise.all([
     getCurrentUser(), prisma.lender.findMany({ where, omit: { updatedAt: true, cardData: true }, orderBy: { id: 'desc' }, skip: (page - 1) * 25, take: 25 }),
     prisma.lender.count({ where }), prisma.lender.findMany({ select: { role: true, status: true } }),
     prisma.province.findMany({ select: { id: true, nameTh: true }, orderBy: { nameTh: 'asc' } }),
     prisma.bank.findMany({ select: { code: true, nameTh: true, isActive: true }, orderBy: { sortOrder: 'asc' } }),
+    prisma.paymentChannel.findMany({ select: { code: true, nameTh: true, isActive: true }, orderBy: { code: 'asc' } }),
   ])
   return <PageContainer className="borrower-page">
     <SubpageHeader title="รายชื่อผู้ให้กู้" eyebrow="Lenders" description="บันทึกข้อมูลผู้ปล่อยเงินและผู้ทำสัญญาแทน" icon={<Landmark size={21} />} />
-    <LenderManager key={`${page}:${query}:${role}:${status}`} lenders={lenders.map(({ createdAt, cardReadAt, nationalId, ...lender }) => ({ ...lender, nationalId: nationalId ?? '', cardReadAt: cardReadAt?.toISOString() ?? null, createdAt: createdAt.toISOString() }))} total={total} page={page} query={query} role={role} status={status} metrics={{ total: allLenders.length, funders: allLenders.filter(l => l.status === 'ACTIVE' && ['FUNDER', 'BOTH'].includes(l.role)).length, representatives: allLenders.filter(l => l.status === 'ACTIVE' && ['REPRESENTATIVE', 'BOTH'].includes(l.role)).length }} provinces={provinces} banks={banks} canEdit={Boolean(user && user.role !== 'REVIEWER')} />
+    <LenderManager key={`${page}:${query}:${role}:${status}`} lenders={lenders.map(({ createdAt, cardReadAt, nationalId, ...lender }) => ({ ...lender, nationalId: nationalId ?? '', cardReadAt: cardReadAt?.toISOString() ?? null, createdAt: createdAt.toISOString() }))} total={total} page={page} query={query} role={role} status={status} metrics={{ total: allLenders.length, funders: allLenders.filter(l => l.status === 'ACTIVE' && ['FUNDER', 'BOTH'].includes(l.role)).length, representatives: allLenders.filter(l => l.status === 'ACTIVE' && ['REPRESENTATIVE', 'BOTH'].includes(l.role)).length }} provinces={provinces} banks={banks} channels={channels} canEdit={Boolean(user && user.role !== 'REVIEWER')} />
   </PageContainer>
 }

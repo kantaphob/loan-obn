@@ -209,6 +209,23 @@ model Borrower {
 
 // Lenders are separate from borrowers; one person can fund and/or sign contracts.
 model Lender {
+  titleTh String @default("")
+  middleNameTh String @default("")
+  titleEn String @default("")
+  firstNameEn String @default("")
+  middleNameEn String @default("")
+  lastNameEn String @default("")
+  birthDate String @default("")
+  houseNumber String @default("")
+  villageNumber String @default("")
+  cardIssueDate String @default("")
+  cardExpiryDate String @default("")
+  instagram String @default("")
+  referrer String @default("")
+  promptPayNumber String @default("")
+  registeredAt String @default("")
+  promptPayType String @default("")
+  paymentChannelCode String @default("")
   cardData        String?
   cardReadAt      DateTime?
   id              Int      @id @default(autoincrement())

@@ -61,6 +61,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
   const [reading, setReading] = useState(false)
   const [hasMiddleName, setHasMiddleName] = useState(false)
   const [detectingCard, setDetectingCard] = useState(false)
+  const [cardReaderError, setCardReaderError] = useState('')
   const [readCardOpen, setReadCardOpen] = useState(false)
   const [cardDetectionAttempt, setCardDetectionAttempt] = useState(0)
   const [lineQrImage, setLineQrImage] = useState<string | null>(null)
@@ -137,11 +138,12 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
     async function watchReader() {
       await Promise.resolve()
       if (!active) return
+      setCardReaderError('')
       setDetectingCard(true)
       while (active) {
         controller = new AbortController()
         try {
-          const response = await fetch('/api/borrowers/card', { signal: controller.signal, cache: 'no-store' })
+          const response = await fetch('/api/borrowers/card', { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]), cache: 'no-store' })
           const result = await response.json()
           if (!response.ok) throw new Error(result.message || 'ตรวจจับเครื่องอ่านบัตรไม่สำเร็จ')
           if (!active) return
@@ -149,7 +151,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
 
           setDetectingCard(false)
           setReading(true)
-          const readResponse = await fetch('/api/borrowers/card', { method: 'POST' })
+          const readResponse = await fetch('/api/borrowers/card', { method: 'POST', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]) })
           const readResult = await readResponse.json()
           if (!readResponse.ok) throw new Error(readResult.message || 'อ่านบัตรไม่สำเร็จ')
           if (selected?.cardReadAt && selected.nationalId !== readResult.card.nationalId) throw new Error('เลขบัตรไม่ตรงกับผู้กู้ที่บันทึกไว้ ไม่สามารถเปลี่ยนเลขบัตรประชาชนได้')
@@ -163,7 +165,8 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
           return
         } catch (err) {
           if (!active) return
-          const message = err instanceof Error ? err.message : 'ตรวจจับเครื่องอ่านบัตรไม่สำเร็จ'
+          const message = err instanceof DOMException && err.name === 'TimeoutError' ? 'เครื่องอ่านไม่ตอบสนอง กรุณาตรวจสอบสาย USB แล้วลองใหม่' : err instanceof Error ? err.message : 'ตรวจจับเครื่องอ่านบัตรไม่สำเร็จ'
+          setCardReaderError(message)
           toast({ title: 'อ่านบัตรไม่สำเร็จ', description: message, variant: 'error', duration: 7000 })
           return
         } finally {
@@ -219,7 +222,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
     finally { setBusy(false) }
   }
 
-  return <div className="borrower-workspace space-y-5">
+  return <div className="borrower-workspace space-y-3">
     <div className="borrower-metrics">
       {[
         { icon: UsersRound, title: 'ผู้กู้ยืมทั้งหมด', value: money(aggregate.total), unit: 'คน', detail: `ใช้งาน ${money(aggregate.active)} คน`, tone: 'blue' },
@@ -232,7 +235,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
       </Card>)}
     </div>
     <Card className="borrower-directory overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div><div className="borrower-directory-heading"><h2>รายชื่อผู้กู้ยืม</h2><span className="borrower-count">{total}</span></div><p className="mt-1 text-xs text-slate-500">ข้อมูลทั้งหมด {total} รายการ · วงเงินเป็นบาท</p></div>
         {canCreate && <Button variant="primary" onClick={() => showForm()}><Plus size={16} />เพิ่มผู้กู้ยืม</Button>}
       </div>
@@ -337,6 +340,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
       card={card}
       reading={reading}
       detecting={detectingCard}
+      error={cardReaderError}
       pendingSave={Boolean(cardReadToken)}
       savedAt={selected?.cardReadAt ?? null}
       readAllowed={!viewOnly}

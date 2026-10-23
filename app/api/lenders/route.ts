@@ -1,3 +1,4 @@
+import { promptPayTypes } from '@/lib/borrower'
 import { verifyCardRead } from '@/lib/thai-id-token'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
@@ -26,6 +27,16 @@ async function save(request: Request, editing: boolean) {
   if (data.phone && !/^0[0-9]{8,9}$/.test(data.phone)) return invalid('เบอร์โทรต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก')
   if (data.nationalId && !/^[0-9]{13}$/.test(data.nationalId)) return invalid('เลขบัตรประชาชนต้องมี 13 หลัก')
   if (data.bankAccount && !/^[0-9]{6,20}$/.test(data.bankAccount)) return invalid('เลขบัญชีธนาคารต้องเป็นตัวเลข 6–20 หลัก')
+  for (const key of ['birthDate', 'cardIssueDate', 'cardExpiryDate', 'registeredAt'] as const) {
+    const value = data[key]
+    if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value + 'T00:00:00Z')) || new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) !== value)) return invalid('วันที่ไม่ถูกต้อง')
+  }
+  const promptPayType = typeof input.promptPayType === 'string' ? input.promptPayType : ''
+  if ((promptPayType || data.promptPayNumber) && !Object.hasOwn(promptPayTypes, promptPayType)) return invalid('กรุณาเลือกประเภทพร้อมเพย์')
+  if (promptPayType === 'PHONE' && !/^0[0-9]{9}$/.test(data.promptPayNumber)) return invalid('พร้อมเพย์แบบเบอร์โทรต้องมี 10 หลักและขึ้นต้นด้วย 0')
+  if (promptPayType === 'NATIONAL_ID' && !/^[0-9]{13}$/.test(data.promptPayNumber)) return invalid('พร้อมเพย์แบบเลขบัตรต้องมี 13 หลัก')
+  const paymentChannelCode = typeof input.paymentChannelCode === 'string' ? input.paymentChannelCode : ''
+  if (paymentChannelCode === 'PROMPTPAY' && !promptPayType) return invalid('กรุณาระบุข้อมูลพร้อมเพย์')
   const role = typeof input.role === 'string' ? input.role : ''
   const status = typeof input.status === 'string' ? input.status : ''
   if (!Object.hasOwn(lenderRoles, role) || !Object.hasOwn(lenderStatuses, status)) return invalid('บทบาทหรือสถานะไม่ถูกต้อง')
@@ -38,8 +49,9 @@ async function save(request: Request, editing: boolean) {
     if (editing && !existing) return Response.json({ message: 'ไม่พบผู้ให้กู้' }, { status: 404 })
     if (provinceId !== null && !await prisma.province.findUnique({ where: { id: provinceId as number } })) return invalid('ไม่พบจังหวัดในข้อมูลหลัก')
     if (bankCode && bankCode !== existing?.bankCode && !await prisma.bank.findFirst({ where: { code: bankCode, isActive: true } })) return invalid('ไม่พบธนาคารที่เลือก')
+    if (paymentChannelCode && paymentChannelCode !== existing?.paymentChannelCode && !await prisma.paymentChannel.findFirst({ where: { code: paymentChannelCode, isActive: true } })) return invalid('ช่องทางการเงินไม่ถูกต้อง')
     const cardValues = cardRead ? { cardData: JSON.stringify(cardRead.card), cardReadAt: new Date(cardRead.readAt) } : existing && existing.nationalId !== data.nationalId ? { cardData: null, cardReadAt: null } : {}
-    const values = { ...data, ...cardValues, nationalId: data.nationalId || null, role, status, bankCode, provinceId: provinceId as number | null }
+    const values = { ...data, ...cardValues, promptPayType, paymentChannelCode, nationalId: data.nationalId || null, role, status, bankCode, provinceId: provinceId as number | null }
     const lender = editing ? await prisma.lender.update({ where: { id: Number(input.id) }, data: values }) : await prisma.lender.create({ data: values })
     return Response.json({ id: lender.id }, { status: editing ? 200 : 201 })
   } catch (error) {

@@ -169,3 +169,52 @@
 .workspace-theme .read-card-note { color: #365f85; background: #e4f0fc; border-color: #b7cfe8; }
 .workspace-theme .read-card-modal::backdrop { background: #52668042; }
 .workspace-theme :is(input, textarea, select) { caret-color: #26374d; color-scheme: light; }
+
+/* Compact density for everyday data entry and review. */
+.workspace-theme .dashboard-page-container { padding: 18px 22px 20px; }
+.workspace-theme .page-header { padding: 10px 14px; border-radius: 16px; margin-bottom: 12px; }
+.workspace-theme .page-header h1 { font-size: 18px; line-height: 1.35; }
+.workspace-theme .page-header-emblem { width: 36px; height: 36px; }
+.workspace-theme .page-header-emblem-face > svg { width: 18px; height: 18px; }
+.workspace-theme .page-header p { line-height: 1.5; }
+.workspace-theme .liquid-glass { border-radius: 12px; }
+.workspace-theme .borrower-metrics { gap: 10px; }
+.workspace-theme .liquid-glass.borrower-metric { padding: 12px 16px; border-radius: 12px; }
+.workspace-theme .borrower-metric .borrower-metric-value { font-size: 25px; line-height: 1.2; margin-top: 6px; gap: 6px; }
+.workspace-theme .borrower-metric .borrower-metric-top { font-size: 11px; }
+.workspace-theme .borrower-metric .borrower-metric-top > svg { width: 17px; height: 17px; }
+.workspace-theme .borrower-metric p { margin-top: 6px; font-size: 11px; line-height: 1.5; }
+.workspace-theme .borrower-metric .borrower-metric-detail { margin-top: 8px; padding-top: 8px; }
+.workspace-theme .borrower-metric-icon { width: 30px; height: 30px; border-radius: 9px; }
+.workspace-theme .borrower-metric-icon svg { width: 16px; height: 16px; }
+.workspace-theme .forecast-metric { padding: 14px 16px; min-height: 115px; }
+.workspace-theme .forecast-value { font-size: 25px; margin-top: 10px; }
+.workspace-theme .forecast-metric-heading { font-size: 11px; gap: 8px; }
+.workspace-theme .borrower-directory-heading h2 { font-size: 13px; }
+.workspace-theme .borrower-workspace { gap: 12px; }
+.workspace-theme .borrower-toolbar { padding: 10px 14px; gap: 8px; }
+.workspace-theme .borrower-page .borrower-toolbar :is(input, select) { height: 34px; font-size: 12px; }
+.workspace-theme .borrower-pagination { padding: 10px 14px; }
+.workspace-theme table :is(th, td) { padding: 9px 12px; line-height: 1.45; }
+.workspace-theme table th { font-size: 11px; font-weight: 600; }
+.workspace-theme table td { font-size: 12px; }
+.workspace-theme table td[colspan] { padding: 28px 16px; }
+.workspace-theme table .action-button { min-height: 30px; padding: 5px 9px; font-size: 11px; }
+.workspace-theme .action-button { min-height: 32px; padding: 6px 11px; border-radius: 9px; }
+.workspace-theme .borrower-empty { min-height: 185px; padding: 24px 16px; }
+.workspace-theme .borrower-empty-icon { width: 44px; height: 44px; border-radius: 14px; }
+.workspace-theme .borrower-empty-icon svg { width: 22px; height: 22px; }
+.workspace-theme .borrower-empty h3 { margin-top: 14px; font-size: 13px; }
+.workspace-theme .borrower-empty p { margin-bottom: 14px; }
+.workspace-theme .users-page-body > :first-child { margin-bottom: 12px; }
+.workspace-theme .compact-stat-card { padding: 12px 16px; }
+.workspace-theme .compact-stat-card strong { font-size: 25px; margin-top: 6px; }
+.workspace-theme .compact-stat-card p { margin-top: 6px; }
+@media (max-width: 760px) {
+  .workspace-theme .dashboard-page-container { padding: 14px 12px; }
+  .workspace-theme .page-header-tools { margin-left: 48px; }
+  .workspace-theme table :is(th, td) { padding: 8px 10px; }
+}
+@media (pointer: coarse) {
+  .workspace-theme .action-button, .workspace-theme table .action-button { min-height: 40px; }
+}

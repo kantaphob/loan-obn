@@ -22,3 +22,14 @@ Run `npm run storage:sync` to refresh all files after CLI/seed imports or to rep
 an interrupted export. Synchronization failures are logged; the committed database
 remains authoritative and startup/manual synchronization repairs the snapshots.
 Database backups remain in `private/backups`; JSON exports do not replace backups.
+
+Successful API mutations create an automatic SQLite snapshot at
+`private/backups/automatic/ProgressSQL-latest.db` and refresh one dated snapshot
+per day. Borrower card and QR images stored outside SQLite are embedded in the
+snapshot so it can be restored on its own. Snapshots use owner-only filesystem
+permissions. If `LOAN_DRIVE_BACKUP_DIR` points to an existing, writable folder in
+Google Drive for desktop's local My Drive, the latest and dated snapshots are
+also copied there. When Drive is unavailable, the local snapshot remains and a
+Drive copy is attempted again after the next successful update. Do not point
+this setting at a public or shared folder; backups contain personal and financial
+data.

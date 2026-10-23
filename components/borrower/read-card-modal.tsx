@@ -12,6 +12,7 @@ type ReadCardModalProps = {
   card: ThaiIdCard | null
   reading: boolean
   detecting: boolean
+  error?: string
   pendingSave: boolean
   savedAt: string | null
   readAllowed: boolean
@@ -28,11 +29,11 @@ function readDate(value: string) {
   }).format(new Date(value))
 }
 
-export function ReadCardModal({ open, card, reading, detecting, pendingSave, savedAt, readAllowed, onClose, onRetry, onUse }: ReadCardModalProps) {
+export function ReadCardModal({ open, card, reading, detecting, error = '', pendingSave, savedAt, readAllowed, onClose, onRetry, onUse }: ReadCardModalProps) {
   const titleId = useId()
   const descriptionId = useId()
-  const state = reading ? 'reading' : detecting ? 'detecting' : card ? 'success' : 'idle'
-  const status = reading ? 'กำลังอ่านบัตร…' : detecting ? 'กำลังตรวจจับบัตร…' : card ? pendingSave ? 'อ่านสำเร็จ · รอบันทึก' : 'มีข้อมูลบัตร' : 'รอการตรวจจับบัตร'
+  const state = error ? 'error' : reading ? 'reading' : detecting ? 'detecting' : card ? 'success' : 'idle'
+  const status = error ? 'อ่านบัตรไม่สำเร็จ' : reading ? 'กำลังอ่านบัตร…' : detecting ? 'กำลังตรวจจับบัตร…' : card ? pendingSave ? 'อ่านสำเร็จ · รอบันทึก' : 'มีข้อมูลบัตร' : 'รอการตรวจจับบัตร'
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -61,6 +62,8 @@ export function ReadCardModal({ open, card, reading, detecting, pendingSave, sav
       </header>
       <div className="read-card-status" role="status"><span aria-hidden="true" />{status}</div>
       <div className="space-y-4">
+        {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800"><p className="font-medium">{error}</p><p className="mt-2">ตรวจสาย USB หรือฮับ เชื่อมต่อเครื่องอ่านกับ Mac ที่รันระบบ แล้วเสียบบัตรใหม่</p></div>}
+
         <div className="read-card-device">
           <div className="flex items-center gap-3">
             <span className="read-card-device-icon"><CreditCard size={19} /></span>
@@ -104,11 +107,12 @@ export function ReadCardModal({ open, card, reading, detecting, pendingSave, sav
           <div className="read-card-empty">
             <CreditCard size={26} className="read-card-empty-icon" aria-hidden="true" />
             <p className="read-card-empty-title">ยังไม่มีข้อมูลจากบัตร</p>
-            <p className="read-card-help">{detecting ? 'รอการตรวจพบบัตร…' : 'ยังไม่พบบัตรในเครื่องอ่าน'}</p>
+            <p className="read-card-help">{error ? 'ยังอ่านข้อมูลไม่ได้ กรุณาตรวจสอบเครื่องอ่านแล้วกดลองใหม่' : detecting ? 'รอการตรวจพบบัตร…' : 'ยังไม่พบบัตรในเครื่องอ่าน'}</p>
           </div>
         )}
 
         <div className="flex justify-end gap-2 pt-1">
+          {readAllowed && !card && <Button type="button" className="read-card-button" disabled={reading || detecting} onClick={onRetry}>ลองตรวจจับอีกครั้ง</Button>}
           <Button type="button" className="read-card-button" disabled={reading} onClick={onClose}>ปิด</Button>
           {card && pendingSave && <Button type="button" variant="primary" className="read-card-button read-card-button-primary" disabled={reading} onClick={onUse}>ใช้ข้อมูลนี้</Button>}
         </div>

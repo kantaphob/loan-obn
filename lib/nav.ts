@@ -7,6 +7,10 @@ import {
   ScrollText,
   Users,
   type LucideIcon,
+  UserShield,
+  FolderUser,
+  HandCoins,
+  ReceiptText,
 } from "lucide-react";
 
 export type NavItem = { label: string; href: string; icon: LucideIcon };
@@ -21,30 +25,30 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Admin",
     items: [
-      { label: "Users", href: "/dashboard/admin/users", icon: Users },
+      { label: "Users", href: "/dashboard/admin/users", icon: UserShield },
       {
         label: "Masterdata",
         href: "/dashboard/admin/masterdata",
-        icon: LayoutDashboard,
+        icon: ScrollText,
       },
     ],
   },
   {
     title: "Borrower",
     items: [
-      { label: "Borrowers", href: "/dashboard/borrower", icon: Users },
+      { label: "Borrowers", href: "/dashboard/borrower", icon: FolderUser },
     ],
   },
   {
     title: "Lenders",
     items: [
-      { label: "Creditors", href: "/dashboard/lenders", icon: Landmark },
+      { label: "Creditors", href: "/dashboard/lenders", icon: HandCoins },
     ],
   },
   {
     title: "Contracts",
     items: [
-      { label: "Contracts", href: "/dashboard/contracts", icon: FileSignature },
+      { label: "Contracts", href: "/dashboard/contracts", icon: ReceiptText },
       { label: "Applications", href: "/dashboard/applications", icon: FileSignature },
     ],
   },
