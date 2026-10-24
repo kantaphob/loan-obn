@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import Database from 'better-sqlite3'
+import { monthRange, nextMonth, allocationAmount } from '../lib/monthly-accounting'
 import { closingJournal } from '../lib/account-closing'
 
 for (const [revenue, expense] of [['100.25', '40.10'], ['40', '100'], ['100', '100']]) {
@@ -84,4 +85,17 @@ test('closed dates cannot be inserted, changed, moved out or deleted; journals i
     db.exec('UPDATE ledger_entry SET amountSatang=500 WHERE id=2')
     assert.equal((db.prepare('SELECT amountSatang FROM ledger_entry WHERE id=2').get() as {amountSatang: number}).amountSatang, 500)
   } finally { db.close() }
+})
+
+test('month boundaries include leap days and roll over years', () => {
+  assert.deepEqual(monthRange('2024-02'), { startOn: '2024-02-01', endOn: '2024-02-29' })
+  assert.equal(monthRange('2025-02').endOn, '2025-02-28')
+  assert.equal(nextMonth('2025-12'), '2026-01')
+  for (const month of ['2025-00', '2025-13', '2025-2', '', '2025-01-01']) assert.throws(() => monthRange(month))
+  assert.equal(allocationAmount('0'), 0)
+  assert.equal(allocationAmount('10.01'), 1001)
+  for (const amount of ['-1', '1.001', 'NaN']) assert.throws(() => allocationAmount(amount))
+})
+test('reviewed year with no temporary balances creates no fictitious closing lines', () => {
+  assert.deepEqual(closingJournal([], 'CAPITAL', { allowEmpty: true }), { lines: [], profit: 0 })
 })

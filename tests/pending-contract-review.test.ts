@@ -1,8 +1,10 @@
+import { borrowerPosition } from '../lib/borrower-position'
+import { listContracts } from '../app/dashboard/contracts/actions'
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '../lib/prisma'
-import { getPendingContractReview, approvePendingContract, editPendingContract } from '../app/dashboard/invoice/review-actions'
+import { getPendingContractReview, approvePendingContract, editPendingContract, rejectPendingContract } from '../app/dashboard/invoice/review-actions'
 import { saveLedger } from '../app/dashboard/ledger/actions'
 import { bangkokToday } from '../lib/ledger'
 if (!process.env.DATABASE_URL?.includes('loan-review-test-')) throw new Error('Isolated database required')
@@ -74,4 +76,47 @@ test('review shows prior debts and reservations, then approves, edits safely and
   await prisma.user.update({ where: { id: user.id }, data: { role: 'REVIEWER' } })
   await assert.rejects(getPendingContractReview(unpaid.id), /ไม่มีสิทธิ์/)
   assert.ok((await approvePendingContract(unpaid.id, 'anything')).error)
+})
+
+test('rejection requires an admin, current review and reason; releases reservation and retains audit without paying', async () => {
+  const admin = await prisma.user.create({ data: { acccode: 'reject-admin', password: 'test', role: 'ADMIN', level: -1 } })
+  const borrower = await prisma.borrower.create({ data: { nickname: 'reject-review', firstName: 'Reject', lastName: 'Test', phone: '', approvedLimit: 500 } })
+  const lender = await prisma.lender.findFirstOrThrow()
+  const base = { borrowerId: borrower.id, lenderId: lender.id, borrowerCode: 'BR-REJECT', borrowerName: 'Reject Test', lenderName: 'Lender', documentChoice: 'NONE', interestMethod: 'INTEREST_WITH_PRINCIPAL', interestPercent: 0, principalSatang: 100000, interestSatang: 0, netSatang: 100000, repaymentSatang: 100000, createdBy: admin.id, scheduledDisbursementDate: '2026-10-24', repaymentDueDate: '2026-11-24', limitApprovalRequired: true }
+  const candidate = await prisma.loanContract.create({ data: { ...base, requestKey: randomUUID() } })
+  let review = await getPendingContractReview(candidate.id)
+  assert.ok((await rejectPendingContract(candidate.id, review.reviewToken, '  ')).error)
+  assert.ok((await rejectPendingContract(candidate.id, review.reviewToken, 'x'.repeat(501))).error)
+  await prisma.user.update({ where: { id: admin.id }, data: { role: 'LOAN_OFFICER' } })
+  assert.ok((await rejectPendingContract(candidate.id, review.reviewToken, 'เอกสารไม่ครบ')).error)
+  assert.equal((await prisma.loanContract.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'WAITING_PAYMENT')
+  await prisma.user.update({ where: { id: admin.id }, data: { role: 'ADMIN' } })
+  await prisma.loanContract.update({ where: { id: candidate.id }, data: { collateralDescription: 'updated while reviewing' } })
+  assert.match((await rejectPendingContract(candidate.id, review.reviewToken, 'เอกสารไม่ครบ')).error!, /เปลี่ยนแปลง/)
+  review = await getPendingContractReview(candidate.id)
+  const before = await prisma.loanContract.findMany({ where: { borrowerId: borrower.id }, include: { ledgerEntries: true } })
+  assert.equal(borrowerPosition(before, 0).reservedLimit, 1000)
+  assert.ok((await rejectPendingContract(candidate.id, review.reviewToken, '  มียอดคงค้างสูง ไม่อนุมัติเพิ่ม  ')).success)
+  const rejected = await prisma.loanContract.findUniqueOrThrow({ where: { id: candidate.id }, include: { ledgerEntries: true } })
+  assert.equal(rejected.status, 'REJECTED')
+  assert.equal(rejected.limitApprovalRequired, false)
+  assert.equal(rejected.paidAt, null)
+  assert.equal(rejected.ledgerEntries.length, 0)
+  assert.equal(borrowerPosition([rejected], 0).reservedLimit, 0)
+  assert.equal(await prisma.loanContract.count({ where: { id: candidate.id, status: 'WAITING_PAYMENT' } }), 0)
+  const history = await prisma.contractRevision.findFirstOrThrow({ where: { contractId: candidate.id, kind: 'REJECTION' } })
+  assert.equal(history.reason, 'มียอดคงค้างสูง ไม่อนุมัติเพิ่ม')
+  assert.equal(history.createdBy, admin.id)
+  assert.ok(history.createdAt)
+  assert.equal((await listContracts()).find(c => c.id === candidate.id)?.revisions[0].reason, history.reason)
+  assert.ok((await rejectPendingContract(candidate.id, review.reviewToken, 'duplicate')).error)
+  assert.equal(await prisma.contractRevision.count({ where: { contractId: candidate.id, kind: 'REJECTION' } }), 1)
+  assert.ok((await approvePendingContract(candidate.id, review.reviewToken)).error)
+  const another = await prisma.loanContract.create({ data: { ...base, requestKey: randomUUID() } })
+  review = await getPendingContractReview(another.id)
+  assert.ok((await approvePendingContract(another.id, review.reviewToken)).success)
+  review = await getPendingContractReview(another.id)
+  assert.match((await rejectPendingContract(another.id, review.reviewToken, 'too late')).error!, /อนุมัติแล้ว/)
+  await prisma.loanContract.update({ where: { id: another.id }, data: { status: 'PAID', paidAt: new Date() } })
+  assert.ok((await rejectPendingContract(another.id, review.reviewToken, 'paid')).error)
 })

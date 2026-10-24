@@ -93,6 +93,7 @@ model Postcode {
 }
 
 model FinancialCategory {
+  historicalEntries HistoricalCashEntry[]
   code      String   @id
   nameTh    String
   nameEn    String?
@@ -119,6 +120,7 @@ model RiskRating {
 }
 
 model PaymentChannel {
+  historicalEntries HistoricalCashEntry[]
   code     String  @id
   nameTh   String
   nameEn   String?
@@ -495,6 +497,7 @@ model ContractRevision {
 
 // Immutable closing journals. Cash movements through endOn are locked by database triggers.
 model AccountingClose {
+  workpaperSnapshotJson String?
   kind String @default("LEGACY")
   id Int @id @default(autoincrement())
   requestKey String @unique
@@ -513,6 +516,7 @@ model AccountingClose {
 
 // Monthly cash/receivables review only; does not post closing journal entries.
 model AccountingMonthLock {
+  documentsJson String @default("[]")
   id Int @id @default(autoincrement())
   requestKey String @unique
   month String @unique
@@ -524,4 +528,89 @@ model AccountingMonthLock {
   createdAt DateTime @default(now())
 
   @@map("accounting_month_lock")
+}
+
+// Imported daily cashbook kept separate from the loan ledger.
+model HistoricalCashEntry {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  accountCode String
+  occurredOn String
+  direction String
+  amountSatang Float
+  categoryCode String
+  category FinancialCategory @relation(fields: [categoryCode], references: [code], onDelete: Restrict)
+  channelCode String
+  channel PaymentChannel @relation(fields: [channelCode], references: [code], onDelete: Restrict)
+  sourceChannel String
+  company String
+  description String
+  sourceFile String
+  sourceHash String
+  sourceRow Int
+  sourceJson String
+  createdBy String
+  createdAt DateTime @default(now())
+  @@index([accountCode, occurredOn])
+  @@map("historical_cash_entry")
+}
+
+model AccountingPreparation {
+  month String @id
+  version Int @default(1)
+  checklistJson String
+  note String
+  updatedBy String
+  updatedAt DateTime @updatedAt
+  @@map("accounting_preparation")
+}
+model AccountingPreparationRevision {
+  id Int @id @default(autoincrement())
+  scope String
+  beforeJson String
+  afterJson String
+  reason String
+  createdBy String
+  createdAt DateTime @default(now())
+  @@index([scope, createdAt])
+  @@map("accounting_preparation_revision")
+}
+model AccountingDocument {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  month String
+  sourceKey String
+  category String
+  originalName String
+  mimeType String
+  sizeBytes Int
+  sha256 String
+  fileData Bytes
+  createdBy String
+  createdAt DateTime @default(now())
+  @@unique([month, sourceKey])
+  @@index([month])
+  @@map("accounting_document")
+}
+model AccountingYearWorkpaper {
+  year String @id
+  version Int @default(1)
+  accountsJson String
+  equityJson String
+  notes String
+  updatedBy String
+  updatedAt DateTime @updatedAt
+  @@map("accounting_year_workpaper")
+}
+model AccountingAdjustment {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  year String
+  occurredOn String
+  description String
+  linesJson String
+  createdBy String
+  createdAt DateTime @default(now())
+  @@index([year, occurredOn])
+  @@map("accounting_adjustment")
 }

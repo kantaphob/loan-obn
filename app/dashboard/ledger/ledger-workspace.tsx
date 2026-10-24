@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ArrowDownLeft, ArrowUpRight, Wallet, Search, BookOpen, PencilLine, History, Ban, CheckCircle2 } from 'lucide-react'
+import { Plus, ArrowDownLeft, ArrowUpRight, Wallet, Search, BookOpen, PencilLine, History, Ban, CheckCircle2, CalendarDays, ArrowUpRight as ExternalLink } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SlipPreview } from '@/components/ui/slip-preview'
@@ -63,13 +63,17 @@ export function LedgerWorkspace({ data }: { data: Data }) {
   return <div className="borrower-workspace ledger-directory space-y-5">
     {editing && <EditTransactionModal key={editing.id} entry={editing} data={data} onClose={() => setEditing(null)} />}
     {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
+    <nav className="ledger-year-nav" aria-label="เลือกปีบัญชี">
+      <div className="ledger-year-title"><CalendarDays size={18} aria-hidden="true" /><span>ปีบัญชี</span></div>
+      <span className="ledger-year-current" aria-current="page"><strong>2026</strong><small>ปีปัจจุบัน</small></span>
+      <Link href="/dashboard/cashbook-2025" className="ledger-year-history"><span>ดูประวัติปี 2025</span><ExternalLink size={14} aria-hidden="true" /></Link>
+    </nav>
     <div className="ledger-directory-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {[[ 'รับเงินสะสม', incoming, ArrowDownLeft, 'text-emerald-700'], ['จ่ายเงินสะสม', outgoing, ArrowUpRight, 'text-rose-700'], ['เงินรับสุทธิหลังหักจ่าย', incoming - outgoing, Wallet, 'text-blue-700'], ['ยอดรอรับคืนตามสัญญา', outstanding, BookOpen, 'text-amber-700']].map(([title, amount, Icon, color]) => {
         const MetricIcon = Icon as typeof Wallet
         return <Card key={String(title)} className="p-5"><div className="flex justify-between text-sm text-slate-500">{String(title)}<MetricIcon size={19} /></div><p className={`mt-3 text-2xl font-semibold tabular-nums ${color}`}>{money(Number(amount))}<span className="ml-1 text-xs font-normal">บาท</span></p><p className="mt-2 text-xs text-slate-400">รวมทุกรายการที่ยังไม่ยกเลิก</p></Card>
       })}
     </div>
-    <nav className="ledger-directory-shortcuts" aria-label="เริ่มทำรายการตามหน้าที่"><Link href="/dashboard/ap" className="text-blue-700 underline">จ่ายเงินตามสัญญา ↗</Link><Link href="/dashboard/repayments" className="text-blue-700 underline">ลูกหนี้และรับชำระ ↗</Link></nav>
     <Card className="ledger-directory-card overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{filtered.length} รายการ</span></h2>{data.canWrite && <Button variant="primary" onClick={() => open()}><Plus size={16} /> รับ–จ่ายทั่วไป</Button>}</div>
       <div className="flex flex-wrap items-end gap-3 border-y border-slate-200/70 p-4">

@@ -302,6 +302,7 @@ export async function listContracts() {
       guarantorSignatureData: true, guarantorCapturedBy: true, guarantorConsentAt: true,
     },
     include: {
+      revisions: { where: { kind: 'REJECTION' }, orderBy: { id: 'desc' }, take: 1, select: { reason: true, createdBy: true, createdAt: true } },
       witnesses: { select: { position: true, name: true, signedAt: true }, orderBy: { position: 'asc' } },
       documentSignatures: { select: { documentStage: true, signer: true, name: true, signedAt: true } },
       ledgerEntries: { where: { kind: 'REPAYMENT', voidedAt: null }, select: { occurredOn: true }, orderBy: { occurredOn: 'desc' }, take: 1 },

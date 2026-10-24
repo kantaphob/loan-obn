@@ -12,11 +12,6 @@ import { ContractDocumentOptions, WitnessCountOptions, signingMethods, documentP
 import { CollateralAgreementFields, type CollateralAgreementValues } from './collateral-agreement-fields'
 import { collateralAgreementSigners, collateralSignatureSetupReady, type ContractDocumentStage } from '@/lib/contracts'
 
-const interestMethods = [
-  { value: 'INTEREST_UPFRONT', label: 'หักดอกเบี้ยก่อนจ่าย', description: 'หักดอกเบี้ย 1 เดือนจากเงินที่จ่ายจริง และยอดชำระคืนยังเท่าเงินต้น' },
-  { value: 'INTEREST_WITH_PRINCIPAL', label: 'ไม่หักดอกเบี้ยก่อนจ่าย', description: 'จ่ายเงินต้นเต็มจำนวน และชำระคืนเงินต้นพร้อมดอกเบี้ย 1 เดือน' },
-] as const
-
 type ContractPhase = 'DETAILS' | 'LOAN' | 'GUARANTEE' | 'COLLATERAL' | 'REVIEW'
 
 export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrowerId, lenderId, availableLimit, onReview, onSaved, outstandingContracts, outstandingReviewed, borrowerInformed, onOutstandingReviewedChange, onBorrowerInformedChange }: {
@@ -37,7 +32,7 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
   const [witnessCount, setWitnessCount] = useState(2)
   const [guaranteeWitnessCount, setGuaranteeWitnessCount] = useState(2)
   const [documentChoice, setDocumentChoice] = useState<'CREATE' | 'NONE' | ''>('')
-  const [interestMethod, setInterestMethod] = useState<'INTEREST_UPFRONT' | 'INTEREST_WITH_PRINCIPAL'>('INTEREST_WITH_PRINCIPAL')
+  const [interestMethod, setInterestMethod] = useState<'INTEREST_UPFRONT' | 'INTEREST_WITH_PRINCIPAL'>('INTEREST_UPFRONT')
   const [principal, setPrincipal] = useState('')
   const [draftSignatures, setDraftSignatures] = useState<DraftContractSignature[]>([])
   const [signatureConsent, setSignatureConsent] = useState(false)
@@ -97,9 +92,7 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
   const netSatang = validPrincipal && interestSatang !== null
     ? principalSatang - deductionSatang!
     : null
-  const repaymentSatang = validPrincipal && interestSatang !== null
-    ? principalSatang + (interestMethod === 'INTEREST_WITH_PRINCIPAL' ? interestSatang : 0)
-    : null
+  const repaymentSatang = validPrincipal && interestSatang !== null ? principalSatang : null
   const canCalculate = netSatang !== null && repaymentSatang !== null
   const limitApprovalNeeded = validPrincipal && principalSatang > Math.round(availableLimit * 100)
   const money = (satang: number | null) => satang === null ? '—' : new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(satang / 100) + ' บาท'
@@ -180,10 +173,13 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
       <div hidden={documentChoice !== 'CREATE'}><ContractDocumentOptions witnessCount={witnessCount} onWitnessChange={setWitnessCount} signingMethod={signingMethod} documentPackage={documentPackage} onSigningChange={setSigningMethod} onPackageChange={setDocumentPackage} /></div>
       <fieldset className="m-0 mt-5 min-w-0 border-0 p-0">
         <legend className="mb-2 flex items-center text-sm font-semibold text-slate-800"><span className="mr-2 grid h-6 w-6 place-items-center rounded-lg bg-amber-100 text-xs font-bold text-amber-800">2</span>วิธีจ่ายเงิน</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {interestMethods.map(method => <label key={method.value} className={`flex cursor-pointer items-start gap-2.5 rounded-xl border-2 px-3 py-2.5 text-sm transition-colors ${interestMethod === method.value ? 'border-emerald-600 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40'} focus-within:ring-2 focus-within:ring-sky-400`}>
-            <input type="radio" name={`${groupId}-interest-method`} value={method.value} checked={interestMethod === method.value} onChange={() => setInterestMethod(method.value)} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-700" />
-            <span><span className="block font-medium">{method.label}</span><span className="mt-0.5 block text-xs leading-4 text-slate-500">{method.description}</span></span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            ['INTEREST_UPFRONT', 'หักดอกเบี้ยก่อนจ่าย', 'หักดอกเบี้ย 1 เดือนจากเงินที่จ่าย · ผู้กู้คืนเงินต้น'],
+            ['INTEREST_WITH_PRINCIPAL', 'ไม่หักดอกเบี้ยก่อนจ่าย', 'จ่ายเงินต้นเต็มจำนวน · ผู้กู้คืนเงินต้นพร้อมดอกเบี้ย 1 เดือน'],
+          ].map(([value, title, description]) => <label key={value} className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-sm ${interestMethod === value ? 'border-emerald-500 bg-emerald-50 text-emerald-950' : 'border-slate-200 bg-white/50 text-slate-700'}`}>
+            <input type="radio" name="contract-interest-method" value={value} checked={interestMethod === value} onChange={() => setInterestMethod(value as 'INTEREST_UPFRONT' | 'INTEREST_WITH_PRINCIPAL')} className="mt-0.5 accent-emerald-600" />
+            <span><strong>{title}</strong><span className="mt-1 block text-xs text-slate-500">{description}</span></span>
           </label>)}
         </div>
       </fieldset>

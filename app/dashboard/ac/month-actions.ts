@@ -1,4 +1,5 @@
 'use server'
+import { captureClosingDocuments, validateChecklist } from '@/lib/closing-preparation'
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth/current-user'
@@ -59,15 +60,24 @@ export async function lockAccountingMonth(input: { requestKey: string; month: st
       const latest = await tx.accountingMonthLock.findFirst({ orderBy: { endOn: 'desc' } })
       if (latest && nextMonth(latest.month) !== input.month) throw new Error('ต้องล็อกเดือนต่อจากเดือนล่าสุดตามลำดับ')
       if (!latest) {
+        if (!input.month.endsWith('-01')) throw new Error('เดือนแรกต้องเริ่มที่มกราคม เพื่อให้ปิดบัญชีสิ้นปีได้ครบ 12 เดือน')
         const first = await tx.ledgerEntry.findFirst({ orderBy: { occurredOn: 'asc' } })
+        const historicalFirst = await tx.historicalCashEntry.findFirst({ orderBy: { occurredOn: 'asc' } })
+        if (historicalFirst && historicalFirst.occurredOn < startOn) throw new Error('กรุณาเริ่มที่ปีของรายการรับ–จ่ายย้อนหลังแรก เพื่อไม่ข้ามข้อมูลเดิม')
         if (first && first.occurredOn < startOn) throw new Error('กรุณาเริ่มล็อกเดือนให้ครอบคลุมรายการรับ–จ่ายแรกของระบบ')
       }
+      const preparation = await tx.accountingPreparation.findUnique({ where: { month: input.month } })
+      if (!preparation) throw new Error('กรุณาบันทึกรายการตรวจเอกสารก่อนปิดเดือน')
+      const checklist = validateChecklist(JSON.parse(preparation.checklistJson), true)
       const review = await monthSnapshot(tx, input.month)
       if (review.reviewToken !== input.reviewToken) throw new Error('ข้อมูลเปลี่ยนแปลงหลังตรวจยอด กรุณาโหลดหน้าตรวจยอดใหม่')
+      if (!review.snapshot.cash.available) throw new Error('มีบัญชีหลายแหล่งในปีเดียวกัน กรุณาตรวจแยกแหล่งเงินก่อนยืนยันยอดยกมา')
       if (review.snapshot.unallocatedCount) throw new Error('กรุณาแยกเงินต้น–ดอกเบี้ยทุกรายการรับชำระในเดือนก่อนล็อก')
       if (review.snapshot.invalidCount) throw new Error('พบยอดสัญญาที่ไม่สอดคล้อง กรุณาตรวจรายการรับชำระก่อนล็อก')
-      await tx.accountingMonthLock.create({ data: { requestKey: input.requestKey, month: input.month, startOn, endOn, note: input.note.trim(), snapshotJson: JSON.stringify(review.snapshot), createdBy: user.id } })
-    })
+      if (review.snapshot.documents.some(d => !d.available) && !checklist.documents.note.trim()) throw new Error('มีสัญญาที่เอกสารยังไม่พร้อม กรุณาระบุเหตุผลหรือหลักฐานประกอบในรายการตรวจเอกสาร')
+      const documents = await captureClosingDocuments(tx, input.month, user.id)
+      await tx.accountingMonthLock.create({ data: { requestKey: input.requestKey, month: input.month, startOn, endOn, note: input.note.trim(), documentsJson: JSON.stringify(documents), snapshotJson: JSON.stringify(review.snapshot), createdBy: user.id } })
+    }, { timeout: 60000 })
     revalidatePath('/dashboard/ac')
     return { ok: true, message: 'ตรวจยอดและล็อกเดือนแล้ว โดยไม่สร้างรายการโอนกำไร' }
   } catch (error) { return { ok: false, message: message(error) } }

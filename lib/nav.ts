@@ -67,7 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "รับชำระตามสัญญา", href: "/dashboard/repayments", icon: BanknoteArrowUp },
       { label: "รายงานบัญชี", href: "/dashboard/accounting", icon: WalletCards },
       { label: "บัญชีทุน", href: "/dashboard/capital", icon: BanknoteCheck },
-      { label: "ปิดบัญชี", href: "/dashboard/ac", icon: BanknoteX },
+      { label: "ปิดดุลบัญชี", href: "/dashboard/ac", icon: BanknoteX },
     ],
   },
   {
@@ -82,6 +82,9 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export function findActiveNavItem(pathname: string, search = "") {
   const items = NAV_GROUPS.flatMap((group) => group.items);
+  if (pathname.startsWith("/dashboard/cashbook-2025")) {
+    return items.find((item) => item.href === "/dashboard/ledger");
+  }
   const currentHref = `${pathname}${search}`;
   return (
     items.find((item) => item.href === currentHref) ??

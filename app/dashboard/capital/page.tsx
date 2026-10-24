@@ -7,7 +7,9 @@ import { PageContainer } from '@/components/ui/page-container'
 import { Card } from '@/components/ui/card'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth/current-user'
-import { capitalPercent, capitalPosition } from '@/lib/capital'
+import { capitalCash, capitalPercent, capitalPosition } from '@/lib/capital'
+import { cashCarryforward, readCashMovements } from '@/lib/cash-carryforward'
+import { CashBalance } from '../ac/cash-balance'
 import { bangkokToday } from '@/lib/ledger'
 
 const money = (value: number) => (value / 100).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -15,7 +17,7 @@ const percent = (value: number, total: number) => `${capitalPercent(value, total
 
 export default function CapitalPage() {
   return <PageContainer>
-    <Header title="ภาพรวมเงินทุน" eyebrow="Capital" description="ปล่อยกู้ไปเท่าไร ได้คืนแล้วเท่าไร และเงินต้นยังค้างอยู่กับใครบ้าง" icon={<Landmark size={21} aria-hidden="true" />} />
+    <Header title="ภาพรวมเงินทุน" eyebrow="Capital" description="ดูเงินสะสมรวมยอดยกมา เงินรับคืน และเงินต้นที่ยังค้างกับผู้กู้" icon={<Landmark size={21} aria-hidden="true" />} />
     <Suspense fallback={<p role="status" className="p-8 text-sm text-slate-500">กำลังโหลดภาพรวมเงินทุน…</p>}><CapitalContent /></Suspense>
   </PageContainer>
 }
@@ -29,19 +31,35 @@ async function CapitalContent() {
     select: { id: true, borrowerCode: true, borrowerName: true, principalSatang: true, interestSatang: true, netSatang: true, repaymentSatang: true, interestMethod: true, status: true, paidAt: true, legacyReceivedSatang: true, repaymentDueDate: true, penaltyMaxDays: true, ledgerEntries: { where: { voidedAt: null }, orderBy: [{ occurredOn: 'asc' }, { id: 'asc' }], select: { id: true, kind: true, amountSatang: true, occurredOn: true, penaltyAssessed: true, penaltyWaivedSatang: true, settlementWaivedSatang: true } } },
     orderBy: { id: 'desc' },
   })
+  const cashEntries = await prisma.$transaction(tx => readCashMovements(tx, asOf))
+  // DAILY26_ categories belong to the separately imported personal cashbook.
+  const lendingCash = capitalCash(cashEntries.filter(row => row.source === 'LEDGER' && !row.categoryCode?.startsWith('DAILY26_')).map(row => ({ ...row, categoryCode: row.categoryCode ?? '' })), asOf)
+  const yearCash = cashCarryforward(cashEntries, `${asOf.slice(0, 4)}-01-01`, asOf)
   const rows = contracts.flatMap(c => {
     const position = capitalPosition(c, c.ledgerEntries, asOf)
     return position ? [{ ...position, id: c.id, borrowerName: c.borrowerName, borrowerCode: c.borrowerCode }] : []
   })
   const sum = (key: keyof (typeof rows)[number]) => rows.reduce((total, row) => total + (typeof row[key] === 'number' ? row[key] as number : 0), 0)
-  const principal = sum('principal'), returned = sum('principalReceived'), remaining = sum('principalRemaining'), waived = sum('principalWaived'), cashOut = sum('cashOut'), cashReceived = sum('cashReceived')
+  const principal = sum('principal'), returned = sum('principalReceived'), remaining = sum('principalRemaining'), interestRemaining = sum('interestRemaining'), waived = sum('principalWaived'), cashOut = sum('cashOut'), cashReceived = sum('cashReceived')
   return <div className="space-y-5">
     <p className="text-xs text-slate-500">ข้อมูลสะสมถึง {new Date(`${asOf}T00:00:00+07:00`).toLocaleDateString('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' })} · จ่ายเงินแล้ว {rows.length.toLocaleString('th-TH')} สัญญา · หน่วย: บาท</p>
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <Card as="section" className="p-5">
+      <div className="grid items-center gap-5 sm:grid-cols-[1.2fr_1fr_1fr]">
+        <div>
+          <h2 className="text-xs font-medium text-slate-600">เงินสดคงเหลือพร้อมปล่อยกู้ต่อ</h2>
+          <p className={`mt-2 text-2xl font-semibold tabular-nums ${lendingCash.balance >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{money(lendingCash.balance)} <span className="text-xs font-normal text-slate-500">บาท</span></p>
+        </div>
+        <div className="sm:border-l sm:border-slate-200/70 sm:pl-5"><p className="text-xs text-slate-500">รับเงินสะสม รวมทุน</p><p className="mt-2 text-lg font-medium tabular-nums text-slate-700">{money(lendingCash.incoming)} <span className="text-xs font-normal">บาท</span></p></div>
+        <div className="sm:border-l sm:border-slate-200/70 sm:pl-5"><p className="text-xs text-slate-500">จ่ายเงินสะสม</p><p className="mt-2 text-lg font-medium tabular-nums text-slate-700">{money(lendingCash.outgoing)} <span className="text-xs font-normal">บาท</span></p></div>
+      </div>
+    </Card>
+    <CashBalance cash={yearCash} period="year" />
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       {[
         { label: 'เงินจ่ายปล่อยกู้จริง', value: cashOut, note: 'ยอดโอนสุทธิสะสม หลังหักดอกเบี้ยล่วงหน้า', color: 'text-slate-900' },
         { label: 'เงินต้นรับคืนแล้ว', value: returned, note: `${percent(returned, principal)} ของเงินต้นตามสัญญา`, color: 'text-emerald-700' },
         { label: 'เงินต้นคงค้าง', value: remaining, note: `${percent(remaining, principal)} ของเงินต้นตามสัญญา`, color: 'text-amber-700' },
+        { label: 'ดอกเบี้ยตามสัญญาคงค้าง', value: interestRemaining, note: 'ดอกเบี้ยที่ยังไม่ได้รับชำระ', color: 'text-violet-700' },
         { label: 'เงินรับคืนรวม', value: cashReceived, note: `${percent(cashReceived, cashOut)} ของยอดจ่ายจริง · รวมดอกเบี้ยและค่าปรับ`, color: 'text-blue-700' },
       ].map(item => <Card key={item.label} className="p-5"><p className="text-xs text-slate-600">{item.label}</p><p className={`mt-3 break-words text-2xl font-semibold tabular-nums ${item.color}`}>{money(item.value)}</p><p className="mt-2 text-xs leading-5 text-slate-500">{item.note}</p></Card>)}
     </div>
@@ -60,13 +78,13 @@ async function CapitalContent() {
     ].map(([label, amount]) => <Card key={label} className="p-5"><h2 className="text-xs text-slate-600">{label}</h2><p className="mt-3 text-xl font-semibold tabular-nums">{money(amount as number)}</p></Card>)}</div>
     <Card as="section" className="min-w-0 overflow-hidden [&>.liquid-glass-content]:min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="text-base font-semibold">เงินทุนรายสัญญา</h2><Link href="/dashboard/repayments" className="text-xs text-blue-700 underline">ดูประวัติและรับชำระ</Link></div>
-      <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-left text-xs"><thead className="bg-slate-50 text-slate-600"><tr>{['ผู้กู้ / สัญญา', 'จ่ายจริง', 'เงินต้นตามสัญญา', 'เงินต้นคืนแล้ว', 'คืนแล้ว (%)', 'เงินต้นคงค้าง', 'ยกเว้นเงินต้น', 'ดอกเบี้ยรับชำระ', 'รับคืนรวม'].map((label, i) => <th key={label} scope="col" className={`p-4 ${i ? 'text-right' : ''}`}>{label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-t border-slate-200/60"><th scope="row" className="p-4 font-medium"><Link href={`/dashboard/repayments?q=${encodeURIComponent(row.borrowerCode)}&view=ALL`} className="text-blue-700 hover:underline">{row.borrowerName}</Link><p className="mt-1 text-[11px] font-normal text-slate-500">{row.borrowerCode} · #{row.id}</p></th>{[row.cashOut, row.principal, row.principalReceived].map((value, i) => <td key={i} className="p-4 text-right tabular-nums">{money(value)}</td>)}<td className="p-4 text-right font-semibold text-emerald-700">{percent(row.principalReceived, row.principal)}</td>{[row.principalRemaining, row.principalWaived, row.interestReceived, row.cashReceived].map((value, i) => <td key={i} className="p-4 text-right tabular-nums">{money(value)}</td>)}</tr>)}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-left text-xs"><thead className="bg-slate-50 text-slate-600"><tr>{['ผู้กู้ / สัญญา', 'จ่ายจริง', 'เงินต้นตามสัญญา', 'เงินต้นคืนแล้ว', 'คืนแล้ว (%)', 'เงินต้นคงค้าง', 'ดอกเบี้ยคงค้าง', 'ยกเว้นเงินต้น', 'ดอกเบี้ยรับชำระ', 'รับคืนรวม'].map((label, i) => <th key={label} scope="col" className={`p-4 ${i ? 'text-right' : ''}`}>{label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-t border-slate-200/60"><th scope="row" className="p-4 font-medium"><Link href={`/dashboard/repayments?q=${encodeURIComponent(row.borrowerCode)}&view=ALL`} className="text-blue-700 hover:underline">{row.borrowerName}</Link><p className="mt-1 text-[11px] font-normal text-slate-500">{row.borrowerCode} · #{row.id}</p></th>{[row.cashOut, row.principal, row.principalReceived].map((value, i) => <td key={i} className="p-4 text-right tabular-nums">{money(value)}</td>)}<td className="p-4 text-right font-semibold text-emerald-700">{percent(row.principalReceived, row.principal)}</td>{[row.principalRemaining, row.interestRemaining, row.principalWaived, row.interestReceived, row.cashReceived].map((value, i) => <td key={i} className="p-4 text-right tabular-nums">{money(value)}</td>)}</tr>)}</tbody></table></div>
       {!rows.length && <div className="p-10 text-center"><p className="text-sm text-slate-500">ยังไม่มีสัญญาที่จ่ายเงินกู้แล้ว</p><Link href="/dashboard/ap" className="mt-3 inline-block text-sm text-blue-700 underline">ไปที่จ่ายเงินตามสัญญา</Link></div>}
     </Card>
     <div className="space-y-2 text-xs leading-6 text-slate-500">
       <p>รับชำระตัดค่าปรับ → ดอกเบี้ย → เงินต้น ตามหลักการของระบบ ยอดยกเว้นไม่ถือเป็นเงินรับคืน ดอกเบี้ยหักล่วงหน้าแสดงแยกและไม่รวมในเงินรับคืนรวม</p>
       <p>รวมยอดรับคืนยกมา {money(sum('legacyReceived'))} บาท ตามข้อมูลนำเข้า ไม่นับรายการยกเลิกหรือรายการในอนาคต สัญญาที่ไม่มีรายการจ่ายใช้ยอดสุทธิตามสัญญา</p>
-      <p>ยอดปล่อยกู้เป็นยอดสะสม หากนำเงินรับคืนไปปล่อยต่อจะนับเป็นการปล่อยกู้อีกครั้ง ระบบยังไม่มีทะเบียนเงินที่เจ้าของเติมหรือถอน จึงยังไม่แสดงทุนเจ้าของหรือกำไรสุทธิ</p>
+      <p>ยอดปล่อยกู้เป็นยอดสะสม หากนำเงินรับคืนไปปล่อยต่อจะนับเป็นการปล่อยกู้อีกครั้ง เงินเติมและถอนทุนอ้างอิงรายการในบัญชีรับ–จ่าย ยอดเงินสดคงเหลือจึงต่างจากเงินต้นคงค้างและกำไรสุทธิ</p>
     </div>
   </div>
 }

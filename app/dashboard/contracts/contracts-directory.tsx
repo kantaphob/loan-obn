@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { FileSignature, Plus, Search } from 'lucide-react'
+import { ClipboardCopy, FileSignature, Plus, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CreateContractModal } from './create-contract-modal'
@@ -14,6 +14,7 @@ import { ContractSignatureModal } from './contract-signature-modal'
 import { GuaranteeAgreementTemplate } from './guarantee-agreement-template'
 import { CollateralAgreementTemplate } from './collateral-agreement-template'
 import { LegacyLoanImportModal } from './legacy-loan-import-modal'
+import { ContractExportButton } from './contract-export-button'
 import { useToast } from '@/components/ui/toast'
 
 const fieldClass = 'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none'
@@ -66,6 +67,15 @@ export function ContractsDirectory() {
   }
   const money = (value: number) => new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2 }).format(value / 100)
   const date = (value: string) => new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'short' }).format(new Date(value))
+  async function copyContractHeaders() {
+    const headers = 'เลขที่สัญญา | ยอดเงินต้น | ดอกเบี้ย | ยอดดอกเบี้ย | วันรับ | วันส่งคืน | ยอดจ่าย'
+    try {
+      await navigator.clipboard.writeText(headers)
+      toast({ title: 'คัดลอกหัวคอลัมน์แล้ว', description: 'คัดลอกเฉพาะข้อความหัวคอลัมน์ตามที่ระบุ', variant: 'success' })
+    } catch {
+      toast({ title: 'คัดลอกไม่สำเร็จ', description: 'เบราว์เซอร์ไม่อนุญาตให้เข้าถึงคลิปบอร์ด', variant: 'error' })
+    }
+  }
   const legacyStatus = (row: Awaited<ReturnType<typeof listContracts>>[number]) => {
     try { return (JSON.parse(row.legacyDetails ?? '{}') as { sourceStatus?: string }).sourceStatus ?? '' } catch { return '' }
   }
@@ -125,7 +135,7 @@ export function ContractsDirectory() {
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="borrower-directory-heading"><h2>ทะเบียนสัญญา</h2><span className="borrower-count">{rows.length} สัญญา</span></div>
-        <div className="flex flex-wrap gap-2"><Button onClick={() => setLegacyImporting(true)}>นำเข้ารายการเก่า</Button><Button variant="primary" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />เพิ่มสัญญา</Button></div>
+        <div className="flex flex-wrap gap-2"><Button onClick={() => void copyContractHeaders()}><ClipboardCopy size={15} aria-hidden="true" />คัดลอกหัวคอลัมน์</Button><ContractExportButton rows={rows} /><Button onClick={() => setLegacyImporting(true)}>นำเข้ารายการเก่า</Button><Button variant="primary" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />เพิ่มสัญญา</Button></div>
       </div>
       <div className="borrower-toolbar flex flex-wrap gap-3 p-4">
         <form onSubmit={search} className="flex min-w-0 flex-1 basis-72 gap-2">
@@ -135,7 +145,7 @@ export function ContractsDirectory() {
           <Button type="submit">ค้นหา</Button>
         </form>
         <label><span className="sr-only">กรองสถานะสัญญา</span><select className={fieldClass} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}>
-          <option value="">ทุกสถานะ</option><option value="WAITING_PAYMENT">รอจ่ายเงิน</option><option value="PAID">จ่ายเงินแล้ว</option><option value="CLOSED">ปิดยอดแล้ว</option>
+          <option value="">ทุกสถานะ</option><option value="WAITING_PAYMENT">รอจ่ายเงิน</option><option value="PAID">จ่ายเงินแล้ว</option><option value="CLOSED">ปิดยอดแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option>
         </select></label>
       </div>
       <div className="borrower-table-scroll overflow-x-auto">
@@ -144,7 +154,7 @@ export function ContractsDirectory() {
           <thead><tr>{['จัดการ', 'เลขสัญญา', 'วันที่ทำสัญญา', 'รหัสผู้กู้', 'ชื่อผู้กู้', 'รหัสผู้ให้กู้', 'วงเงินสัญญา', 'สถานะ', 'สัญญาและการลงนาม', 'วันที่จ่ายเงิน', 'วันที่ปิดยอด'].map(label => <th scope="col" key={label} className="px-4 py-4 font-medium">{label}</th>)}</tr></thead>
           <tbody>{visibleRows.map(row => <tr key={row.id}>
             <td className="border-b px-4 py-3"><div className="flex items-center gap-2"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button>{row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">พิมพ์สัญญา</a>}{row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}</div></td>
-            {[<span key="code">{contractCode(row.id)}{row.legacySourceCode && <span className="mt-1 block text-[10px] text-slate-500">เลขเดิม {row.legacySourceCode}</span>}</span>, row.legacySourceCode && row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : date(row.createdAt), row.borrowerCode, <span key="borrower">{row.borrowerName}{row.legacySourceCode && legacyBorrowerName(row) && <span className="mt-1 block text-[10px] text-slate-500">ชื่อเดิม {legacyBorrowerName(row)}</span>}</span>, lenderCode(row.lenderId), money(row.principalSatang), row.limitApprovalRequired ? 'รออนุมัติวงเงิน' : row.legacySourceCode ? legacyStatusLabel(row) : row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : row.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว', signingLabel(row), row.paidAt ? date(row.paidAt) : '—', row.closedDate ? date(row.closedDate) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
+            {[<span key="code">{contractCode(row.id)}{row.legacySourceCode && <span className="mt-1 block text-[10px] text-slate-500">เลขเดิม {row.legacySourceCode}</span>}</span>, row.legacySourceCode && row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : date(row.createdAt), row.borrowerCode, <span key="borrower">{row.borrowerName}{row.legacySourceCode && legacyBorrowerName(row) && <span className="mt-1 block text-[10px] text-slate-500">ชื่อเดิม {legacyBorrowerName(row)}</span>}</span>, lenderCode(row.lenderId), money(row.principalSatang), row.status === 'REJECTED' ? 'ไม่อนุมัติ' : row.limitApprovalRequired ? 'รออนุมัติวงเงิน' : row.legacySourceCode ? legacyStatusLabel(row) : row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : row.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว', signingLabel(row), row.paidAt ? date(row.paidAt) : '—', row.closedDate ? date(row.closedDate) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
           </tr>)}{!matches.length && !loading && !loadError && <tr><td colSpan={11} className="!p-0">
             <div className="borrower-empty" role="status">
               <span className="borrower-empty-icon"><FileSignature size={30} aria-hidden="true" /></span>
@@ -163,8 +173,9 @@ export function ContractsDirectory() {
       {viewing && <dl className="grid gap-4 text-sm sm:grid-cols-2">{[
         ...(viewing.legacySourceCode ? [['เลขรายการเดิม', viewing.legacySourceCode], ['ชื่อผู้กู้ในรายการเดิม', legacyBorrowerName(viewing) || '—'], ['สถานะเดิม', legacyStatus(viewing) || '—'], ['ยอดชำระก่อนนำเข้า', `${money(viewing.legacyReceivedSatang)} บาท`], ['ยอดคงเหลือตามข้อมูลเดิม', `${money(Math.max(0, viewing.repaymentSatang - viewing.legacyReceivedSatang))} บาท`]] : []),
         ['ผู้กู้', viewing.borrowerName], ['ผู้ให้กู้', viewing.lenderName],
-        ['สถานะ', viewing.limitApprovalRequired ? 'รออนุมัติวงเงิน' : viewing.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : viewing.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'],
+        ['สถานะ', viewing.status === 'REJECTED' ? 'ไม่อนุมัติ' : viewing.limitApprovalRequired ? 'รออนุมัติวงเงิน' : viewing.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : viewing.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'],
         ...(viewing.limitApprovedAt ? [['อนุมัติวงเงินโดย', `${viewing.limitApprovedBy ?? 'ผู้ดูแล'} · ${date(viewing.limitApprovedAt.toISOString())}`]] : []),
+        ...(viewing.status === 'REJECTED' && viewing.revisions[0] ? [['เหตุผลไม่อนุมัติ', viewing.revisions[0].reason], ['ผู้บันทึกไม่อนุมัติ', viewing.revisions[0].createdBy], ['วันที่ไม่อนุมัติ', viewing.revisions[0].createdAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })]] : []),
         ['ผู้ค้ำประกัน', viewing.guarantorName || '—'],
         ['ที่อยู่ผู้ค้ำประกัน', viewing.guarantorName ? [viewing.guarantorHouseNumber, viewing.guarantorSoi, viewing.guarantorRoad, viewing.guarantorSubdistrict, viewing.guarantorDistrict, viewing.guarantorProvince].filter(Boolean).join(' ') : '—'],
         ['ทรัพย์ที่มอบประกันในสัญญาค้ำ', viewing.guaranteeCollateralDescription || 'เว้นว่าง'],

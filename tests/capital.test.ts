@@ -40,3 +40,19 @@ test('legacy receipts, voids, future entries and unfunded contracts', () => {
   assert.equal(capitalPosition({ ...contract, status: 'WAITING_PAYMENT', paidAt: null }, [], '2026-10-03'), null)
   assert.equal(capitalPercent(0, 0), 0)
 })
+
+test('cash balance counts funding and all cash flows once, excluding voids and future entries', async () => {
+  const { capitalCash } = await import('../lib/capital')
+  const entry = { direction: 'IN', categoryCode: 'OPENING_CAPITAL', amountSatang: 2000000, occurredOn: '2026-10-01' }
+  const result = capitalCash([entry,
+    { ...entry, categoryCode: 'CAPITAL_INCREASE', amountSatang: 100000 },
+    { ...entry, direction: 'OUT', categoryCode: 'LOAN_DISBURSEMENT', amountSatang: 1500000 },
+    { ...entry, categoryCode: 'CONTRACT_REPAYMENT', amountSatang: 500000 },
+    { ...entry, direction: 'OUT', categoryCode: 'CAPITAL_WITHDRAWAL', amountSatang: 200000 },
+    { ...entry, direction: 'OUT', categoryCode: 'EXPENSE', amountSatang: 10000 },
+    { ...entry, voidedAt: new Date() }, { ...entry, occurredOn: '2026-11-01' },
+  ], '2026-10-24')
+  assert.equal(result.balance, 890000)
+  assert.equal(result.hasOpening, true)
+  assert.equal(capitalCash([], '2026-10-24').hasOpening, false)
+})

@@ -36,9 +36,19 @@ export function capitalPosition(contract: CapitalContract, entries: Entry[], asO
   return {
     principal: contract.principalSatang, cashOut: disbursement?.amountSatang ?? contract.netSatang,
     principalReceived, principalRemaining, principalWaived,
-    interestReceived, upfrontInterest: upfront, penaltyReceived: balance.penaltyPaid,
+    interestReceived, interestRemaining: Math.max(0, interestRemaining), upfrontInterest: upfront, penaltyReceived: balance.penaltyPaid,
     cashReceived: balance.received, legacyReceived: balance.legacyReceivedSatang,
   }
 }
 
 export const capitalPercent = (amount: number, total: number) => total > 0 ? amount / total * 100 : 0
+
+type CashEntry = { direction: string; categoryCode: string; amountSatang: number; occurredOn: string; voidedAt?: unknown }
+/** Ledger cash includes every actual receipt/payment, never receivables or waivers. */
+export function capitalCash(entries: CashEntry[], asOf = bangkokToday()) {
+  const active = entries.filter(e => !e.voidedAt && e.occurredOn <= asOf)
+  const incoming = active.filter(e => e.direction === 'IN').reduce((n, e) => n + e.amountSatang, 0)
+  const outgoing = active.filter(e => e.direction === 'OUT').reduce((n, e) => n + e.amountSatang, 0)
+  const opening = active.filter(e => e.direction === 'IN' && e.categoryCode === 'OPENING_CAPITAL').reduce((n, e) => n + e.amountSatang, 0)
+  return { incoming, outgoing, balance: incoming - outgoing, opening, hasOpening: active.some(e => e.direction === 'IN' && e.categoryCode === 'OPENING_CAPITAL') }
+}

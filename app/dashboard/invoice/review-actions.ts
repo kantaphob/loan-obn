@@ -82,3 +82,20 @@ export async function editPendingContract(input: EditPendingContractInput) {
     return { success: true as const, ...result }
   } catch (error) { return { success: false as const, error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'แก้ไขไม่สำเร็จ กรุณาลองใหม่' } }
 }
+
+export async function rejectPendingContract(id: number, expectedToken: string, reason: string) {
+  try {
+    const user = await operator(true)
+    if (typeof reason !== 'string' || !reason.trim() || reason.length > 500) throw new Error('กรุณาระบุเหตุผลไม่อนุมัติ ไม่เกิน 500 ตัวอักษร')
+    await prisma.$transaction(async tx => {
+      const { contract: c, data } = await loadPendingContractReview(tx, id)
+      assertReviewToken(data.reviewToken, expectedToken)
+      if (!c.limitApprovalRequired) throw new Error('รายการนี้ได้รับอนุมัติแล้ว ไม่สามารถปฏิเสธคำขอเดิมได้')
+      const updated = await tx.loanContract.updateMany({ where: { id, reviewVersion: c.reviewVersion, status: 'WAITING_PAYMENT', paidAt: null, limitApprovalRequired: true }, data: { status: 'REJECTED', limitApprovalRequired: false, limitApprovedAt: null, limitApprovedBy: null, reviewVersion: { increment: 1 } } })
+      if (!updated.count) throw new Error('รายการเปลี่ยนแปลงแล้ว กรุณาโหลดใหม่')
+      await tx.contractRevision.create({ data: { contractId: id, kind: 'REJECTION', beforeJson: JSON.stringify(data), afterJson: JSON.stringify({ status: 'REJECTED', limitApprovalRequired: false, reviewVersion: c.reviewVersion + 1 }), reason: reason.trim(), createdBy: user.id } })
+    })
+    await syncGoogleContract(id); refresh()
+    return { success: true as const }
+  } catch (error) { return { success: false as const, error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกไม่อนุมัติไม่สำเร็จ กรุณาลองใหม่' } }
+}

@@ -15,7 +15,7 @@ async function LedgerContent() {
   await connection()
   const data = await getLedger()
   return <PageContainer className="borrower-page">
-    <Header title="บัญชีรับ–จ่าย" eyebrow="Cash ledger" description="ตรวจรายการเงินเข้า–ออก หลักฐาน และประวัติแก้ไข พร้อมบันทึกรับ–จ่ายทั่วไป" icon={<BookOpen size={21} />} />
+    <Header title="บัญชีรับ–จ่าย" eyebrow="รายการปี 2026 · Cash ledger" description="ตรวจและบันทึกรายการรับ–จ่าย พร้อมหลักฐานและประวัติแก้ไข" icon={<BookOpen size={21} />} />
     <LedgerWorkspace data={data} />
   </PageContainer>
 }

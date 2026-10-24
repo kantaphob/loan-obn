@@ -15,7 +15,7 @@ const borrowerCode = (id: number, code?: string | null) => code || `BR-${String(
 const transactionCode = (id: number) => `TX-${String(id).padStart(6, '0')}`
 const contractStatus: Record<string, string> = {
   WAITING_PAYMENT: 'รอรับยอด', PAID: 'รอส่งคืน', CLOSED: 'ปิดยอด', OVERDUE: 'เกินกำหนดชำระ',
-  RESERVED: 'จองสัญญา', REVIEW: 'พิจารณา', REJECTED: 'ปฏิเสธ',
+  RESERVED: 'จองสัญญา', REVIEW: 'พิจารณา', REJECTED: 'ไม่อนุมัติ',
 }
 
 function cleanCardData(value: string | null) {

@@ -23,12 +23,23 @@ async function operator(write = false) {
 }
 export async function getLedger() {
   const user = await operator()
-  const [entries, contracts, categories, channels] = await Promise.all([
-    prisma.ledgerEntry.findMany({ orderBy: [{ occurredOn: 'desc' }, { id: 'desc' }], include: { slip: { select: { originalName: true, mimeType: true } }, contract: { select: { borrowerName: true, interestMethod: true, principalSatang: true, interestSatang: true, netSatang: true, repaymentSatang: true } }, revisions: { orderBy: { id: 'desc' } } } }),
+  const [entryCount, contracts, categories, channels] = await Promise.all([
+    prisma.ledgerEntry.count(),
     prisma.loanContract.findMany({ select: { id: true, borrowerName: true, lenderName: true, netSatang: true, repaymentSatang: true, interestMethod: true, status: true, paidAt: true, repaymentDueDate: true, legacyReceivedSatang: true, legacySourceCode: true, penaltyMaxDays: true }, orderBy: { id: 'desc' } }),
-    prisma.financialCategory.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }),
+    prisma.financialCategory.findMany({ where: { isActive: true, NOT: { code: { startsWith: 'Y2025_' } } }, orderBy: { sortOrder: 'asc' } }),
     prisma.paymentChannel.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } }),
   ])
+  // Keep nested relation reads below SQLite's bind-parameter limit on large ledgers.
+  const batchSize = 400
+  const entryPages = await Promise.all(Array.from({ length: Math.ceil(entryCount / batchSize) }, (_, page) =>
+    prisma.ledgerEntry.findMany({
+      orderBy: [{ occurredOn: 'desc' }, { id: 'desc' }],
+      skip: page * batchSize,
+      take: batchSize,
+      include: { slip: { select: { originalName: true, mimeType: true } }, contract: { select: { borrowerName: true, interestMethod: true, principalSatang: true, interestSatang: true, netSatang: true, repaymentSatang: true } }, revisions: { orderBy: { id: 'desc' } } },
+    }),
+  ))
+  const entries = entryPages.flat()
   return {
     canWrite: user.role !== 'REVIEWER', categories, channels,
     entries: entries.map(e => ({ ...e, slip: e.slip ? { ...e.slip, displayName: slipFileName({ ...e, legacySourceCode: contracts.find(c => c.id === e.contractId)?.legacySourceCode }, e.slip.mimeType) } : null, revisions: e.revisions.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })), createdAt: e.createdAt.toISOString(), voidedAt: e.voidedAt?.toISOString() ?? null })),
@@ -203,8 +214,9 @@ export async function editLedger(input: {
           await tx.loanContract.update({ where: { id: contract.id }, data: { status: after.remaining === 0 ? 'CLOSED' : 'PAID' } })
         } else throw new Error('รายการสัญญาประเภทนี้ยังไม่รองรับการแก้ไข')
       }
-      const before = { amountSatang: entry.amountSatang, occurredOn: entry.occurredOn, direction: entry.direction, categoryCode: entry.categoryCode, categoryName: entry.categoryName, channelCode: entry.channelCode, channelName: entry.channelName, reference: entry.reference, note: entry.note }
-      const after = { amountSatang, occurredOn: input.occurredOn, direction, categoryCode, categoryName, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: input.note.trim() }
+      const before = { principalReceivedSatang: entry.principalReceivedSatang, interestReceivedSatang: entry.interestReceivedSatang, penaltyReceivedSatang: entry.penaltyReceivedSatang, amountSatang: entry.amountSatang, occurredOn: entry.occurredOn, direction: entry.direction, categoryCode: entry.categoryCode, categoryName: entry.categoryName, channelCode: entry.channelCode, channelName: entry.channelName, reference: entry.reference, note: entry.note }
+      const financialDateOrAmountChanged = amountSatang !== entry.amountSatang || input.occurredOn !== entry.occurredOn
+      const after = { principalReceivedSatang: financialDateOrAmountChanged ? null : entry.principalReceivedSatang, interestReceivedSatang: financialDateOrAmountChanged ? null : entry.interestReceivedSatang, penaltyReceivedSatang: financialDateOrAmountChanged ? null : entry.penaltyReceivedSatang, amountSatang, occurredOn: input.occurredOn, direction, categoryCode, categoryName, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: input.note.trim() }
       if (JSON.stringify(before) === JSON.stringify(after)) throw new Error('ยังไม่มีข้อมูลเปลี่ยนแปลง')
       await tx.ledgerEntry.update({ where: { id: entry.id }, data: after })
       await tx.ledgerRevision.create({ data: { entryId: entry.id, beforeJson: JSON.stringify(before), afterJson: JSON.stringify(after), reason: input.reason.trim(), createdBy: user.id } })

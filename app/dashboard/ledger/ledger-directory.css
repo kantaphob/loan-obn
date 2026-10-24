@@ -1,9 +1,13 @@
 .ledger-directory-metrics > div { padding: 17px 20px; }
 .ledger-directory-metrics > div p:last-child { margin-top: 6px; font-size: 10px; }
 .ledger-directory-metrics > div p.tabular-nums { font-size: 25px; margin-top: 10px; }
-.ledger-directory-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
-.ledger-directory-shortcuts a { border: 1px solid #dce6f0; border-radius: 10px; padding: 8px 12px; color: #547195; background: #ffffff9c; text-decoration: none; font-size: 11px; transition: background .15s; }
-.ledger-directory-shortcuts a:hover { background: #edf5ff; }
+.ledger-year-nav { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 9px 12px; border: 1px solid #e1e9f2; border-radius: 16px; background: linear-gradient(105deg, #fff 0%, #f5f9ff 100%); box-shadow: 0 5px 18px #4057740a; }
+.ledger-year-title { display: inline-flex; align-items: center; gap: 8px; margin-right: 5px; color: #71839b; font-size: 12px; }
+.ledger-year-current { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border-radius: 10px; background: #eaf3ff; color: #315f9b; }
+.ledger-year-current strong { font-size: 13px; font-weight: 700; }
+.ledger-year-current small { font-size: 10px; color: #6e8db5; }
+.ledger-year-history { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border: 1px solid #dce6f0; border-radius: 10px; color: #547195; background: #ffffffc9; text-decoration: none; font-size: 11px; transition: background .15s, border-color .15s; }
+.ledger-year-history:hover { border-color: #bfd3eb; background: #edf5ff; }
 .ledger-directory-caption { display: flex; justify-content: space-between; padding: 12px 20px; font-size: 10px; color: #94a0b0; background: #f9fbfd; }
 .ledger-directory-table { width: 100%; min-width: 900px; text-align: left; border-collapse: collapse; font-size: 12px; color: #42546b; }
 .ledger-directory-table thead { background: #eff4f9; }
@@ -38,8 +42,9 @@
 .ledger-row-actions .ledger-cancel-action { color: #be8c99; padding: 8px; }.ledger-row-actions .ledger-cancel-action:hover { color: #c33c5d; border-color: #efd2db; background: #fff4f6; }
 .ledger-void-label { color: #92a0af; font-size: 9px; background: #eaf0f5; border-radius: 5px; padding: 2px 5px; }
 .ledger-row-void .ledger-cash-cell { text-decoration: line-through; opacity: .5; }
-.ledger-directory-table button:focus-visible,.ledger-directory-table summary:focus-visible,.ledger-directory-shortcuts a:focus-visible { outline: 2px solid #5487c3; outline-offset: 3px; }
+.ledger-directory-table button:focus-visible,.ledger-directory-table summary:focus-visible,.ledger-year-nav a:focus-visible { outline: 2px solid #5487c3; outline-offset: 3px; }
 @media(max-width: 700px) { .ledger-directory-metrics > div { padding: 14px; }.ledger-directory-metrics > div p.tabular-nums { font-size: 21px; } }
+@media(max-width: 480px) { .ledger-year-nav { gap: 7px; padding: 8px; }.ledger-year-title { gap: 5px; margin-right: 0; font-size: 11px; }.ledger-year-current,.ledger-year-history { padding: 0 9px; }.ledger-year-current { gap: 5px; }.ledger-year-current small { display: none; } }
 .ledger-directory { min-width: 0; width: 100%; max-width: 100%; }
 .ledger-directory-card { min-width: 0; width: 100%; max-width: 100%; }
 .ledger-directory .liquid-glass-content { min-width: 0; }
