@@ -12,7 +12,7 @@ const schema = spawnSync(process.execPath, ['node_modules/prisma/build/index.js'
 if (schema.status !== 0) throw new Error(schema.stderr || 'Cannot prepare fixture schema')
 db.exec(schema.stdout)
 db.close()
-const result = spawnSync(process.execPath, ['--import', './tests/contracts-register.mjs', '--import', 'tsx', '--test', 'tests/contracts.test.ts'], {
-  env: { ...process.env, DATABASE_URL: `file:${filename}` }, stdio: 'inherit',
+const result = spawnSync(process.execPath, ['--import', './tests/contracts-register.mjs', '--import', 'tsx', '--test', 'tests/contracts.test.ts', 'tests/legacy-loans.test.ts'], {
+  env: { ...process.env, LOAN_DISABLE_SIDE_EFFECTS: '1', GOOGLE_APPS_SCRIPT_URL: '', GOOGLE_SYNC_TOKEN: '', DATABASE_URL: `file:${filename}` }, stdio: 'inherit',
 })
 process.exitCode = result.status ?? 1

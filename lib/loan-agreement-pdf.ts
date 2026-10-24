@@ -11,6 +11,7 @@ export type LoanAgreementData = {
   netSatang: number; repaymentSatang: number; interestPercent: number;
   scheduledDisbursementDate?: string | null; repaymentDueDate?: string | null;
   interestMethod: string; paidAt: Date | null;
+  fundsReceived?: boolean;
   lenderAddress?: string; borrowerNationalId?: string | null; lenderNationalId?: string | null;
   witnesses?: { position: number; name: string; signatureData: string; signedAt: Date }[];
   witnessCount?: number; signingMethod?: string | null; borrowerSignatureData?: string | null; borrowerSignedAt?: Date | null;
@@ -99,11 +100,12 @@ export async function createLoanAgreementPdf(data: LoanAgreementData) {
   paragraph(`ข้าพเจ้า ${data.borrowerName} อายุ ${age} ปี อยู่บ้านเลขที่ ${data.houseNumber || blank} ตำบล ${data.subdistrict || blank} อำเภอ ${data.district || blank} จังหวัด ${data.province || blank} ได้ทำหนังสือสัญญากู้เงินให้ไว้แก่ ${data.lenderName} มีข้อสัญญาดังแจ้งต่อไปนี้`, { indent: 22 })
   const principalLabel = `${bahtWords(data.principalSatang)} (${money(data.principalSatang)} บาท)`
   paragraph(`ข้อ ๑. ข้าพเจ้า ${data.borrowerName} ได้กู้เงินของ ${data.lenderName} เป็นจำนวนเงิน ${principalLabel}`, { indent: 22, keepTogether: principalLabel })
-  paragraph('ข้าพเจ้าได้รับเงินไปครบถ้วนเสร็จแล้วตั้งแต่วันทำสัญญานี้', { indent: 22 })
+  paragraph(data.fundsReceived
+    ? 'ข้าพเจ้าได้รับเงินไปครบถ้วนเสร็จแล้วตั้งแต่วันทำสัญญานี้'
+    : 'ข้าพเจ้าจะลงลายมือชื่อรับเงินเมื่อได้รับเงินจริง', { indent: 22 })
   paragraph(`ข้อ ๒. เพื่อเป็นหลักฐานในเงินซึ่งข้าพเจ้ากู้ไปนี้ ข้าพเจ้าได้นำ ${data.collateralDescription?.trim() || `${blank} ${blank}`} ให้ท่านถือไว้เป็นประกันด้วย และข้าพเจ้าขอรับรองว่า ทรัพย์สินซึ่งข้าพเจ้านำมานี้ เป็นของข้าพเจ้าโดยแท้จริง และไม่มีภาระผูกพันใด ๆ ในหนี้สินรายอื่นนอกเหนือทรัพย์สินนี้เลย`, { indent: 22 })
   paragraph(`ข้อ ๓. ในจำนวนเงินซึ่งข้าพเจ้าได้กู้ไปนี้ ข้าพเจ้าจะนำมาใช้ให้ท่านเสร็จภายในวันที่ ${data.repaymentDueDate ? formatContractDate(data.repaymentDueDate) : '........ เดือน ........................ พ.ศ. ........'} นับตั้งแต่วันทำสัญญานี้เป็นต้นไป`, { indent: 22 })
-  const interestLabel = `${money(data.interestSatang)} บาท`
-  paragraph(`ข้อ ๔. ข้าพเจ้ายอมให้ดอกเบี้ย ${interestLabel} แก่ท่าน ทุกเดือนไป จนกว่าข้าพเจ้าจะนำเงินต้นส่งให้แก่ท่านจนครบตามจำนวนที่ได้กู้ไป`, { indent: 22, keepTogether: interestLabel })
+  paragraph(`ข้อ ๔. ข้าพเจ้ายอมให้ดอกเบี้ย ${blank} แก่ท่าน ทุกเดือนไป จนกว่าข้าพเจ้าจะนำเงินต้นส่งให้แก่ท่านจนครบตามจำนวนที่ได้กู้ไป`, { indent: 22, keepTogether: blank })
   paragraph('ข้อ ๕. ข้าพเจ้าล้มตายเสียก็ดี หรือหลบหายไปเสียก็ดี ข้าพเจ้ายอมให้ท่านมีอำนาจเอาทรัพย์สมบัติของข้าพเจ้า ขายทอดตลาดเอาเงินต้น และดอกเบี้ยของท่านจนครบ', { indent: 22 })
   paragraph('ข้อ ๖. แม้ว่าข้าพเจ้าประพฤติผิดสัญญานี้แต่ข้อหนึ่งข้อใดก็ดี ยอมให้ท่านฟ้องร้องเรียกเงินต้นและดอกเบี้ยแก่ข้าพเจ้าตามกฎหมาย', { indent: 22 })
   paragraph('ข้อ ๗. ค่าธรรมเนียม ค่าพาหนะและค่าเสียหายต่าง ๆ ซึ่งท่านต้องเสียไปในการทวงถามฟ้องร้องข้าพเจ้านั้น ข้าพเจ้ายอมใช้ให้ท่านตามที่ได้เสียหายไปจนครบถ้วน', { indent: 22 })

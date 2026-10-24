@@ -1,0 +1,52 @@
+.ledger-entry-dialog.workspace-modal { max-width: 880px; padding: 26px 28px 0; background: #fff; border: 1px solid #e4eaf0; border-radius: 26px; color: #24344b; }
+.ledger-entry-dialog > header { margin-bottom: 24px; }
+.ledger-entry-dialog > header h2 { font-size: 21px; letter-spacing: -.5px; }
+.ledger-entry-dialog > header p { font-size: 12px; margin-top: 5px; }
+.ledger-entry-form { --entry-color: #087c65; --entry-soft: #effaf6; --entry-line: #a6decc; }
+.ledger-entry-form[data-direction="OUT"] { --entry-color: #bf3654; --entry-soft: #fff3f5; --entry-line: #edb9c4; }
+.ledger-entry-grid { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 26px; align-items: start; }
+.ledger-entry-main { display: grid; gap: 18px; padding-bottom: 20px; }
+.ledger-direction { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ledger-direction button { display: flex; align-items: center; gap: 10px; padding: 13px 12px; text-align: left; border-radius: 14px; border: 1px solid #e0e6ed; background: #fff; color: #7a8796; transition: background .15s, border-color .15s; }
+.ledger-direction button[aria-pressed="true"] { background: var(--entry-soft); border-color: var(--entry-color); color: var(--entry-color); box-shadow: 0 0 0 1px var(--entry-color); }
+.ledger-direction strong { display: block; font-size: 14px; font-weight: 600; }
+.ledger-direction small { display: block; margin-top: 2px; font-size: 10px; opacity: .8; }
+.ledger-direction-icon { display: grid; place-items: center; }
+.ledger-direction-check { margin-left: auto; min-width: 18px; }
+.ledger-amount-box { border: 1px solid var(--entry-line); background: var(--entry-soft); border-radius: 17px; padding: 18px 20px 14px; }
+.ledger-amount-box > label { font-size: 12px; color: var(--entry-color); font-weight: 500; }
+.ledger-amount-input { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+.ledger-amount-input input { width: 100%; min-width: 0; padding: 0; background: transparent; border: 0; border-radius: 3px; font-size: 38px; font-weight: 600; line-height: 1.3; color: var(--entry-color); font-variant-numeric: tabular-nums; outline-offset: 4px; }
+.ledger-amount-input input::placeholder { color: var(--entry-color); opacity: .35; }
+.ledger-amount-input input::-webkit-inner-spin-button,.ledger-amount-input input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.ledger-amount-input > span { font-size: 13px; color: var(--entry-color); }
+.ledger-amount-box > p { margin: 8px 0 0; font-size: 10px; color: #7a8c87; }
+.ledger-entry-main > label,.ledger-entry-main .grid > label { font-size: 12px; color: #4b5c70; font-weight: 500; }
+.ledger-entry-dialog input:not(#ledger-entry-amount),.ledger-entry-dialog select,.ledger-entry-dialog textarea { border-color: #dde5ed; border-radius: 10px; color: #30435a; font-weight: 400; box-shadow: none; }
+.ledger-entry-dialog input:focus-visible,.ledger-entry-dialog select:focus-visible,.ledger-entry-dialog textarea:focus-visible { outline: 2px solid var(--entry-color); outline-offset: 2px; }
+.ledger-repayment-link { margin: 0; color: #8591a0; font-size: 11px; }
+.ledger-repayment-link a { color: #3a6da8; text-decoration: underline; text-underline-offset: 3px; }
+.ledger-entry-summary { background: #f7f9fc; border: 1px solid #e9edf3; border-radius: 18px; padding: 21px; }
+.ledger-summary-heading { display: flex; gap: 7px; align-items: center; color: #6e8098; font-size: 11px; font-weight: 500; }
+.ledger-summary-dot { width: 6px; height: 6px; background: var(--entry-color); border-radius: 50%; }
+.ledger-summary-type { font-size: 12px; margin: 20px 0 5px; color: #738399; }
+.ledger-summary-amount { margin: 0; font-size: 29px; line-height: 1.4; font-weight: 600; color: var(--entry-color); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ledger-summary-amount span { font-size: 11px; font-weight: 400; }
+.ledger-summary-list { border-top: 1px dashed #dce3ec; margin: 19px 0; padding-top: 16px; display: grid; gap: 13px; font-size: 11px; }
+.ledger-summary-list > div { display: flex; gap: 12px; justify-content: space-between; }
+.ledger-summary-list dt { color: #8896a8; flex-shrink: 0; }
+.ledger-summary-list dd { margin: 0; text-align: right; font-weight: 500; overflow-wrap: anywhere; }
+.ledger-summary-list small { display: block; margin-top: 3px; font-size: 10px; color: #8391a0; font-weight: 400; }
+.ledger-entry-extras { border-top: 1px solid #e4eaf1; padding-top: 16px; display: grid; gap: 13px; }
+.ledger-entry-extras > p { margin: 0; display: flex; justify-content: space-between; font-size: 11px; color: #5c6c81; }
+.ledger-entry-extras > p span { font-size: 10px; color: #99a5b4; }
+.ledger-entry-extras label { font-size: 10px; color: #7b899d; }
+.ledger-entry-extras input,.ledger-entry-extras textarea { margin-top: 5px; font-size: 12px; }
+.ledger-entry-footer { position: sticky; bottom: 0; z-index: 1; background: #fff; border-top: 1px solid #e9edf2; padding: 17px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px; }
+.ledger-entry-footer > p { display: flex; gap: 6px; align-items: center; font-size: 10px; color: #8a98a8; margin: 0; }
+.ledger-entry-footer > div { display: flex; gap: 9px; }
+.ledger-entry-dialog .ledger-entry-save { background: var(--entry-color); color: #fff; border-color: var(--entry-color); box-shadow: none; min-width: 145px; }
+.ledger-entry-dialog .ledger-entry-save:disabled { opacity: .4; }
+.ledger-entry-error { padding: 10px 14px; border-radius: 10px; background: #fff0f1; color: #a62843; font-size: 12px; }
+@media(max-width: 650px) { .ledger-entry-dialog.workspace-modal { padding: 22px 18px 0; border-radius: 20px; } .ledger-entry-grid { grid-template-columns: minmax(0,1fr); gap: 0; } .ledger-entry-summary { padding: 17px; margin-bottom: 16px; } .ledger-summary-type,.ledger-summary-amount,.ledger-summary-list { display: none; } .ledger-entry-extras { margin-top: 12px; } .ledger-entry-footer > p { display: none; } .ledger-entry-footer > div { width: 100%; justify-content: flex-end; } .ledger-direction button { padding: 12px; } .ledger-amount-input input { font-size: 34px; } }
+.ledger-entry-dialog #ledger-entry-amount { background: transparent !important; border: 0 !important; padding: 0 !important; box-shadow: none !important; }

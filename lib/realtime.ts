@@ -14,8 +14,15 @@ export type LoanStatusChangedEvent = {
   changedAt: string
 }
 
+export type CreditBureauChangedEvent = {
+  type: 'credit-bureau.changed'
+  changedAt: string
+}
+
+export type RealtimeEvent = LoanStatusChangedEvent | CreditBureauChangedEvent
+
 type NotificationHub = {
-  publish: (event: LoanStatusChangedEvent) => void
+  publish: (event: RealtimeEvent) => void
 }
 
 declare global {
@@ -32,6 +39,13 @@ export function publishLoanStatusChanged(
     type: 'loan.status.changed',
     applicationNumber,
     status,
+    changedAt: new Date().toISOString(),
+  })
+}
+
+export function publishCreditBureauChanged() {
+  globalThis.__loanNotificationHub?.publish({
+    type: 'credit-bureau.changed',
     changedAt: new Date().toISOString(),
   })
 }

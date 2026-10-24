@@ -95,3 +95,36 @@
 .workspace-theme .repayment-preview strong { color: #147354; }
 .workspace-theme .repayment-history-entry { background: #fff; border-color: #d4dfed; }
 .workspace-theme .repayment-tabs button:focus-visible, .workspace-theme .repayment-directory-heading a:focus-visible { outline-color: #326cbd; }
+.workspace-theme .repayment-slip-upload { padding:16px; border:1px dashed #9db9da; border-radius:12px; background:#eef4fc; }
+.workspace-theme .repayment-slip-upload input { padding:8px; border-radius:8px; }
+.repayment-slip-upload input::file-selector-button { padding:7px 12px; margin-right:10px; border:1px solid #adc4e4; border-radius:7px; background:#e4eefe; color:#2059a3; cursor:pointer; }
+.workspace-theme .repayment-penalty { padding:16px; border:1px solid #e4cba1; border-radius:12px; background:#fff9ef; color:#604c2e; }
+
+.repayment-contract-heading { margin-bottom:16px; padding:16px; border:1px solid #bdd3eb; border-radius:12px; background:#eef5fc; color:#243247; }
+.repayment-contract-heading strong { font-size:16px; }
+.repayment-contract-heading p { margin-top:5px; font-size:12px; line-height:1.7; color:#526780; }
+.repayment-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+.repayment-detail-grid > div { border:1px solid #d7e1ed; border-radius:10px; padding:12px; }
+.repayment-detail-grid dt { color:#5d6b7d; font-size:11px; }
+.repayment-detail-grid dd { margin-top:7px; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+.repayment-review-list > div { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 0; border-bottom:1px solid #d7e1ed; font-size:13px; }
+.repayment-review-list dt { flex-shrink:0; max-width:48%; color:#5d6b7d; }
+.repayment-review-list dd { text-align:right; overflow-wrap:anywhere; font-weight:500; }
+.repayment-review-list > div:first-child dd { color:#147354; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+@media(max-width:540px) { .repayment-review-list > div { flex-direction:column; gap:5px; } .repayment-review-list dt { max-width:100%; } .repayment-review-list dd { text-align:left; } }
+
+.repayment-tabs a { white-space:nowrap; padding:9px 13px; border:1px solid transparent; border-radius:9px; color:#a8bac8; font-size:12px; }
+.repayment-tabs a[aria-current=page] { color:#e8c58d; background:#dfbd8512; border-color:#dfbd8540; }
+.repayment-tabs a:focus-visible { outline:2px solid #326cbd; outline-offset:3px; }
+.workspace-theme .repayment-tabs a { color:#5d6b7d; }
+.workspace-theme .repayment-tabs a:hover { background:#edf3fc; color:#245f9f; }
+.workspace-theme .repayment-tabs a[aria-current=page] { color:#2059a3; background:#e5efff; border-color:#9dbce5; }
+
+.workspace-theme .repayment-contract-number { margin-top:12px; padding:12px 14px; border:1px solid #b5cce8; border-radius:10px; background:#fff; }
+.workspace-theme .repayment-contract-number > span { display:block; color:#506782; font-size:12px; }
+.workspace-theme .repayment-contract-number > strong { display:block; margin-top:4px; color:#174d89; font-family:ui-monospace,monospace; font-size:22px; font-weight:700; letter-spacing:.04em; overflow-wrap:anywhere; }
+.workspace-theme .repayment-contract-number > p { margin-top:6px; color:#526780; font-size:12px; }
+.workspace-theme .repayment-table .repayment-contract-number { margin-top:7px; padding:7px 10px; }
+.workspace-theme .repayment-table .repayment-contract-number > strong { font-size:15px; }
+.workspace-theme .repayment-upfront-received { margin-top:8px; padding:8px 10px; border:1px solid #bcdccc; border-radius:8px; background:#edf8f1; color:#166541; font-size:12px; font-weight:600; }
+.workspace-theme .repayment-upfront-received span { display:block; margin-top:4px; color:#526b60; font-size:11px; font-weight:400; }

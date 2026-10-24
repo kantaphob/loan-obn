@@ -13,6 +13,6 @@ if (schema.status !== 0) throw new Error(schema.stderr || 'Cannot prepare fixtur
 db.exec(schema.stdout)
 db.close()
 const result = spawnSync(process.execPath, ['--import', './tests/ledger-register.mjs', '--import', 'tsx', '--test', 'tests/ledger.test.ts'], {
-  env: { ...process.env, DATABASE_URL: `file:${filename}` }, stdio: 'inherit',
+  env: { ...process.env, LOAN_DISABLE_SIDE_EFFECTS: '1', GOOGLE_APPS_SCRIPT_URL: '', GOOGLE_SYNC_TOKEN: '', DATABASE_URL: `file:${filename}` }, stdio: 'inherit',
 })
 process.exitCode = result.status ?? 1

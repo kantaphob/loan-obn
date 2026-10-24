@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useToast } from '@/components/ui/toast'
-import type { LoanApplicationStatus, LoanStatusChangedEvent } from '@/lib/realtime'
+import type { CreditBureauChangedEvent, LoanApplicationStatus, LoanStatusChangedEvent } from '@/lib/realtime'
 
 const statusLabels: Record<LoanApplicationStatus, string> = {
   DRAFT: 'ฉบับร่าง',
@@ -22,6 +22,12 @@ function isStatusChangedEvent(value: unknown): value is LoanStatusChangedEvent {
     && typeof event.status === 'string'
     && event.status in statusLabels
     && typeof event.changedAt === 'string'
+}
+
+function isCreditBureauChangedEvent(value: unknown): value is CreditBureauChangedEvent {
+  if (!value || typeof value !== 'object') return false
+  const event = value as Partial<CreditBureauChangedEvent>
+  return event.type === 'credit-bureau.changed' && typeof event.changedAt === 'string'
 }
 
 export function LoanNotifications() {
@@ -45,15 +51,18 @@ export function LoanNotifications() {
       socket.addEventListener('message', (message) => {
         try {
           const event: unknown = JSON.parse(String(message.data))
-          if (!isStatusChangedEvent(event)) return
-
-          toast({
-            title: `สถานะคำขอ ${event.applicationNumber} เปลี่ยนแล้ว`,
-            description: `สถานะใหม่: ${statusLabels[event.status]}`,
-            variant: event.status === 'REJECTED' ? 'error' : 'success',
-            duration: 6000,
-          })
-          window.dispatchEvent(new CustomEvent('loan-status-changed', { detail: event }))
+          if (isStatusChangedEvent(event)) {
+            toast({
+              title: `สถานะคำขอ ${event.applicationNumber} เปลี่ยนแล้ว`,
+              description: `สถานะใหม่: ${statusLabels[event.status]}`,
+              variant: event.status === 'REJECTED' ? 'error' : 'success',
+              duration: 6000,
+            })
+            window.dispatchEvent(new CustomEvent('loan-status-changed', { detail: event }))
+          } else if (isCreditBureauChangedEvent(event)) {
+            toast({ title: 'ประวัติเครดิตมีการอัปเดต', description: 'กำลังโหลดข้อมูลสัญญาและรายการรับ–จ่ายล่าสุด', variant: 'success' })
+            window.dispatchEvent(new CustomEvent('credit-bureau-changed', { detail: event }))
+          }
         } catch {
           // Ignore malformed messages so a bad event cannot break reconnection.
         }

@@ -9,7 +9,7 @@ type Signature = { name: string; signatureData?: string | null; signedAt?: Date 
 export type CollateralAgreementPdfData = {
   code: string; createdAt: Date; borrowerName: string; borrowerId?: string | null; borrowerAddress?: string | null; borrowerPhone?: string | null
   lenderName: string; lenderId?: string | null; lenderAddress?: string | null; lenderPhone?: string | null
-  guarantorName?: string | null; guarantorAddress?: string | null; principalSatang: number; interestPercent: number; repaymentDueDate?: string | null
+  guarantorName?: string | null; guarantorAddress?: string | null; principalSatang: number; interestPercent: number; interestMethod?: string; scheduledDisbursementDate?: string | null; repaymentDueDate?: string | null
   details: Values; borrowerSignature?: Signature; lenderSignature?: Signature; guarantorSignature?: Signature
   providerSignature?: Signature; custodianSignature?: Signature; loanWitnesses?: Signature[]; collateralWitnesses?: Signature[]
 }
@@ -76,12 +76,17 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
   field('ที่อยู่ผู้ให้หลักประกัน', details.providerAddress || (providerRole === 'ลูกหนี้' ? data.borrowerAddress : '') || blank)
   field('โทรศัพท์ผู้ให้หลักประกัน', details.providerPhone || (providerRole === 'ลูกหนี้' ? data.borrowerPhone : '') || blank)
   field('ฐานะผู้ให้หลักประกัน', providerRole)
-  paragraph('กรอกเฉพาะฐานะที่ใช้จริง หากไม่มีผู้ค้ำประกัน ให้ระบุ “ไม่ใช้” และขีดฆ่าข้อ 3–4 ทั้งหมด ผู้จำนองซึ่งประกันหนี้ของผู้อื่นไม่ลงชื่อเป็นผู้ค้ำประกันหนี้เดียวกันในแบบร่างนี้')
+  paragraph(data.guarantorName
+    ? 'กรอกเฉพาะฐานะที่ใช้จริง ผู้จำนองซึ่งประกันหนี้ของผู้อื่นไม่ลงชื่อเป็นผู้ค้ำประกันหนี้เดียวกันในแบบร่างนี้'
+    : 'ไม่มีผู้ค้ำประกันส่วนบุคคล ข้อ 3–4 ไม่ใช้กับสัญญานี้ ผู้จำนองหรือผู้จำนำทรัพย์เพื่อประกันหนี้ของผู้อื่นมีฐานะเป็นผู้ให้หลักประกันตามขอบเขตทรัพย์เท่านั้น')
 
   paragraph('2. หนี้ที่ประกันและขอบเขตจำนวนเงิน', { heading: true })
   field('หนี้ตามสัญญา', value('securedDebtType') === blank ? 'สัญญากู้ยืมเงิน' : value('securedDebtType')); field('เลขที่สัญญา', data.code); field('ลงวันที่', formatContractDate(data.createdAt.toISOString().slice(0, 10)))
   field('วัตถุประสงค์', value('debtPurpose')); field('เงินต้น', `${money(data.principalSatang)} บาท (${moneyWords(data.principalSatang)})`); field('กำหนดชำระวันที่', data.repaymentDueDate ? formatContractDate(data.repaymentDueDate) : '')
-  field('ดอกเบี้ยตามสัญญาหลักต่อเดือน (%)', value('interestPercentPerMonth')); field('ดอกเบี้ยผิดนัดต่อปี (%)', value('defaultInterestPercent'))
+  field('อัตราดอกเบี้ยตามสัญญาหลัก (ร้อยละต่อเดือน)', '')
+  field('วิธีชำระดอกเบี้ย', '')
+  field('อัตราเทียบรายปีโดยประมาณ', '')
+  field('ดอกเบี้ยผิดนัดต่อปี (%)', value('defaultInterestPercent'))
   const maximumSecuredAmount = Number(details.maximumSecuredAmount)
   field('จำนวนสูงสุดที่ค้ำ/ประกัน', Number.isFinite(maximumSecuredAmount) && maximumSecuredAmount > 0
     ? `${money(Math.round(maximumSecuredAmount * 100))} บาท (${moneyWords(Math.round(maximumSecuredAmount * 100))})`
@@ -89,15 +94,17 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
   if (details.futureDebtType || details.futureDebtPurpose || details.futureDebtStart || details.futureDebtEnd) { field('ประเภทหนี้ในอนาคต', value('futureDebtType')); field('วัตถุประสงค์หนี้ในอนาคต', value('futureDebtPurpose')); field('ช่วงเวลาก่อหนี้', `${value('futureDebtStart')} ถึง ${value('futureDebtEnd')}`) }
 
   paragraph('เงื่อนไขการค้ำประกันและหลักประกัน', { heading: true })
-  paragraph('3. การค้ำประกันส่วนบุคคล (ใช้เมื่อมีผู้ค้ำประกันเท่านั้น)', { heading: true })
-  paragraph('ผู้ค้ำประกันตกลงชำระหนี้ตามข้อ 2 เมื่อลูกหนี้ไม่ชำระ โดยมีความรับผิดไม่เกินวงเงินและขอบเขตที่ระบุไว้ ผู้ค้ำประกันมิได้เข้าร่วมเป็นลูกหนี้ร่วม และไม่สละสิทธิหรือข้อต่อสู้ที่กฎหมายให้ไว้ รวมถึงสิทธิขอให้เรียกลูกหนี้หรือบังคับจากทรัพย์หลักประกันก่อน ในกรณีที่กฎหมายบัญญัติให้ใช้สิทธินั้นได้')
-  paragraph('4. การผิดนัดและการแจ้งผู้ค้ำประกัน', { heading: true })
-  paragraph('เมื่อลูกหนี้ผิดนัด เจ้าหนี้ต้องมีหนังสือบอกกล่าวไปยังผู้ค้ำประกันภายในหกสิบวันนับแต่วันที่ลูกหนี้ผิดนัด และยังเรียกให้ผู้ค้ำประกันชำระหนี้ก่อนหนังสือบอกกล่าวไปถึงมิได้ หากบอกกล่าวล่าช้า ความรับผิดในดอกเบี้ย ค่าสินไหมทดแทน และอุปกรณ์แห่งหนี้ภายหลังพ้นกำหนดดังกล่าว เป็นไปตามกฎหมาย')
-  paragraph('การเพิ่มวงเงิน เปลี่ยนประเภทหนี้ หรือขยายขอบเขตการค้ำประกัน ต้องทำเป็นหนังสือโดยผู้ค้ำประกันยินยอมเฉพาะคราว ไม่มีการให้ความยินยอมล่วงหน้าให้เจ้าหนี้ผ่อนเวลาโดยไม่จำกัด และไม่ตัดสิทธิที่ผู้ค้ำประกันมีตามกฎหมายเมื่อมีการผ่อนเวลาหรือแก้ไขหนี้')
+  if (data.guarantorName) {
+    paragraph('3. การค้ำประกันส่วนบุคคล', { heading: true })
+    paragraph('ผู้ค้ำประกันตกลงรับผิดชำระหนี้ตามข้อ 2 เมื่อผู้กู้ผิดนัด ภายในวงเงินสูงสุดและขอบเขตหนี้ที่ระบุไว้ ผู้ค้ำประกันมิได้เข้าร่วมเป็นลูกหนี้ร่วม และไม่สละสิทธิหรือข้อต่อสู้ตามกฎหมาย รวมถึงสิทธิให้เรียกลูกหนี้หรือบังคับจากทรัพย์หลักประกันก่อนในกรณีที่กฎหมายให้สิทธิ')
+    paragraph('4. การผิดนัดและการบอกกล่าวผู้ค้ำประกัน', { heading: true })
+    paragraph('เมื่อลูกหนี้ผิดนัด เจ้าหนี้ต้องมีหนังสือบอกกล่าวไปยังผู้ค้ำประกันภายในหกสิบวันนับแต่วันที่ลูกหนี้ผิดนัด และจะเรียกให้ผู้ค้ำประกันชำระหนี้ก่อนหนังสือบอกกล่าวไปถึงผู้ค้ำประกันมิได้ หากบอกกล่าวพ้นกำหนด ผู้ค้ำประกันหลุดพ้นจากดอกเบี้ย ค่าสินไหมทดแทน และอุปกรณ์แห่งหนี้ที่เกิดขึ้นภายหลังพ้นกำหนดนั้นตามกฎหมาย ผู้ค้ำประกันมีสิทธิชำระหนี้ตามเงื่อนไขและวิธีการชำระที่ลูกหนี้มีอยู่ และไม่ต้องรับผิดดอกเบี้ยผิดนัดในช่วงเวลาที่กฎหมายกำหนด')
+    paragraph('การเพิ่มวงเงิน เปลี่ยนประเภทหนี้ หรือขยายขอบเขตการค้ำประกัน ต้องทำเป็นหนังสือและได้รับความยินยอมจากผู้ค้ำประกันตามกฎหมาย ไม่มีการให้ความยินยอมล่วงหน้าเพื่อผ่อนเวลาชำระหนี้โดยไม่จำกัด')
+  }
 
   if (details.assetAccount === 'MORTGAGE' || details.assetAccount === 'BOTH') {
     paragraph('5. อสังหาริมทรัพย์และทรัพย์ที่จดทะเบียนจำนองได้ · บัญชี ก', { heading: true })
-    paragraph(`ผู้ให้หลักประกันตกลงนำทรัพย์ตามบัญชี ก ไปจดทะเบียนจำนอง ณ ${value('registrationOffice')} ภายในวันที่ ${value('mortgageDeadline')} จำนวนเงินจำนอง ${value('mortgageAmount')} บาท เงื่อนไขเป็นไปตามสัญญาจำนองที่จดทะเบียนและกฎหมาย แบบร่างนี้หรือการส่งมอบโฉนดเพียงอย่างเดียวไม่ทำให้เกิดสิทธิจำนอง`)
+    paragraph(`ผู้ให้หลักประกันตกลงนำทรัพย์ตามบัญชี ก ไปจดทะเบียนจำนอง ณ ${value('registrationOffice')} ภายในวันที่ ${value('mortgageDeadline')} จำนวนเงินจำนอง ${value('mortgageAmount')} บาท เงื่อนไขเป็นไปตามสัญญาจำนองที่จดทะเบียนและกฎหมาย แบบร่างนี้หรือการส่งมอบโฉนดเพียงอย่างเดียวไม่ทำให้เกิดสิทธิจำนอง ลายมือชื่อในบัญชี ก เป็นการรับรองรายการทรัพย์และข้อตกลงให้ดำเนินการจดทะเบียน ไม่ใช้แทนสัญญาจำนองที่จดทะเบียน`)
     paragraph('หากผู้จำนองเป็นบุคคลอื่นซึ่งนำทรัพย์ประกันหนี้ของลูกหนี้ ความรับผิดของผู้จำนองจำกัดอยู่ในทรัพย์จำนองตามกฎหมาย ไม่ให้ข้อความใดในเอกสารนี้มีผลให้ต้องรับผิดอย่างผู้ค้ำประกันหรือเกินราคาทรัพย์จำนองเมื่อบังคับจำนอง')
     for (const [label, key] of [['ประเภททรัพย์','propertyType'],['เจ้าของกรรมสิทธิ์','propertyOwner'],['สัดส่วนกรรมสิทธิ์','ownershipShare'],['โฉนด/หนังสือแสดงสิทธิเลขที่','titleDeedNumber'],['เลขที่ดิน','landNumber'],['หน้าสำรวจ','surveyNumber'],['ตำบล/แขวง','propertySubdistrict'],['อำเภอ/เขต','propertyDistrict'],['จังหวัด','propertyProvince'],['เนื้อที่ (ไร่/งาน/ตารางวา)',`${value('areaRai')} / ${value('areaNgan')} / ${value('areaSquareWa')}`],['สิ่งปลูกสร้างเลขที่','buildingNumber'],['อาคารชุด','condoBuilding'],['ห้องเลขที่','condoRoom'],['ชั้น','condoFloor'],['พื้นที่ห้องชุด (ตร.ม.)','condoArea'],['หนังสือกรรมสิทธิ์ห้องชุดเลขที่','condoTitleNumber'],['ราคาประเมิน (บาท)','propertyAppraisalValue'],['ภาระผูกพัน/ผู้รับจำนองเดิม/เจ้าของร่วม','propertyEncumbrances'],['คู่สมรส/ผู้มีอำนาจให้ความยินยอม','consentingPerson'],['หลักฐานแนบ','consentEvidence'],['จำนวนเงินจำนอง (บาท)','mortgageAmount'],['หน่วยงานจดทะเบียน','registrationOffice'],['กำหนดจดทะเบียน','mortgageDeadline'],['วันจดทะเบียนจริง','actualMortgageDate'],['ลำดับจำนอง','mortgagePriority']] as const) field(label, key.startsWith('เนื้อที่') ? key : value(key))
     paragraph('บัญชีนี้ไม่ใช้แทนการจดทะเบียนจำนอง ต้องตรวจกรรมสิทธิ์ ข้อจำกัด และความยินยอมที่กฎหมายกำหนดกับหน่วยงานทะเบียนก่อนดำเนินการ')
@@ -109,9 +116,9 @@ export async function createCollateralAgreementPdf(data: CollateralAgreementPdfD
   }
 
   paragraph('7. การดูแลและการบังคับหลักประกัน', { heading: true })
-  paragraph('ผู้ให้หลักประกันรับรองสิทธิในทรัพย์และเปิดเผยเจ้าของร่วม คู่สมรส และภาระผูกพันทั้งหมดตามบัญชี ผู้ครอบครองทรัพย์ต้องดูแลตามสมควร ห้ามนำทรัพย์จำนำไปใช้โดยไม่มีสิทธิ เจ้าหนี้ต้องบอกกล่าวและบังคับหลักประกันตามขั้นตอนกฎหมาย ห้ามยึดเอาทรัพย์เป็นของตนโดยอัตโนมัติหรือขายเองโดยไม่ปฏิบัติตามกฎหมาย')
+  paragraph('ผู้ให้หลักประกันรับรองสิทธิในทรัพย์และเปิดเผยเจ้าของร่วม คู่สมรส และภาระผูกพันทั้งหมดตามบัญชี ผู้ครอบครองทรัพย์ต้องดูแลตามสมควร ห้ามนำทรัพย์จำนำไปใช้โดยไม่มีสิทธิ การบังคับจำนำต้องมีหนังสือบอกกล่าวให้ลูกหนี้ชำระหนี้และอุปกรณ์ภายในเวลาอันควร หากไม่ชำระจึงขายทอดตลาด และต้องแจ้งผู้จำนำถึงวันและสถานที่ขายตามกฎหมาย ห้ามยึดเอาทรัพย์เป็นของตนโดยอัตโนมัติหรือขายเองนอกขั้นตอนกฎหมาย')
   paragraph('8. การชำระหนี้ การคืนทรัพย์ และข้อตกลงทั่วไป', { heading: true })
-  paragraph('เงินที่ได้รับจากลูกหนี้ ผู้ค้ำประกัน หรือการบังคับหลักประกัน ต้องนำหักหนี้เดียวกันโดยไม่เรียกเก็บซ้ำ คืนเงินส่วนเกินแก่ผู้มีสิทธิ เมื่อหนี้ที่ประกันระงับ เจ้าหนี้ต้องคืนทรัพย์จำนำและเอกสาร พร้อมร่วมดำเนินการปลดจำนองโดยไม่ชักช้า ผู้ค้ำประกันที่ชำระหนี้ย่อมมีสิทธิไล่เบี้ยและรับช่วงสิทธิตามกฎหมาย')
+  paragraph('เงินที่ได้รับจากลูกหนี้ ผู้ค้ำประกัน หรือการบังคับหลักประกันให้นำหักหนี้เดียวกัน ไม่เรียกเก็บซ้ำ หากขายทรัพย์จำนำได้เงินเกินหนี้และค่าใช้จ่ายที่ชอบด้วยกฎหมาย ให้คืนส่วนเกินแก่ผู้มีสิทธิ หากได้เงินไม่พอ ลูกหนี้ยังรับผิดในส่วนที่ขาดตามกฎหมาย เมื่อหนี้ที่ประกันระงับ เจ้าหนี้ต้องคืนทรัพย์จำนำและเอกสาร พร้อมร่วมดำเนินการปลดจำนองโดยไม่ชักช้า ผู้ค้ำประกันที่ชำระหนี้ย่อมมีสิทธิไล่เบี้ยและรับช่วงสิทธิตามกฎหมาย')
   paragraph('การส่งหนังสือใช้ที่อยู่ที่ระบุไว้หรือที่แจ้งเปลี่ยนเป็นหนังสือ โดยต้องพิสูจน์การส่งและการถึงตามกฎหมาย ไม่ถือว่าได้รับทันทีเพียงส่ง เอกสารนี้ใช้กฎหมายไทยและไม่ตัดสิทธิตามกฎหมายบังคับ คู่สัญญาต้องกรอกช่องสาระสำคัญและลงนามกำกับการแก้ไขก่อนลงชื่อ')
   paragraph(`ใช้บัญชี ${details.assetAccount === 'BOTH' ? 'ก / ข / ทั้งสองบัญชี' : details.assetAccount === 'MORTGAGE' ? 'ก' : 'ข'} · ทำ ${value('copyCount')} ฉบับ มีข้อความตรงกัน ให้คู่สัญญาแต่ละฝ่ายเก็บไว้`)
   paragraph('9. การลงนามในสัญญา', { heading: true })

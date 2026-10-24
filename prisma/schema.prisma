@@ -255,9 +255,12 @@ model Lender {
 }
 
 model LoanContract {
+  reviewVersion Int @default(0)
+  revisions ContractRevision[]
   ledgerEntries LedgerEntry[]
   witnesses ContractWitness[]
   documentSignatures ContractDocumentSignature[]
+  collateralAttachments ContractCollateralAttachment[]
   id                Int      @id @default(autoincrement())
   requestKey        String   @unique
   borrowerId        Int
@@ -275,11 +278,20 @@ model LoanContract {
   interestMethod    String
   interestRateCode  String?
   interestPercent   Float
+  internalInterestPercent Float?
   // Integer satang stored as SQLite REAL to accommodate amounts above Int32.
   principalSatang   Float
   interestSatang    Float
   netSatang         Float
   repaymentSatang   Float
+  legacySourceCode String? @unique
+  legacyReceivedSatang Float @default(0)
+  legacyDetails String?
+  // Zero preserves the existing uncapped penalty rule; new contracts set this to 30 days.
+  penaltyMaxDays Int @default(0)
+  limitApprovalRequired Boolean @default(false)
+  limitApprovedAt DateTime?
+  limitApprovedBy String?
   status            String   @default("WAITING_PAYMENT")
   createdBy         String
   createdAt         DateTime @default(now())
@@ -319,6 +331,25 @@ model LoanContract {
   @@map("loan_contract")
 }
 
+model ContractCollateralAttachment {
+  id               Int          @id @default(autoincrement())
+  contractId       Int
+  contract         LoanContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  category         String
+  originalName     String
+  fileData         Bytes
+  mimeType         String
+  sizeBytes        Int
+  sha256           String
+  originalStatus   String       @default("PENDING")
+  originalLocation String?
+  createdBy        String
+  createdAt        DateTime     @default(now())
+
+  @@index([contractId, createdAt])
+  @@map("contract_collateral_attachment")
+}
+
 model ContractWitness {
   contractId Int
   position Int
@@ -350,6 +381,14 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  slipHash String?
+  slip LedgerSlip?
+  settlementWaivedSatang Float @default(0)
+  settlementWaiverReason String @default("")
+  penaltyAssessed Boolean @default(false)
+  penaltyWaivedSatang Float @default(0)
+  penaltyWaiverReason String @default("")
+  revisions LedgerRevision[]
   payableId Int?
   payable TradePayable? @relation(fields: [payableId], references: [id], onDelete: Restrict)
   id Int @id @default(autoincrement())
@@ -393,4 +432,60 @@ model TradePayable {
   @@unique([supplier, invoiceNumber])
   @@index([dueDate])
   @@map("trade_payable")
+}
+
+model LedgerRevision {
+  id Int @id @default(autoincrement())
+  entryId Int
+  entry LedgerEntry @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  beforeJson String
+  afterJson String
+  reason String
+  createdBy String
+  createdAt DateTime @default(now())
+  @@index([entryId, createdAt])
+  @@map("ledger_revision")
+}
+
+model LedgerSlip {
+  id Int @id @default(autoincrement())
+  entryId Int @unique
+  entry LedgerEntry @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  originalName String
+  mimeType String
+  fileData Bytes
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@map("ledger_slip")
+}
+
+model GoogleSyncJob {
+  id String @id
+  entity String
+  entityId Int
+  status String @default("PENDING")
+  version Int @default(1)
+  attempts Int @default(0)
+  lastError String @default("")
+  nextAttemptAt DateTime @default(now())
+  lastAttemptAt DateTime?
+  syncedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@index([status, nextAttemptAt])
+  @@map("google_sync_job")
+}
+
+model ContractRevision {
+  id Int @id @default(autoincrement())
+  contractId Int
+  contract LoanContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  kind String
+  beforeJson String
+  afterJson String
+  reason String
+  createdBy String
+  createdAt DateTime @default(now())
+  @@index([contractId, createdAt])
+  @@map("contract_revision")
 }

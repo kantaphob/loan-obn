@@ -1,11 +1,9 @@
 import {
-  FileSignature,
   House,
   Landmark,
   LayoutDashboard,
   DatabaseBackup,
   ScrollText,
-  Users,
   type LucideIcon,
   UserShield,
   FolderUser,
@@ -34,34 +32,35 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: "Borrower",
-    items: [
-      { label: "Borrowers", href: "/dashboard/borrower", icon: FolderUser },
-    ],
-  },
-  {
     title: "Lenders",
     items: [
       { label: "Creditors", href: "/dashboard/lenders", icon: HandCoins },
+    ],
+  },
+    {
+    title: "Borrower",
+    items: [
+      { label: "Borrowers", href: "/dashboard/borrower", icon: FolderUser },
+      { label: "Credit Bureau", href: "/dashboard/credit-burea", icon: UserShield },
     ],
   },
   {
     title: "Contracts",
     items: [
       { label: "Contracts", href: "/dashboard/contracts", icon: ReceiptText },
-      { label: "บิลที่รอจ่ายเงินตามสัญญา", href: "/dashboard/invoice", icon: FileSignature },
-      { label: "Aging Analysis", href: "/dashboard/aging-analysis", icon: FileSignature },
-      { label: "Applications", href: "/dashboard/applications", icon: FileSignature },
     ],
   },
   {
     title: "Accounting",
     items: [
-      { label: "เจ้าหนี้การค้า (AP)", href: "/dashboard/ap", icon: HandCoins },
-      { label: "รับชำระตามสัญญา", href: "/dashboard/repayments", icon: HandCoins },
-      { label: "Account Receivable", href: "/dashboard/ar", icon: HandCoins },
-      { label: "Ledger", href: "/dashboard/ledger", icon: ScrollText },
-      { label: "Accounting", href: "/dashboard/accounting", icon: ScrollText },
+      { label: "ลูกหนี้และรับชำระ", href: "/dashboard/repayments", icon: HandCoins },
+
+      { label: "จ่ายเงินตามสัญญา", href: "/dashboard/ap", icon: Landmark },
+      { label: "เจ้าหนี้การค้า", href: "/dashboard/ap/trade", icon: ReceiptText },
+      { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: ScrollText },
+      { label: "รายงานบัญชี", href: "/dashboard/accounting", icon: LayoutDashboard },
+      { label: "บัญชีทุน", href: "/dashboard/capital", icon: LayoutDashboard },
+      { label: "ปิดดุล", href: "/dashboard/ac", icon: LayoutDashboard },
     ],
   },
   {
@@ -80,9 +79,11 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export function findActiveNavItem(pathname: string, search = "") {
   const items = NAV_GROUPS.flatMap((group) => group.items);
-  const currentHref = `${pathname}${search}`;
+  const activePath = pathname === '/dashboard/ap/new' ? '/dashboard/ap/trade' : pathname;
+  const currentHref = `${activePath}${search}`;
   return (
     items.find((item) => item.href === currentHref) ??
-    items.find((item) => item.href === pathname)
+    items.find((item) => item.href === activePath) ??
+    items.filter((item) => activePath.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0]
   );
 }

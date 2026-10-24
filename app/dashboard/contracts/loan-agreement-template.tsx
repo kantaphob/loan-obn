@@ -14,7 +14,7 @@ export function LoanAgreementTemplate({ contractId, signingMethod, borrowerSigne
     </div>
     {canOpenDocument && <div className="flex flex-wrap gap-2">
       <a href={templateUrl} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">{needsElectronicSignatures ? 'เปิด PDF / พิมพ์ฉบับลงนาม' : contractId ? 'เปิด PDF / พิมพ์สัญญา' : 'เปิด PDF / พิมพ์แบบฟอร์ม'}</a>
-      <a href={contractId ? `${templateUrl}?download=1` : templateUrl} download="หนังสือสัญญาเงินกู้.pdf" className="action-button action-button--secondary">{needsElectronicSignatures ? 'ดาวน์โหลดฉบับลงนาม' : contractId ? 'ดาวน์โหลดสัญญา' : 'ดาวน์โหลดแม่แบบ'}</a>
+      <a href={contractId ? `${templateUrl}?download=1` : templateUrl} download={contractId ? `CT-${String(contractId).padStart(6, '0')}-loan.pdf` : 'หนังสือสัญญาเงินกู้.pdf'} className="action-button action-button--secondary">{needsElectronicSignatures ? 'ดาวน์โหลดฉบับลงนาม' : contractId ? 'ดาวน์โหลดสัญญา' : 'ดาวน์โหลดแม่แบบ'}</a>
     </div>}
     {canOpenDocument && <details>
       <summary className="cursor-pointer text-xs font-medium text-sky-700">แสดงตัวอย่างเอกสาร</summary>

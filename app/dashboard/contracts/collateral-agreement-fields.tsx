@@ -13,7 +13,6 @@ const sections: { title: string; description?: string; fields: Field[] }[] = [
     { key: 'guarantorNationalId', label: 'เลขประจำตัวผู้ค้ำประกัน (ถ้ามี)' }, { key: 'guarantorPhone', label: 'โทรศัพท์ผู้ค้ำประกัน (ถ้ามี)' },
     { key: 'securedDebtType', label: 'ประเภทหนี้ / ชื่อสัญญาหลัก', placeholder: 'เช่น สัญญากู้ยืมเงิน' },
     { key: 'debtPurpose', label: 'วัตถุประสงค์หนี้', kind: 'textarea' },
-    { key: 'interestPercentPerMonth', label: 'ดอกเบี้ยตามสัญญาหลักต่อเดือน (%)', kind: 'number' },
     { key: 'defaultInterestPercent', label: 'ดอกเบี้ยผิดนัดต่อปี (%)', kind: 'number' },
     { key: 'maximumSecuredAmount', label: 'วงเงินสูงสุดที่ค้ำ/ประกัน (บาท)', kind: 'number' },
     { key: 'futureDebtType', label: 'ประเภทหนี้ในอนาคต (ถ้ามี)' }, { key: 'futureDebtPurpose', label: 'วัตถุประสงค์หนี้ในอนาคต (ถ้ามี)' },
@@ -57,7 +56,7 @@ export function CollateralAgreementFields({ value, onChange }: { value: Collater
   return <div className="space-y-3">
     <section className="rounded-xl border border-sky-200 bg-sky-50/50 p-3 sm:p-4">
       <p className="m-0 text-sm font-medium">ระบบเติมให้อัตโนมัติจากสัญญา</p>
-      <p className="mb-0 mt-1 text-xs leading-5 text-slate-600">ชื่อผู้ให้กู้และผู้กู้ เลขสัญญา วันที่ทำสัญญา เงินต้น อัตราดอกเบี้ย และวันครบกำหนดจะดึงจากข้อมูลในสัญญา 3.1 ส่วนผู้ค้ำประกันดึงจาก 3.2</p>
+      <p className="mb-0 mt-1 text-xs leading-5 text-slate-600">ชื่อคู่สัญญา เลขสัญญา เงินต้น ดอกเบี้ยตามรอบสัญญา และวันครบกำหนดจะดึงจาก 3.1 ส่วนผู้ค้ำประกันดึงจาก 3.2 ระบบคำนวณอัตราเทียบรายปีและตรวจเพดานการให้กู้ทั่วไปก่อนบันทึก</p>
     </section>
     <label className="block text-sm font-medium">ใช้บัญชีแนบท้าย
       <select value={value.assetAccount ?? 'BOTH'} onChange={event => update('assetAccount', event.target.value)} className={fieldClass}>

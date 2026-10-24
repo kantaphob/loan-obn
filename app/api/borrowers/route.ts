@@ -5,6 +5,8 @@ import { verifyCardRead } from '@/lib/thai-id-token'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
 import { borrowerFields, borrowerStatuses, promptPayTypes } from '@/lib/borrower'
+import { syncGoogleBorrower } from '@/lib/google-sync'
+import { syncGoogleSheetRow } from '@/lib/google-integration'
 
 export async function POST(request: Request) { return saveBorrower(request, false) }
 export async function PUT(request: Request) { return saveBorrower(request, true) }
@@ -100,6 +102,7 @@ async function saveBorrower(request: Request, editing: boolean) {
       const created = await tx.borrower.create({ data: values })
       return tx.borrower.update({ where: { id: created.id }, data: { borrowerId: `BR-${String(created.id).padStart(5, '0')}` } })
     })
+    await syncGoogleBorrower(borrower.id)
     const replacedFiles = [
       existing && Object.hasOwn(qrValues, 'lineQrImage') ? existing.lineQrImage : '',
       existing && Object.hasOwn(cardValues, 'cardData') ? cardPhotoReference(existing.cardData) : '',
@@ -130,6 +133,7 @@ export async function DELETE(request: Request) {
     })
     if (removed) {
       await Promise.allSettled([removed.lineQrImage, cardPhotoReference(removed.cardData)].filter(Boolean).map(removeBorrowerImage))
+      await syncGoogleSheetRow({ sheetName: 'ผู้กู้', keyHeader: 'ID ระบบ', keyValue: String(id), delete: true }).catch(error => console.error('Google sync borrower delete failed:', error instanceof Error ? error.message : 'unknown'))
       return Response.json({ success: true })
     }
     const existing = await prisma.borrower.findUnique({ where: { id } })

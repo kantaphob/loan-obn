@@ -8,7 +8,9 @@ export type ContractDraft = {
   guarantorDistrict?: string; guarantorProvince?: string; guaranteeCollateralDescription?: string;
   guarantorProvinceId?: string; guarantorDistrictId?: string; guarantorSubdistrictId?: string;
   scheduledDisbursementDate: string; repaymentDueDate: string;
-  interestMethod: string; rateCode: string; customRate: string; principal: string;
+  /** Deprecated contractual-rate fields are ignored; internal reference rate drives system totals only. */
+  interestMethod?: string; rateCode?: string; customRate?: string; principal: string;
+  internalRateCode?: string; internalCustomRate?: string;
 }
 export const contractCode = (id: number) => `CT-${String(id).padStart(6, '0')}`
 export const formatContractMoney = (satang: number) => new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(satang / 100)
@@ -19,6 +21,16 @@ export function contractAmounts(principal: string, percent: number, method: stri
   const principalSatang = Math.round(Number(principal) * 100)
   const interestSatang = Math.round(principalSatang * percent / 100)
   return { principalSatang, interestSatang, netSatang: principalSatang - (method === 'INTEREST_UPFRONT' ? interestSatang : 0), repaymentSatang: principalSatang + (method === 'INTEREST_UPFRONT' ? 0 : interestSatang) }
+}
+
+/** Annualized simple interest on cash actually delivered, for ordinary private lending checks. */
+export function annualizedSimpleRate(percent: number, method: string, disbursement: string, due: string) {
+  if (!Number.isFinite(percent) || percent < 0 || !['INTEREST_UPFRONT', 'INTEREST_WITH_PRINCIPAL'].includes(method)) return Number.POSITIVE_INFINITY
+  const days = (Date.parse(`${due}T00:00:00Z`) - Date.parse(`${disbursement}T00:00:00Z`)) / 86_400_000
+  if (!Number.isFinite(days) || days < 0) return Number.POSITIVE_INFINITY
+  const receivedPercent = method === 'INTEREST_UPFRONT' ? 100 - percent : 100
+  if (receivedPercent <= 0) return Number.POSITIVE_INFINITY
+  return percent / receivedPercent * 365 / Math.max(days, 1) * 100
 }
 
 export type ContractDocumentSignatureRecord = { documentStage: string; signer: string; name?: string; signedAt: unknown }

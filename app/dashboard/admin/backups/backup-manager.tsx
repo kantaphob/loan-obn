@@ -50,7 +50,9 @@ export function BackupManager() {
   }, [toast])
 
   useEffect(() => {
-    void loadBackups()
+    let active = true
+    queueMicrotask(() => { if (active) void loadBackups() })
+    return () => { active = false }
   }, [loadBackups])
 
   async function createBackup() {

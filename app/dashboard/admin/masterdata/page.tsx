@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Header } from '@/components/ui/header'
 import { PageContainer } from '@/components/ui/page-container'
 import { MasterdataSubnav } from '@/components/dashboard/masterdata-subnav'
+import { GoogleSyncButton } from './google-sync-button'
 import { MASTERDATA_MENUS } from '@/lib/masterdata-nav'
 import { prisma } from '@/lib/prisma'
 
@@ -38,6 +39,10 @@ export default async function Masterdata() {
     <PageContainer>
       <Header title="Masterdata" eyebrow="Administration" description="ข้อมูลหลักทั้งหมดในระบบ แยกตามประเภทข้อมูล" status={{ label: `${total.toLocaleString('th-TH')} รายการ`, tone: 'success' }} />
       <MasterdataSubnav />
+      <Card className="mb-5 flex flex-wrap items-center justify-between gap-4 p-5">
+        <div><h2 className="m-0 text-sm font-semibold text-slate-100">Google Sheets และ Google Drive</h2><p className="mb-0 mt-1 text-xs text-slate-400">ส่งข้อมูลเดิมเข้า Spreadsheet และเก็บเอกสารไว้ใน Drive</p></div>
+        <GoogleSyncButton />
+      </Card>
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         {[
           { label: 'ข้อมูลหลักทั้งหมด', value: total, unit: 'รายการ', icon: Database },

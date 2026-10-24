@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Landmark, Plus, Search, Eye, Pencil, X, CreditCard } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useToast } from '@/components/ui/toast'
 import { lenderCode, lenderFields, lenderRoles, lenderStatuses, type LenderRow } from '@/lib/lender'
 
@@ -35,6 +36,7 @@ export function LenderManager({ lenders, total, page, query: initialQuery, role:
   const [cardReadToken, setCardReadToken] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  useFeedbackToast({ error, success: notice })
   const openDialog = useCallback((node: HTMLDialogElement | null) => { if (node && !node.open) node.showModal() }, [])
   const pages = Math.max(1, Math.ceil(total / 25))
   const currentPage = page

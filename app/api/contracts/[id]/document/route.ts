@@ -4,6 +4,7 @@ import { contractCode, contractDocumentSignaturesComplete, contractSignaturesCom
 import { createLoanAgreementPdf } from '@/lib/loan-agreement-pdf'
 import { createGuaranteeAgreementPdf } from '@/lib/guarantee-agreement-pdf'
 import { createCollateralAgreementPdf } from '@/lib/collateral-agreement-pdf'
+import { archiveGoogleContractPdf, reportGoogleSyncError } from '@/lib/google-integration'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser()
@@ -11,7 +12,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id: value } = await params
   const id = Number(value)
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(id) || id <= 0) return Response.json({ message: 'เลขสัญญาไม่ถูกต้อง' }, { status: 400 })
-  const contract = await prisma.loanContract.findUnique({ where: { id }, include: { witnesses: true, documentSignatures: true, borrower: { include: { province: true } }, lender: true } })
+  const contract = await prisma.loanContract.findUnique({ where: { id }, include: { witnesses: true, documentSignatures: true, ledgerEntries: { where: { kind: 'DISBURSEMENT', voidedAt: null }, select: { id: true } }, borrower: { include: { province: true } }, lender: true } })
   if (!contract) return Response.json({ message: 'ไม่พบสัญญา' }, { status: 404 })
   if (contract.documentChoice !== 'CREATE') return Response.json({ message: 'รายการนี้เลือกไม่ทำสัญญา' }, { status: 400 })
   const document = new URL(request.url).searchParams.get('document') ?? 'loan'
@@ -51,7 +52,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const collateralDetails = (() => { try { return JSON.parse(contract.collateralAgreementData || '{"assetAccount":"BOTH"}') as Record<string, string> } catch { return { assetAccount: 'BOTH' } } })()
     const pdf = document === 'loan'
       ? await createLoanAgreementPdf({ ...contract, code, address: borrower.address, houseNumber: borrower.houseNumber,
-        birthDate: borrower.birthDate, borrowerNationalId: borrower.nationalId, lenderNationalId: contract.lender.nationalId, lenderAddress: contract.lender.address, province: borrower.province?.nameTh ?? '', district: district?.nameTh ?? '', subdistrict: subdistrict?.nameTh ?? '' })
+        birthDate: borrower.birthDate, borrowerNationalId: borrower.nationalId, lenderNationalId: contract.lender.nationalId, lenderAddress: contract.lender.address, province: borrower.province?.nameTh ?? '', district: district?.nameTh ?? '', subdistrict: subdistrict?.nameTh ?? '', fundsReceived: contract.ledgerEntries.length > 0 })
       : document === 'guarantee'
         ? await createGuaranteeAgreementPdf(guarantorContract!)
         : await createCollateralAgreementPdf({
@@ -59,7 +60,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             borrowerAddress: [borrower.address, borrower.houseNumber, borrower.villageNumber, subdistrict?.nameTh, district?.nameTh, borrower.province?.nameTh].filter(Boolean).join(' '), borrowerPhone: borrower.phone,
             lenderName: contract.lenderName, lenderId: contract.lender.nationalId, lenderAddress: contract.lender.address, lenderPhone: contract.lender.phone,
             guarantorName: contract.guarantorName, guarantorAddress: contract.guarantorName ? [contract.guarantorHouseNumber, contract.guarantorSoi, contract.guarantorRoad, contract.guarantorSubdistrict, contract.guarantorDistrict, contract.guarantorProvince].filter(Boolean).join(' ') : null,
-            principalSatang: contract.principalSatang, interestPercent: contract.interestPercent, repaymentDueDate: contract.repaymentDueDate, details: collateralDetails,
+            principalSatang: contract.principalSatang, interestPercent: contract.interestPercent, interestMethod: contract.interestMethod,
+            scheduledDisbursementDate: contract.scheduledDisbursementDate, repaymentDueDate: contract.repaymentDueDate, details: collateralDetails,
             borrowerSignature: { name: contract.borrowerName, signatureData: collateralSignatures.find(signature => signature.signer === 'BORROWER')?.signatureData, signedAt: collateralSignatures.find(signature => signature.signer === 'BORROWER')?.signedAt },
             lenderSignature: { name: contract.lenderName, signatureData: collateralSignatures.find(signature => signature.signer === 'LENDER')?.signatureData, signedAt: collateralSignatures.find(signature => signature.signer === 'LENDER')?.signedAt },
             guarantorSignature: contract.guarantorName ? { name: contract.guarantorName, signatureData: collateralSignatures.find(signature => signature.signer === 'GUARANTOR')?.signatureData, signedAt: collateralSignatures.find(signature => signature.signer === 'GUARANTOR')?.signedAt } : undefined,
@@ -67,6 +69,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             custodianSignature: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN') ? { name: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN')!.name, signatureData: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN')!.signatureData, signedAt: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN')!.signedAt } : undefined,
             collateralWitnesses: collateralSignatures.filter(signature => signature.signer.startsWith('WITNESS_')).map(signature => ({ name: signature.name, signatureData: signature.signatureData, signedAt: signature.signedAt })),
           })
+    try { await archiveGoogleContractPdf({ contractCode: code, documentType: document as 'loan' | 'guarantee' | 'collateral', createdAt: contract.createdAt, bytes: pdf }) }
+    catch (error) { reportGoogleSyncError(`contract-document:${code}:${document}`, error) }
     const download = new URL(request.url).searchParams.get('download') === '1'
     return new Response(Buffer.from(pdf), { headers: {
       'Content-Type': 'application/pdf',

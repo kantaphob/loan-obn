@@ -1,0 +1,1 @@
+ALTER TABLE "loan_contract" ADD COLUMN "penaltyMaxDays" INTEGER NOT NULL DEFAULT 0;

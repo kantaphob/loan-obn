@@ -10,6 +10,7 @@ export const borrowerStatuses: Record<string, string> = { ACTIVE: 'ใช้ง�
 export type BorrowerRow = {
   titleTh: string; middleNameTh: string; titleEn: string; firstNameEn: string; middleNameEn: string; lastNameEn: string;
   birthDate: string; address: string; houseNumber: string; villageNumber: string; districtId: number | null; subdistrictId: number | null; cardIssueDate: string; cardExpiryDate: string;
+  committedLimit?: number; reservedLimit?: number; currentUsedLimit?: number; positionSource?: 'contracts' | 'import'; currentLoanStatus?: string; overdueDays?: number; currentRiskRating?: string;
   hasLineQr: boolean;
   cardData: string | null; cardReadAt: string | null;
   borrowerId: string | null;

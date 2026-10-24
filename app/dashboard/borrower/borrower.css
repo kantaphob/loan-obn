@@ -1,6 +1,7 @@
 .borrower-page { --borrower-text: #edf3f7; --borrower-muted: #a8bac8; --borrower-line: #aac9df20; color: var(--borrower-text); }
 .borrower-workspace { color: var(--borrower-text); }
 .borrower-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.contracts-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .workspace-theme .borrower-metric { padding: 22px 24px; border-radius: 18px; background: linear-gradient(125deg, #16314599, #0a1c2b); }
 .borrower-metric { --metric-accent: #9bc8ef; }
 .borrower-metric--gold { --metric-accent: #e8c58d; }
@@ -43,13 +44,17 @@
 .borrower-limit-preview { border: 1px solid #7ed9b533; background: #7ed9b50a; color: #a0e3c8; }
 @media (max-width: 700px) {
   .borrower-metrics { grid-template-columns: 1fr; gap: 10px; }
+  .contracts-metrics { grid-template-columns: 1fr; }
   .workspace-theme .borrower-metric { padding: 17px 20px; }
   .borrower-metric-value { font-size: 28px; }
   .borrower-metric-detail { margin-top: 9px; padding-top: 9px; }
   .borrower-toolbar label { min-width: 0; width: 100%; }
   .borrower-empty { min-height: 260px; }
 }
-.borrower-table-scroll th:first-child, .borrower-row-actions { position: sticky; left: 0; z-index: 2; background: #102536; box-shadow: 1px 0 0 #aac9df25; }
+@media (min-width: 701px) and (max-width: 1100px) {
+  .contracts-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.borrower-table-scroll th:last-child, .borrower-row-actions { position: sticky; right: 0; z-index: 2; background: #102536; box-shadow: 1px 0 0 #aac9df25; }
 .borrower-table-scroll tr:hover .borrower-row-actions { background: #173346; }
 .borrower-table-scroll td:nth-child(2) { color: #aac9df; font-family: monospace; }
 .borrower-dialog fieldset:disabled input, .borrower-dialog fieldset:disabled select { opacity: 1; color: #e2edf5; -webkit-text-fill-color: #e2edf5; cursor: default; }
@@ -87,3 +92,111 @@
 .borrower-name-row { display: grid; grid-template-columns: minmax(125px, .65fr) minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 .borrower-name-row > label { min-width: 0; }
 @media (max-width: 639px) { .borrower-name-row { grid-template-columns: 1fr; gap: 16px; } }
+
+/* Directory layout: a focused overview with the complete register one click away. */
+.borrower-workspace { display: grid; gap: 20px; }
+.borrower-workspace > * { margin-top: 0; min-width: 0; }
+.borrower-directory-header { padding: 22px 24px; }
+.borrower-view-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 24px 18px; }
+.borrower-view-bar > div { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--borrower-line); border-radius: 12px; }
+.borrower-view-bar button { padding: 8px 16px; border-radius: 8px; color: var(--borrower-muted); font-size: 12px; cursor: pointer; }
+.borrower-view-bar button[aria-pressed='true'] { color: var(--borrower-text); background: #aac9df20; font-weight: 600; }
+.borrower-view-bar > span { font-size: 11px; color: var(--borrower-muted); }
+.borrower-directory--summary tr > :is(th, td):is(:nth-child(n+7):nth-child(-n+9), :nth-child(n+11):nth-child(-n+21), :nth-child(26)) { display: none; }
+.borrower-directory .borrower-table-scroll { max-height: 64dvh; }
+.borrower-directory .borrower-table-scroll thead { position: sticky; top: 0; z-index: 3; }
+.borrower-directory .borrower-table-scroll td { padding-top: 18px; padding-bottom: 18px; }
+.borrower-profile-dialog { scroll-padding-top: 86px; }
+.borrower-form-nav { display: flex; gap: 6px; position: sticky; top: -24px; z-index: 3; overflow-x: auto; margin: 0 -24px 22px; padding: 14px 24px; background: #0b1d2b; border-block: 1px solid #aac9df26; }
+.borrower-form-nav a { flex-shrink: 0; padding: 8px 12px; border-radius: 8px; color: #b9cbd8; font-size: 12px; text-decoration: none; }
+.borrower-form-nav a:hover { background: #aac9df20; }
+.borrower-form-nav a:focus-visible, .borrower-view-bar button:focus-visible { outline: 2px solid #dfbd85; outline-offset: 2px; }
+.borrower-profile-dialog .borrower-form-section { padding-top: 16px; font-size: 13px; font-weight: 600; }
+.borrower-form-footer { position: sticky; bottom: -24px; z-index: 3; padding: 16px 24px; margin-inline: -24px; margin-bottom: -24px; border-top: 1px solid #aac9df26; background: #0b1d2b; }
+.workspace-theme .borrower-page .borrower-directory-header { padding: 20px 22px; }
+.workspace-theme .borrower-page .borrower-directory-heading h2 { font-size: 16px; }
+.workspace-theme .borrower-page .borrower-view-bar button[aria-pressed='true'] { background: #e3edfb; color: #245e9a; }
+.workspace-theme .borrower-page :is(.borrower-form-nav, .borrower-form-footer) { background: #f8faff; border-color: #c4d1df; }
+.workspace-theme .borrower-page .borrower-form-nav a { color: #40546e; }
+.workspace-theme .borrower-page .borrower-form-nav a:hover { background: #e3edfb; }
+@media (max-width: 640px) {
+  .borrower-view-bar { align-items: flex-start; flex-direction: column; gap: 10px; padding-inline: 16px; }
+  .borrower-toolbar form { min-width: 0; width: 100%; flex-basis: 100%; }
+  .borrower-profile-dialog .borrower-identity-photo { align-items: flex-start; gap: 14px; padding: 14px; }
+  .borrower-profile-dialog .borrower-identity-placeholder { width: 84px; height: 108px; }
+}
+
+.borrower-portrait { display: grid; place-items: center; width: 44px; height: 54px; border-radius: 10px; overflow: hidden; color: var(--borrower-text); background: #aac9df26; border: 1px solid var(--borrower-line); cursor: pointer; font-family: inherit; }
+.borrower-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.borrower-portrait:focus-visible { outline: 2px solid #3973b6; outline-offset: 3px; }
+.borrower-directory .borrower-row-actions { font-family: inherit; }
+.borrower-position-note { display: block; margin-top: 6px; font-family: inherit; font-size: 10px; font-weight: 400; color: var(--borrower-muted); }
+
+.borrower-refresh { display: flex; align-items: center; gap: 12px; color: var(--borrower-muted); font-size: 11px; flex-wrap: wrap; }
+
+.borrower-overview-scroll { overflow: auto; max-height: 68dvh; scrollbar-width: thin; }
+.borrower-overview { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; color: var(--borrower-text); }
+.borrower-overview thead { position: sticky; top: 0; z-index: 2; }
+.borrower-overview th { padding: 15px 20px; background: #122a3b; border-bottom: 1px solid var(--borrower-line); color: var(--borrower-muted); font-size: 11px; font-weight: 500; text-align: left; white-space: nowrap; }
+.borrower-overview th:nth-child(n+4):nth-child(-n+6) { text-align: right; }
+.borrower-overview td { padding: 20px; border-bottom: 1px solid var(--borrower-line); vertical-align: middle; }
+.borrower-overview tbody tr:last-child td { border-bottom: 0; }
+.borrower-person { display: flex; align-items: center; gap: 14px; text-align: left; cursor: pointer; min-width: 220px; }
+.borrower-person:focus-visible { outline: 2px solid #3973b6; outline-offset: 5px; border-radius: 8px; }
+.borrower-person .borrower-portrait { width: 48px; height: 58px; flex-shrink: 0; border-radius: 14px; font-size: 15px; background: linear-gradient(145deg, #dceafa, #eae7f7); color: #476387; }
+.borrower-person-details { display: grid; gap: 5px; }
+.borrower-person-details strong { display: flex; gap: 10px; align-items: center; font-size: 14px; font-weight: 600; }
+.borrower-person-details small { font-size: 10px; font-family: monospace; font-weight: 400; color: var(--borrower-muted); }
+.borrower-person-details > span { color: var(--borrower-muted); font-size: 11px; }
+.borrower-person-phone { font-variant-numeric: tabular-nums; }
+.borrower-loan-chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #82bcad40; padding: 6px 10px; border-radius: 7px; background: #4aa88b15; color: #86d1b6; white-space: nowrap; font-size: 11px; }
+.borrower-loan-chip::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.borrower-loan-chip[data-overdue='true'] { color: #ec9e9e; border-color: #cc777740; background: #cc777715; }
+.borrower-risk-badge { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #dff3e9; color: #237453; font-weight: 700; font-size: 14px; }
+.borrower-risk-badge[data-grade='B'] { background: #fff0ce; color: #8e681c; }
+.borrower-risk-badge[data-grade='C'] { background: #ffe7d5; color: #a25624; }
+.borrower-risk-badge[data-grade='D'] { background: #fbe1e6; color: #ac3c52; }
+.borrower-money-cell { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; white-space: nowrap; }
+.borrower-balance-cell strong { color: #76c9a5; font-weight: 600; font-size: 17px; }
+.borrower-balance-cell meter { display: block; margin: 7px 0 0 auto; width: 86px; height: 5px; border: none; border-radius: 9px; background: #d9e7e1; }
+.borrower-balance-cell meter::-webkit-meter-bar { background: #d9e7e1; border: none; }
+.borrower-balance-cell meter::-webkit-meter-optimum-value { background: #52ad89; }
+.borrower-balance-cell meter::-moz-meter-bar { background: #52ad89; }
+.borrower-overview-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.workspace-theme .borrower-page .borrower-overview th { background: #f2f6fb; color: #62748c; }
+.workspace-theme .borrower-page .borrower-overview td { background: #ffffff80; }
+.workspace-theme .borrower-page .borrower-overview tbody tr:hover td { background: #f1f6fd; }
+.workspace-theme .borrower-page .borrower-loan-chip { color: #367561; background: #eaf5ef; border-color: #cde4d9; }
+.workspace-theme .borrower-page .borrower-loan-chip[data-overdue='true'] { color: #ac4255; background: #fceef0; border-color: #f0cdd4; }
+.workspace-theme .borrower-page .borrower-balance-cell strong { color: #197951; }
+.borrower-view-bar > .borrower-refresh { border: none; padding: 0; }
+@media (max-width: 760px) {
+  .borrower-overview-scroll { max-height: none; overflow: visible; }
+  .borrower-overview, .borrower-overview tbody { display: block; }
+  .borrower-overview thead { display: none; }
+  .borrower-overview tbody { padding: 12px; }
+  .borrower-overview tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 12px; padding: 16px; border: 1px solid var(--borrower-line); border-radius: 16px; gap: 18px 10px; }
+  .borrower-overview td { display: block; padding: 0; border: 0; min-width: 0; }
+  .borrower-overview td:first-child { grid-column: 1 / -1; }
+  .borrower-overview td:nth-child(2) { grid-column: span 2; }
+  .borrower-overview td:nth-child(3) { justify-self: end; }
+  .borrower-overview td:last-child { grid-column: 1 / -1; border-top: 1px solid var(--borrower-line); padding-top: 12px; }
+  .borrower-overview .borrower-money-cell { text-align: left; font-size: 14px; }
+  .borrower-money-cell::before { content: attr(data-label); display: block; margin-bottom: 8px; font-size: 9px; color: var(--borrower-muted); }
+  .borrower-balance-cell meter { margin-left: 0; max-width: 100%; }
+  .borrower-person { min-width: 0; }
+  .workspace-theme .borrower-page .borrower-overview td { background: transparent; }
+}
+
+/* Keep the register focused: headings explain each numeric column once. */
+.borrower-overview td { padding-block: 14px; }
+.borrower-person-details { gap: 4px; }
+.borrower-person .borrower-portrait { width: 42px; height: 50px; border-radius: 12px; }
+.borrower-overview .borrower-risk-badge { width: 28px; height: 28px; font-size: 12px; border-radius: 8px; }
+.borrower-overview .borrower-money-cell { font-size: 14px; }
+.borrower-overview .borrower-balance-cell strong { font-size: 16px; }
+.borrower-loan-chip[data-neutral='true'] { background: #9bb2cc15; color: #a8bac8; border-color: #9bb2cc40; }
+.workspace-theme .borrower-page .borrower-loan-chip[data-neutral='true'] { background: #edf2f8; color: #526a86; border-color: #d5dfec; }
+@media (max-width: 760px) { .borrower-overview td { padding-block: 0; } }
+.borrower-balance-cell .borrower-limit-meter { width: 100%; min-width: 64px; max-width: 112px; height: 6px; margin-top: 9px; overflow: hidden; accent-color: #52ad89; }
+@media (max-width: 760px) { .borrower-balance-cell .borrower-limit-meter { min-width: 0; } }

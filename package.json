@@ -8,12 +8,15 @@
     "build": "next build",
     "start": "NODE_ENV=production node server.mjs",
     "lint": "eslint",
+    "test": "node tests/run-contracts.mjs && node tests/run-ledger.mjs && node tests/run-ap.mjs && npm run test:integrity",
     "db:generate": "prisma generate --config prisma7.config.ts",
-    "db:migrate": "RUST_LOG=info prisma migrate dev --config prisma7.config.ts",
+    "db:migrate": "tsx scripts/deploy-database.ts --dev",
     "db:seed": "RUST_LOG=info prisma db seed --config prisma7.config.ts",
     "db:seed-masterdata": "tsx prisma/seed-financial-masterdata.ts",
     "db:studio": "prisma studio --config prisma7.config.ts",
-    "storage:sync": "tsx scripts/sync-record-files.ts"
+    "storage:sync": "tsx scripts/sync-record-files.ts",
+    "db:deploy": "tsx scripts/deploy-database.ts",
+    "test:integrity": "node tests/run-integrity.mjs && node --test tests/infrastructure.test.mjs"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",

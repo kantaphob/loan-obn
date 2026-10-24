@@ -1,5 +1,6 @@
 'use client'
 
+import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Eraser, PenLine } from 'lucide-react'
 import NextImage from 'next/image'
@@ -29,6 +30,7 @@ export function ContractSignatureModal({ contract, onClose, onSigned }: { contra
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  useFeedbackToast({ error, success: notice })
   const [typedName, setTypedName] = useState('')
   const [witnessName, setWitnessName] = useState('')
   const [records, setRecords] = useState<Awaited<ReturnType<typeof getContractSignatureRecords>>>(null)
@@ -189,8 +191,8 @@ export function ContractSignatureModal({ contract, onClose, onSigned }: { contra
         <div><span className="block text-xs text-slate-500">ครบกำหนดรับชำระ</span>{formatContractDate(contract.repaymentDueDate)}</div>
         <div className="sm:col-span-2"><span className="block text-xs text-slate-500">รายละเอียดหลักประกัน</span>{contract.collateralDescription || 'เว้นว่างตามแบบเดิม'}</div>
         <div><span className="block text-xs text-slate-500">เงินต้น</span>{formatContractMoney(contract.principalSatang)} บาท</div>
-        <div><span className="block text-xs text-slate-500">อัตราดอกเบี้ย / ดอกเบี้ย</span>{contract.interestPercent}% · {formatContractMoney(contract.interestSatang)} บาท</div>
-        <div><span className="block text-xs text-slate-500">การชำระดอกเบี้ย</span>{contract.interestMethod === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ยล่วงหน้า' : 'ชำระพร้อมเงินต้น'}</div>
+        <div><span className="block text-xs text-slate-500">ดอกเบี้ยอ้างอิงภายในต่อเดือน</span>{contract.internalInterestPercent ?? 'ไม่ระบุ'}% · {formatContractMoney(contract.interestSatang)} บาท</div>
+        <div><span className="block text-xs text-slate-500">วิธีจ่ายและคำนวณยอด</span>{contract.interestMethod === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ย 1 เดือนก่อนจ่าย · คืนเงินต้น' : 'รับเงินต้นเต็มจำนวน · คืนเงินต้นพร้อมดอกเบี้ย 1 เดือน'}</div>
         <div><span className="block text-xs text-slate-500">ยอดรับเงินจริง</span>{formatContractMoney(contract.netSatang)} บาท</div>
         <div><span className="block text-xs text-slate-500">ยอดชำระคืน</span>{formatContractMoney(contract.repaymentSatang)} บาท</div>
       </div>

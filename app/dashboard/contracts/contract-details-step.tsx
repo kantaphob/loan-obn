@@ -1,5 +1,6 @@
 'use client'
 
+import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import Image from 'next/image'
@@ -11,15 +12,19 @@ import { ContractDocumentOptions, WitnessCountOptions, signingMethods, documentP
 import { CollateralAgreementFields, type CollateralAgreementValues } from './collateral-agreement-fields'
 import { collateralAgreementSigners, collateralSignatureSetupReady, type ContractDocumentStage } from '@/lib/contracts'
 
-const contractTypes = [
-  { value: 'INTEREST_UPFRONT', label: 'ชำระดอกเบี้ยล่วงหน้า' },
-  { value: 'INTEREST_WITH_PRINCIPAL', label: 'ชำระต้นพร้อมดอกเบี้ย' },
+const interestMethods = [
+  { value: 'INTEREST_UPFRONT', label: 'หักดอกเบี้ยก่อนจ่าย', description: 'หักดอกเบี้ย 1 เดือนจากเงินที่จ่ายจริง และยอดชำระคืนยังเท่าเงินต้น' },
+  { value: 'INTEREST_WITH_PRINCIPAL', label: 'ไม่หักดอกเบี้ยก่อนจ่าย', description: 'จ่ายเงินต้นเต็มจำนวน และชำระคืนเงินต้นพร้อมดอกเบี้ย 1 เดือน' },
 ] as const
 
-type ContractType = typeof contractTypes[number]['value']
 type ContractPhase = 'DETAILS' | 'LOAN' | 'GUARANTEE' | 'COLLATERAL' | 'REVIEW'
 
-export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrowerId, lenderId, onReview, onSaved }: { borrowerName: string; lenderName: string; borrowerId: number; lenderId: number; onBack: () => void; onReview: (reviewing: boolean) => void; onSaved?: (code: string, contractId: number, signingMethod: string | null) => void }) {
+export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrowerId, lenderId, availableLimit, onReview, onSaved, outstandingContracts, outstandingReviewed, borrowerInformed, onOutstandingReviewedChange, onBorrowerInformedChange }: {
+  borrowerName: string; lenderName: string; borrowerId: number; lenderId: number; availableLimit: number; onBack: () => void;
+  onReview: (reviewing: boolean) => void; onSaved?: (code: string, contractId: number, signingMethod: string | null, limitApprovalRequired: boolean) => void;
+  outstandingContracts: { contractId: number; label: string; amount: string }[]; outstandingReviewed: boolean; borrowerInformed: boolean;
+  onOutstandingReviewedChange: (checked: boolean) => void; onBorrowerInformedChange: (checked: boolean) => void;
+}) {
   const groupId = useId()
   const [phase, setPhase] = useState<ContractPhase>('DETAILS')
   const [saving, setSaving] = useState(false)
@@ -32,7 +37,7 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
   const [witnessCount, setWitnessCount] = useState(2)
   const [guaranteeWitnessCount, setGuaranteeWitnessCount] = useState(2)
   const [documentChoice, setDocumentChoice] = useState<'CREATE' | 'NONE' | ''>('')
-  const [contractType, setContractType] = useState<ContractType | ''>('')
+  const [interestMethod, setInterestMethod] = useState<'INTEREST_UPFRONT' | 'INTEREST_WITH_PRINCIPAL'>('INTEREST_WITH_PRINCIPAL')
   const [principal, setPrincipal] = useState('')
   const [draftSignatures, setDraftSignatures] = useState<DraftContractSignature[]>([])
   const [signatureConsent, setSignatureConsent] = useState(false)
@@ -55,11 +60,12 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
   const [scheduledDisbursementDate, setDisbursementDate] = useState('')
   const [repaymentDueDate, setRepaymentDueDate] = useState('')
   const validSchedule = validContractSchedule(scheduledDisbursementDate, repaymentDueDate)
-  const [rateCode, setRateCode] = useState('')
-  const [customRate, setCustomRate] = useState('')
+  const [internalRateCode, setInternalRateCode] = useState('')
+  const [internalCustomRate, setInternalCustomRate] = useState('')
   const [rates, setRates] = useState<Awaited<ReturnType<typeof getContractInterestRates>>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  useFeedbackToast({ error })
   const guarantorName = [guarantorTitle, guarantorFirstName, guarantorLastName].map(value => value.trim()).filter(Boolean).join(' ')
 
   useEffect(() => {
@@ -81,14 +87,21 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
 
   const amount = Number(principal)
   const validPrincipal = /^\d+(?:\.\d{1,2})?$/.test(principal) && amount > 0 && amount <= 2_000_000_000
-  const rate = rates.find(item => item.code === rateCode)
-  const validCustomRate = /^\d+(?:\.\d{1,2})?$/.test(customRate) && Number(customRate) >= 0 && Number(customRate) <= 100
-  const percent = rateCode === 'CUSTOM' ? (validCustomRate ? Number(customRate) : null) : rate?.percent ?? null
+  const validInternalCustomRate = /^\d+(?:\.\d{1,2})?$/.test(internalCustomRate) && Number(internalCustomRate) >= 0 && Number(internalCustomRate) <= 100
+  const selectedInternalRate = internalRateCode === 'CUSTOM'
+    ? validInternalCustomRate ? Number(internalCustomRate) : null
+    : rates.find(item => item.code === internalRateCode)?.percent ?? null
   const principalSatang = Math.round(amount * 100)
-  const interestSatang = validPrincipal && percent !== null ? Math.round(principalSatang * percent / 100) : null
-  const canCalculate = validPrincipal && interestSatang !== null && contractType !== ''
-  const netSatang = canCalculate ? principalSatang - (contractType === 'INTEREST_UPFRONT' ? interestSatang! : 0) : null
-  const repaymentSatang = canCalculate ? principalSatang + (contractType === 'INTEREST_UPFRONT' ? 0 : interestSatang!) : null
+  const interestSatang = validPrincipal && selectedInternalRate !== null ? Math.round(principalSatang * selectedInternalRate / 100) : null
+  const deductionSatang = interestMethod === 'INTEREST_UPFRONT' ? interestSatang : 0
+  const netSatang = validPrincipal && interestSatang !== null
+    ? principalSatang - deductionSatang!
+    : null
+  const repaymentSatang = validPrincipal && interestSatang !== null
+    ? principalSatang + (interestMethod === 'INTEREST_WITH_PRINCIPAL' ? interestSatang : 0)
+    : null
+  const canCalculate = netSatang !== null && repaymentSatang !== null
+  const limitApprovalNeeded = validPrincipal && principalSatang > Math.round(availableLimit * 100)
   const money = (satang: number | null) => satang === null ? '—' : new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(satang / 100) + ' บาท'
 const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-slate-400/30'
 
@@ -96,7 +109,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
   const needsGuarantor = documentChoice === 'CREATE' && documentPackage !== '' && documentPackage !== 'LOAN'
   const activeSignatures = documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE' ? draftSignatures.filter(item => (item.documentStage === 'LOAN' || needsGuarantor && item.documentStage === 'GUARANTEE' || documentPackage === 'LOAN_GUARANTEE_COLLATERAL' && item.documentStage === 'COLLATERAL') && (!item.signer.startsWith('WITNESS_') || Number(item.signer.slice(-1)) <= (item.documentStage === 'GUARANTEE' ? guaranteeWitnessCount : witnessCount))) : []
   const guarantorReady = !needsGuarantor || Boolean(guarantorTitle.trim() && guarantorFirstName.trim() && guarantorLastName.trim() && /^\d{1,3}$/.test(guarantorAge) && Number(guarantorAge) >= 15 && guarantorHouseNumber.trim() && guarantorProvinceId && guarantorDistrictId && guarantorSubdistrictId)
-  const detailsReady = validSchedule && canCalculate && Boolean(documentChoice) && (documentChoice !== 'CREATE' || Boolean(signingMethod && documentPackage)) && netSatang !== null && netSatang >= 0
+  const detailsReady = validSchedule && canCalculate && (internalRateCode !== 'CUSTOM' || validInternalCustomRate) && Boolean(documentChoice) && (documentChoice !== 'CREATE' || Boolean(signingMethod && documentPackage))
   const ready = detailsReady && guarantorReady
   const signerCount = phase === 'GUARANTEE' ? guaranteeWitnessCount : witnessCount
   const requiredSignatures = documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE'
@@ -111,7 +124,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
   const collateralSigners = collateralAgreementSigners({ borrowerName, lenderName, guarantorName, witnessCount, collateralAgreementData: JSON.stringify(collateralAgreementData) })
   const collateralSignaturesReady = collateralSigners.every(required => activeSignatures.some(signature => signature.documentStage === 'COLLATERAL' && signature.signer === required.signer))
   const documentStages: Exclude<ContractPhase, 'DETAILS' | 'REVIEW'>[] = documentChoice !== 'CREATE' ? [] : ['LOAN', ...(needsGuarantor ? ['GUARANTEE' as const] : []), ...(documentPackage === 'LOAN_GUARANTEE_COLLATERAL' ? ['COLLATERAL' as const] : [])]
-  const phaseTitle: Record<ContractPhase, string> = { DETAILS: 'Step 3 · รายละเอียดเงินกู้และเลือกชุดเอกสาร', LOAN: 'Step 3.1 · สัญญาเงินกู้', GUARANTEE: 'Step 3.2 · สัญญาค้ำประกัน', COLLATERAL: 'Step 3.3 · สัญญากู้ยืมแบบมีหลักประกัน', REVIEW: 'สรุปรายการและบันทึก' }
+  const phaseTitle: Record<ContractPhase, string> = { DETAILS: 'Step 3 · รายละเอียดเงินกู้และเลือกชุดเอกสาร', LOAN: 'Step 3.1 · สัญญาเงินกู้', GUARANTEE: 'Step 3.2 · สัญญาค้ำประกัน', COLLATERAL: 'Step 3.3 · ข้อตกลงค้ำประกันและหลักประกัน', REVIEW: 'สรุปรายการและบันทึก' }
   const phaseIndex = documentStages.indexOf(phase as Exclude<ContractPhase, 'DETAILS' | 'REVIEW'>)
   function nextPhase() {
     const next: ContractPhase = phase === 'DETAILS' ? documentStages[0] ?? 'REVIEW' : documentStages[phaseIndex + 1] ?? 'REVIEW'
@@ -124,13 +137,13 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
     else setPhase(documentStages[phaseIndex - 1] ?? 'DETAILS')
   }
   async function save() {
-    if (!ready || (activeSignatures.length > 0 && !signatureConsent) || saveLock.current || savedCode) return
+    if (!ready || !outstandingReviewed || !borrowerInformed || (activeSignatures.length > 0 && !signatureConsent) || saveLock.current || savedCode) return
     saveLock.current = true
     setSaving(true)
     setSaveError('')
     if (!requestKey.current) requestKey.current = crypto.randomUUID()
     try {
-      const result = await saveContract({ borrowerId, lenderId, requestKey: requestKey.current, witnessCount, guaranteeWitnessCount, documentChoice, signingMethod, documentPackage, interestMethod: contractType, rateCode, customRate, principal, collateralDescription, collateralAgreementData: JSON.stringify(collateralAgreementData), guarantorName, guarantorAge, guarantorHouseNumber, guarantorSoi, guarantorRoad, guarantorProvinceId, guarantorDistrictId, guarantorSubdistrictId, guaranteeCollateralDescription, scheduledDisbursementDate, repaymentDueDate })
+      const result = await saveContract({ borrowerId, lenderId, requestKey: requestKey.current, witnessCount, guaranteeWitnessCount, documentChoice, signingMethod, documentPackage, interestMethod, internalRateCode, internalCustomRate, principal, collateralDescription, collateralAgreementData: JSON.stringify(collateralAgreementData), guarantorName, guarantorAge, guarantorHouseNumber, guarantorSoi, guarantorRoad, guarantorProvinceId, guarantorDistrictId, guarantorSubdistrictId, guaranteeCollateralDescription, scheduledDisbursementDate, repaymentDueDate })
       if (result.error) { setSaveError(result.error); return }
       if (result.code && result.id) {
         for (const signature of activeSignatures) {
@@ -138,64 +151,63 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
           if (signed.error) { setSaveError(`บันทึกสัญญาแล้ว แต่ลายเซ็นยังไม่ครบ: ${signed.error}`); break }
         }
         setSavedCode(result.code)
-        onSaved?.(result.code, result.id, documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE' ? 'E_SIGNATURE' : null)
+        onSaved?.(result.code, result.id, documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE' ? 'E_SIGNATURE' : null, result.limitApprovalRequired ?? false)
       }
     } catch { setSaveError('เชื่อมต่อไม่สำเร็จ กรุณาลองบันทึกอีกครั้ง') }
     finally { setSaving(false); saveLock.current = false }
   }
 
-  return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/50 p-4 text-sm">
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/50 p-3 text-sm">
       
       <Button disabled={saving || Boolean(savedCode)} onClick={previousPhase}>{phase === 'DETAILS' ? 'ย้อนกลับ: เลือกผู้ให้กู้' : phase === 'REVIEW' ? 'ย้อนกลับ: แก้ไข' : 'ย้อนกลับ'}</Button>
     </div>
-    <Card as="section" className="p-4 sm:p-5">
-      <h2 className="m-0 text-base font-semibold">{phaseTitle[phase]}</h2>
+    <Card as="section" className="border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 className="m-0 text-base font-semibold text-slate-800">{phaseTitle[phase]}</h2>
       {phase !== 'REVIEW' && documentChoice === 'CREATE' && documentPackage && <ol aria-label="ขั้นตอนเอกสารสัญญา" className="my-3 flex flex-wrap gap-2 p-0">
-        {(['LOAN', ...(needsGuarantor ? ['GUARANTEE' as const] : []), ...(documentPackage === 'LOAN_GUARANTEE_COLLATERAL' ? ['COLLATERAL' as const] : [])] as const).map((item, index) => <li key={item} aria-current={phase === item ? 'step' : undefined} className={`flex-1 basis-56 list-none rounded-lg border px-3 py-2 text-xs ${phase === item ? 'border-slate-500 bg-white font-semibold text-slate-800 shadow-sm' : 'border-slate-200 bg-white/40 text-slate-500'}`}><span className="mr-2 inline-grid h-5 w-5 place-items-center rounded-full bg-slate-100 text-[10px]">3.{index + 1}</span>{item === 'LOAN' ? 'สัญญาเงินกู้' : item === 'GUARANTEE' ? 'สัญญาค้ำประกัน' : 'สัญญาหลักประกัน'}</li>)}
+        {(['LOAN', ...(needsGuarantor ? ['GUARANTEE' as const] : []), ...(documentPackage === 'LOAN_GUARANTEE_COLLATERAL' ? ['COLLATERAL' as const] : [])] as const).map((item, index) => <li key={item} aria-current={phase === item ? 'step' : undefined} className={`flex-1 basis-48 list-none rounded-xl border px-3 py-2.5 text-xs transition-colors ${phase === item ? 'border-sky-300 bg-sky-50 font-semibold text-sky-950 shadow-sm' : 'border-slate-200 bg-slate-50 text-slate-500'}`}><span className={`mr-2 inline-grid h-5 w-5 place-items-center rounded-full text-[10px] ${phase === item ? 'bg-sky-700 text-white' : 'bg-slate-200 text-slate-600'}`}>3.{index + 1}</span>{item === 'LOAN' ? 'สัญญาเงินกู้' : item === 'GUARANTEE' ? 'สัญญาค้ำประกัน' : 'สัญญาหลักประกัน'}</li>)}
       </ol>}
       {phase === 'DETAILS' && <div>
-      <fieldset className="m-0 mt-4 min-w-0 border-0 p-0">
-        <legend className="mb-2 text-sm font-medium">1. การจัดทำเอกสารสัญญา</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {([{ value: 'CREATE', label: 'ทำสัญญา' }, { value: 'NONE', label: 'ไม่ทำสัญญา' }] as const).map(option => <label key={option.value} className={`flex cursor-pointer items-center gap-2.5 rounded-xl border p-3.5 text-sm ${documentChoice === option.value ? 'border-emerald-600 bg-emerald-50/70' : 'border-slate-300 bg-white/40'} focus-within:ring-2 focus-within:ring-slate-400`}>
+      <fieldset className="m-0 mt-5 min-w-0 border-0 p-0">
+        <legend className="mb-3 flex items-center text-sm font-semibold text-slate-800"><span className="mr-2 grid h-6 w-6 place-items-center rounded-lg bg-sky-100 text-xs font-bold text-sky-800">1</span>การจัดทำเอกสารสัญญา</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([{ value: 'CREATE', label: 'ทำสัญญา' }, { value: 'NONE', label: 'ไม่ทำสัญญา' }] as const).map(option => <label key={option.value} className={`flex cursor-pointer items-center gap-2.5 rounded-xl border-2 px-3.5 py-3 text-sm transition-colors ${documentChoice === option.value ? 'border-emerald-600 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40'} focus-within:ring-2 focus-within:ring-sky-400`}>
             <input type="radio" name={`${groupId}-document`} value={option.value} checked={documentChoice === option.value} onChange={() => setDocumentChoice(option.value)} className="h-4 w-4 shrink-0 accent-emerald-700" />
             <span className="font-medium">{option.label}</span>
           </label>)}
         </div>
       </fieldset>
       <div hidden={documentChoice !== 'CREATE'}><ContractDocumentOptions witnessCount={witnessCount} onWitnessChange={setWitnessCount} signingMethod={signingMethod} documentPackage={documentPackage} onSigningChange={setSigningMethod} onPackageChange={setDocumentPackage} /></div>
-      <fieldset className="m-0 mt-4 min-w-0 border-0 p-0">
-        <legend className="mb-2 text-sm font-medium">2. วิธีชำระดอกเบี้ย</legend>
+      <fieldset className="m-0 mt-5 min-w-0 border-0 p-0">
+        <legend className="mb-2 flex items-center text-sm font-semibold text-slate-800"><span className="mr-2 grid h-6 w-6 place-items-center rounded-lg bg-amber-100 text-xs font-bold text-amber-800">2</span>วิธีจ่ายเงิน</legend>
         <div className="grid gap-2 sm:grid-cols-2">
-          {contractTypes.map(type => <label key={type.value} className={`flex cursor-pointer items-center gap-2.5 rounded-xl border p-3.5 text-sm ${contractType === type.value ? 'border-emerald-600 bg-emerald-50/70' : 'border-slate-300 bg-white/40'} focus-within:ring-2 focus-within:ring-slate-400`}>
-            <input type="radio" name={groupId} value={type.value} checked={contractType === type.value} onChange={() => setContractType(type.value)} className="h-4 w-4 shrink-0 accent-emerald-700" />
-            <span><span className="block font-medium">{type.label}</span>
-              <span className="mt-1 block text-xs font-normal leading-4 text-slate-500">{type.value === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ยจากเงินที่จ่าย ชำระคืนเฉพาะเงินต้น' : 'รับเงินต้นเต็มจำนวน ชำระคืนเงินต้นรวมดอกเบี้ย'}</span>
-            </span>
+          {interestMethods.map(method => <label key={method.value} className={`flex cursor-pointer items-start gap-2.5 rounded-xl border-2 px-3 py-2.5 text-sm transition-colors ${interestMethod === method.value ? 'border-emerald-600 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40'} focus-within:ring-2 focus-within:ring-sky-400`}>
+            <input type="radio" name={`${groupId}-interest-method`} value={method.value} checked={interestMethod === method.value} onChange={() => setInterestMethod(method.value)} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-700" />
+            <span><span className="block font-medium">{method.label}</span><span className="mt-0.5 block text-xs leading-4 text-slate-500">{method.description}</span></span>
           </label>)}
         </div>
       </fieldset>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">ยอดเงินต้น (บาท)
           <input type="number" min="0.01" max="2000000000" step="0.01" inputMode="decimal" value={principal} onChange={event => setPrincipal(event.target.value)} placeholder="ระบุยอดเงินต้น" aria-invalid={Boolean(principal && !validPrincipal)} className={fieldClass} />
           {principal && !validPrincipal && <span className="mt-1 block text-xs text-red-700">ระบุยอดมากกว่า 0 ถึง 2,000,000,000 บาท ทศนิยมไม่เกิน 2 ตำแหน่ง</span>}
         </label>
-        <label className="text-sm font-medium">ดอกร้อยละ (%)
-          <select value={rateCode} onChange={event => setRateCode(event.target.value)} className={fieldClass}>
-            <option value="">{loading ? 'กำลังโหลด Masterdata…' : 'เลือกอัตราดอกเบี้ย'}</option>
+        <label className="text-sm font-medium">อัตราอ้างอิงภายในต่อเดือน (%)
+          <select value={internalRateCode} onChange={event => { setInternalRateCode(event.target.value); if (event.target.value !== 'CUSTOM') setInternalCustomRate('') }} className={fieldClass}>
+            <option value="">{loading ? 'กำลังโหลด Masterdata…' : 'ไม่ระบุ'}</option>
             {rates.map(item => <option key={item.code} value={item.code}>ร้อยละ {item.percent}</option>)}
             <option value="CUSTOM">กำหนดเอง</option>
           </select>
-          <span className="mt-1 block text-xs font-normal text-slate-500">อ้างอิงจาก Masterdata · ร้อยละดอกเบี้ย</span>
+          <span className="mt-0.5 block text-[11px] font-normal text-slate-500">ใช้คำนวณดอกเบี้ยในระบบตามวิธีจ่ายที่เลือก แต่ไม่แสดงเป็นอัตราดอกเบี้ยในเอกสารสัญญา</span>
         </label>
-        {rateCode === 'CUSTOM' && <label className="text-sm font-medium">กำหนดดอกร้อยละเอง (%)
-          <input type="number" min="0" max="100" step="0.01" inputMode="decimal" value={customRate} onChange={event => setCustomRate(event.target.value)} placeholder="เช่น 7.5" aria-invalid={Boolean(customRate && !validCustomRate)} className={fieldClass} />
-          {customRate && !validCustomRate && <span className="mt-1 block text-xs text-red-700">ระบุร้อยละ 0–100 ทศนิยมไม่เกิน 2 ตำแหน่ง</span>}
+        {internalRateCode === 'CUSTOM' && <label className="text-sm font-medium">อัตราอ้างอิงภายในที่กำหนดเอง (%)
+          <input type="number" min="0" max="100" step="0.01" inputMode="decimal" value={internalCustomRate} onChange={event => setInternalCustomRate(event.target.value)} placeholder="0–100" aria-invalid={Boolean(internalCustomRate && !validInternalCustomRate)} className={fieldClass} />
+          <span className="mt-0.5 block text-[11px] font-normal text-slate-500">ใช้อัตรานี้คำนวณดอกเบี้ยในระบบ ไม่พิมพ์อัตราลงในเอกสารสัญญา</span>
+          {internalCustomRate && !validInternalCustomRate && <span className="mt-1 block text-xs text-red-700">อัตราอ้างอิงภายในต้องอยู่ระหว่าง 0–100%</span>}
         </label>}
       </div>
-      <fieldset className="m-0 mt-4 min-w-0 border-0 p-0">
-        <legend className="mb-2 text-sm font-medium">3. กำหนดรับและจ่ายเงิน</legend>
+      <fieldset className="m-0 mt-6 min-w-0 border-0 p-0">
+        <legend className="mb-3 flex items-center text-sm font-semibold text-slate-800"><span className="mr-2 grid h-6 w-6 place-items-center rounded-lg bg-violet-100 text-xs font-bold text-violet-800">3</span>กำหนดรับและจ่ายเงิน</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">วันที่จ่ายเงินให้ผู้กู้
             <input type="date" required value={scheduledDisbursementDate} onChange={event => setDisbursementDate(event.target.value)} className={fieldClass} />
@@ -207,20 +219,22 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
         {scheduledDisbursementDate && repaymentDueDate && !validSchedule && <p role="alert" className="mb-0 mt-2 text-xs text-red-700">วันครบกำหนดต้องไม่ก่อนวันที่จ่ายเงินให้ผู้กู้</p>}
         <p className="mb-0 mt-2 text-xs text-slate-500">วันที่กำหนดไว้ในสัญญา ยังไม่ใช่การยืนยันว่าจ่ายหรือรับเงินจริงแล้ว</p>
       </fieldset>
-      <section aria-live="polite" aria-label="สรุปยอดเงินกู้" className="mt-4 rounded-xl border border-slate-200 bg-white/60 p-3.5 sm:p-4">
-        <h3 className="m-0 text-sm font-semibold">สรุปยอดเงินกู้</h3>
-        {canCalculate ? <dl className="mb-0 mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-live="polite" aria-label="สรุปยอดเงินกู้" className="mt-6 rounded-xl border border-sky-200 bg-gradient-to-r from-sky-50 to-emerald-50 p-4">
+        <h3 className="m-0 text-sm font-semibold text-slate-800">สรุปยอดเงินกู้</h3>
+          {validPrincipal ? <dl className="mb-0 mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {[
             ['เงินต้น', money(principalSatang)],
-            ['ดอกเบี้ย', money(interestSatang)],
+            ['ดอกเบี้ยอ้างอิงต่อเดือน', money(interestSatang)],
             ['ยอดรับเงินจริง', money(netSatang)],
             ['ยอดชำระคืนทั้งหมด', money(repaymentSatang)],
           ].map(([label, value]) => <div key={label} className="rounded-lg bg-slate-50 px-3 py-2.5">
             <dt className="text-xs text-slate-500">{label}</dt>
             <dd className="ml-0 mt-1 text-sm font-semibold tabular-nums">{value}</dd>
           </div>)}
-        </dl> : <p className="mb-0 mt-2 text-sm text-slate-500">ระบุเงินต้น เลือกอัตราดอกเบี้ย และวิธีชำระดอกเบี้ย เพื่อดูยอดคำนวณ</p>}
-        {canCalculate && <p className="mb-0 mt-3 text-xs text-slate-500">{contractType === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ยจากเงินต้นก่อนจ่าย และชำระคืนเฉพาะเงินต้น' : 'รับเงินต้นเต็มจำนวน และชำระคืนเงินต้นรวมดอกเบี้ย'}</p>}
+        </dl> : <p className="mb-0 mt-2 text-sm text-slate-500">ระบุเงินต้นเพื่อดูยอดรับและยอดชำระ</p>}
+        {validPrincipal && selectedInternalRate === null && <p role="status" className="mb-0 mt-2 text-xs text-amber-800">เลือกอัตราอ้างอิงภายในเพื่อคำนวณยอดดอกเบี้ยและยอดที่เกี่ยวข้อง</p>}
+        {validPrincipal && selectedInternalRate !== null && <p className="mb-0 mt-3 text-xs text-slate-500">{interestMethod === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ย 1 เดือนจากเงินที่จ่าย · คืนเงินต้นเท่านั้น' : 'จ่ายเงินต้นเต็มจำนวน · ชำระคืนเงินต้นพร้อมดอกเบี้ย 1 เดือน'} · ช่องดอกเบี้ยในเอกสารเว้นว่าง</p>}
+        {limitApprovalNeeded && <p role="status" className="mb-0 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">ยอดจองเกินวงเงินคงเหลือ {new Intl.NumberFormat('th-TH').format(Math.max(0, amount - availableLimit))} บาท · บันทึกรายการจองได้ แต่ผู้ดูแลต้องอนุมัติก่อนจ่ายเงินจริง</p>}
       </section>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!loading && !error && !rates.length && <p role="status" className="text-sm text-slate-500">ยังไม่มีอัตราดอกเบี้ยที่ใช้งานใน Masterdata</p>}
@@ -255,10 +269,11 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
         </div>
         <dl className="mb-0 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ['เงินต้น', money(principalSatang)], ['ดอกเบี้ย', money(interestSatang)],
+            ['เงินต้น', money(principalSatang)], ['ดอกเบี้ยอ้างอิงต่อเดือน', money(interestSatang)],
             ['ผู้กู้รับเงินจริง', money(netSatang)], ['ยอดชำระคืน', money(repaymentSatang)],
           ].map(([label, value], index) => <div key={label} className={`rounded-xl border px-4 py-3 ${index === 3 ? 'border-sky-200 bg-sky-50/70' : 'border-slate-200 bg-white'}`}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-1 text-base font-semibold tabular-nums">{value}</dd></div>)}
         </dl>
+        {internalRateCode && <p className="mb-0 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">อัตราอ้างอิงภายใน: {internalRateCode === 'CUSTOM' ? internalCustomRate || '—' : rates.find(item => item.code === internalRateCode)?.percent ?? '—'}% ต่อเดือน · ใช้คำนวณยอดตามวิธีจ่าย แต่ไม่แสดงในเอกสารสัญญา</p>}
         <div className="flex flex-wrap gap-x-8 gap-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600"><p className="m-0"><span className="text-slate-500">วันที่จ่ายเงิน:</span> <span className="font-medium text-slate-800">{formatContractDate(scheduledDisbursementDate)}</span></p><p className="m-0"><span className="text-slate-500">ครบกำหนด:</span> <span className="font-medium text-slate-800">{formatContractDate(repaymentDueDate)}</span></p><p className="m-0"><span className="text-slate-500">พยานสัญญาเงินกู้ 3.1:</span> <span className="font-medium text-slate-800">{witnessCount === 0 ? 'ไม่มีพยาน' : `${witnessCount} คน`}</span></p></div>
         {documentPackage !== 'LOAN_GUARANTEE_COLLATERAL' && <label className="block text-sm font-medium">รายละเอียดหลักประกัน (ถ้ามี)<textarea value={collateralDescription} onChange={event => setCollateralDescription(event.target.value)} maxLength={2000} rows={3} placeholder="ระบุทรัพย์สินหรือหลักประกันที่ผู้กู้นำมาให้ไว้…" className={fieldClass} /><span className="mt-1 block text-xs font-normal text-slate-500">ใช้เติมในข้อ ๒ หลังคำว่า “ข้าพเจ้าได้นำ” หากไม่ระบุจะคงช่องว่างตามแบบเดิม</span></label>}
         <p className="mb-0 text-xs text-slate-500">PDF ที่กรอกข้อมูลครบจะเปิดให้ดูหรือดาวน์โหลดหลังบันทึกสัญญา</p>
@@ -269,6 +284,14 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
       {phase === 'COLLATERAL' && signingMethod === 'E_SIGNATURE' && !collateralSignatureSetupReady(JSON.stringify(collateralAgreementData)) && <p role="status" className="mb-0 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">กรุณาระบุชื่อผู้ให้หลักประกันที่เป็นบุคคลภายนอก และเลือกฐานะผู้เก็บรักษาทรัพย์จำนำก่อนลงนาม</p>}
       {phase === 'COLLATERAL' && signingMethod === 'E_SIGNATURE' && <DraftSignaturePad stage="COLLATERAL" borrowerName={borrowerName} lenderName={lenderName} guarantorName={guarantorName} witnessCount={witnessCount} providerName={collateralAgreementData.providerName} custodianName={collateralAgreementData.custodianName} collateralAgreementData={JSON.stringify(collateralAgreementData)} value={draftSignatures} onChange={values => { setDraftSignatures(values); setSignatureConsent(false) }} />}
       {phase !== 'REVIEW' && <div className="mt-6 flex justify-end"><Button variant="primary" disabled={phase === 'DETAILS' ? !detailsReady : phase === 'GUARANTEE' ? !guarantorReady || (signingMethod === 'E_SIGNATURE' && !phaseSignaturesReady('GUARANTEE', ['GUARANTOR', 'LENDER', ...Array.from({ length: signerCount }, (_, index) => `WITNESS_${index + 1}`)])) : phase === 'LOAN' && signingMethod === 'E_SIGNATURE' && !phaseSignaturesReady('LOAN', ['BORROWER', 'LENDER', ...Array.from({ length: signerCount }, (_, index) => `WITNESS_${index + 1}`)]) || phase === 'COLLATERAL' && signingMethod === 'E_SIGNATURE' && (!collateralSignatureSetupReady(JSON.stringify(collateralAgreementData)) || !collateralSignaturesReady)} onClick={() => { nextPhase(); if (phase === 'DETAILS') setSaveError('') }}>{phase === 'DETAILS' ? 'ถัดไป: เริ่มเอกสาร 3.1' : phase === 'LOAN' ? documentStages.length > 1 ? 'ถัดไป: สัญญาค้ำประกัน 3.2' : 'ถัดไป: สรุปและบันทึก' : phase === 'GUARANTEE' ? documentPackage === 'LOAN_GUARANTEE_COLLATERAL' ? 'ถัดไป: สัญญาหลักประกัน 3.3' : 'ถัดไป: สรุปและบันทึก' : 'ถัดไป: สรุปและบันทึก'}</Button></div>}
+      {phase === 'REVIEW' && <section aria-labelledby="borrower-outstanding-heading" className="mt-5 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id="borrower-outstanding-heading" className="m-0 text-sm font-semibold text-amber-950">สัญญาคงค้างของผู้กู้</h3><span className="text-xs text-amber-900">{outstandingContracts.length} สัญญา</span></div>
+        {outstandingContracts.length ? <ul className="mb-0 mt-2 divide-y divide-amber-200/80 p-0">{outstandingContracts.map(item => <li key={item.contractId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2 text-sm first:pt-0 last:pb-0"><span className="font-medium text-slate-800">CT-{String(item.contractId).padStart(6, '0')} · {item.label}</span><span className="tabular-nums text-slate-700">{item.amount}</span></li>)}</ul> : <p className="mb-0 mt-2 text-sm text-slate-600">ไม่พบสัญญาที่ยังคงค้างหรือรอจ่ายเงิน</p>}
+        <div className="mt-3 grid gap-2 border-t border-amber-200/80 pt-3 text-sm sm:grid-cols-2">
+          <label className="flex cursor-pointer items-start gap-2"><input type="checkbox" checked={outstandingReviewed} onChange={event => onOutstandingReviewedChange(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-amber-700" /><span>ตรวจสอบข้อมูลผู้กู้และสัญญาคงค้างเรียบร้อยแล้ว</span></label>
+          <label className="flex cursor-pointer items-start gap-2"><input type="checkbox" checked={borrowerInformed} onChange={event => onBorrowerInformedChange(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-amber-700" /><span>แจ้งผู้กู้รับทราบสถานะสัญญาคงค้างแล้ว</span></label>
+        </div>
+      </section>}
       {phase === 'REVIEW' && <div aria-live="polite" className="mt-6 rounded-2xl border border-slate-200 bg-white/50 p-5">
         <h3 className="m-0 text-sm font-semibold">สรุปรายละเอียดสัญญา</h3>
         <dl className="mb-5 grid gap-4 border-b border-slate-200 pb-5 text-sm sm:grid-cols-2">
@@ -277,23 +300,25 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
             ...(needsGuarantor ? [['ผู้ค้ำประกัน', guarantorName || '—'], ['ผู้ค้ำอยู่จังหวัด', provinces.find(item => String(item.id) === guarantorProvinceId)?.nameTh ?? '—']] : []),
             ['เอกสารสัญญา', documentChoice ? (documentChoice === 'CREATE' ? 'ทำสัญญา' : 'ไม่ทำสัญญา') : '—'],
             ...(documentChoice === 'CREATE' ? [['วิธีลงนาม', signingMethods.find(item => item.value === signingMethod)?.label ?? '—'], ['ชุดเอกสาร', documentPackages.find(item => item.value === documentPackage)?.label ?? '—'], ['พยานสัญญาเงินกู้ 3.1', witnessCount === 0 ? 'ไม่มีพยาน' : `${witnessCount} คน`], ...(needsGuarantor ? [['พยานสัญญาค้ำประกัน 3.2', guaranteeWitnessCount === 0 ? 'ไม่มีพยาน' : `${guaranteeWitnessCount} คน`]] : [])] : []),
-            ['วิธีชำระดอกเบี้ย', contractTypes.find(item => item.value === contractType)?.label ?? '—'],
             ['วันที่จ่ายเงินให้ผู้กู้', formatContractDate(scheduledDisbursementDate)],
             ['วันครบกำหนดรับชำระคืน', formatContractDate(repaymentDueDate)],
+            ...(limitApprovalNeeded ? [['สถานะวงเงิน', `เกินวงเงินคงเหลือ ${new Intl.NumberFormat('th-TH').format(Math.max(0, amount - availableLimit))} บาท · รออนุมัติก่อนจ่าย`]] : []),
             ['รายละเอียดหลักประกัน', collateralDescription.trim() || 'เว้นว่างตามแบบเดิม'],
             ['ยอดเงินต้น', money(validPrincipal ? principalSatang : null)],
-            ['ดอกร้อยละ', percent === null ? '—' : `${percent}%`],
+            ['วิธีจ่ายเงิน', interestMethod === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ยก่อนจ่าย · คืนเงินต้น' : 'รับเงินต้นเต็มจำนวน · คืนเงินต้นพร้อมดอกเบี้ย'],
+            ['อัตราอ้างอิงภายใน', internalRateCode ? `${internalRateCode === 'CUSTOM' ? internalCustomRate || '—' : rates.find(item => item.code === internalRateCode)?.percent ?? '—'}% ต่อเดือน` : 'ไม่ระบุ'],
+            ['อัตราดอกเบี้ยในเอกสาร', 'เว้นว่าง'],
           ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-1 font-medium">{value}</dd></div>)}
         </dl>
-        <dl className="mb-0 grid gap-4 sm:grid-cols-3">
+        <dl className="mb-0 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ['ดอกเบี้ย', money(canCalculate ? interestSatang : null)],
+            ['เงินต้น', money(validPrincipal ? principalSatang : null)],
+            ['ดอกเบี้ยอ้างอิงต่อเดือน', money(validPrincipal ? interestSatang : null)],
             ['ยอดรับเงินจริง', money(netSatang)],
             ['ยอดชำระเงินกู้', money(repaymentSatang)],
           ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-2 text-lg font-semibold">{value}</dd></div>)}
         </dl>
-        {canCalculate && <p className="mb-0 mt-4 text-xs text-slate-500">คำนวณดอกหนึ่งครั้งจากเงินต้น × ร้อยละที่เลือก{contractType === 'INTEREST_UPFRONT' ? ' · หักดอกจากยอดรับเงินจริง ชำระคืนเฉพาะเงินต้น' : ' · ชำระเงินต้นรวมดอกเบี้ย'}</p>}
-        {netSatang !== null && netSatang < 0 && <p role="alert" className="text-sm text-red-700">ดอกเบี้ยเกินเงินต้น กรุณาตรวจสอบอัตราดอกเบี้ย</p>}
+        {canCalculate && <p className="mb-0 mt-4 text-xs text-slate-500">คำนวณดอกเบี้ยในระบบตามวิธีจ่ายที่เลือก · เอกสารสัญญาอ้างเงินต้นและเว้นช่องอัตราดอกเบี้ย</p>}
       </div>}
       {phase === 'REVIEW' && activeSignatures.length > 0 && <section className="mt-5 rounded-2xl border border-slate-200 p-4">
         <h3 className="m-0 text-sm font-semibold">ลายเซ็นสำหรับประทับในเอกสาร</h3>
@@ -302,8 +327,8 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
       </section>}
       {phase === 'REVIEW' && signingMethod === 'E_SIGNATURE' && !signaturesReady && <p role="alert" className="mt-4 text-sm text-red-700">กรุณาให้ผู้ลงนามและพยานตามที่เลือกลงลายมือชื่อในขั้นเอกสารให้ครบก่อนบันทึก</p>}
       {saveError && <p role="alert" className="text-sm text-red-700">{saveError}</p>}
-      {savedCode ? <p role="status" className="mt-5 text-sm text-emerald-800">บันทึกสัญญา {savedCode} สำเร็จ · รอจ่ายเงิน</p> : phase === 'REVIEW' && <div className="mt-6 flex justify-end">
-        <Button variant="primary" disabled={saving || !ready || !signaturesReady || (activeSignatures.length > 0 && !signatureConsent)} onClick={save}>{saving ? 'กำลังบันทึก…' : 'ยืนยันและบันทึกสัญญา'}</Button>
+      {savedCode ? <p role="status" className="mt-5 text-sm text-emerald-800">บันทึกสัญญา {savedCode} สำเร็จ · {limitApprovalNeeded ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงิน'}</p> : phase === 'REVIEW' && <div className="mt-6 flex justify-end">
+        <Button variant="primary" disabled={saving || !ready || !outstandingReviewed || !borrowerInformed || !signaturesReady || (activeSignatures.length > 0 && !signatureConsent)} onClick={save}>{saving ? 'กำลังบันทึก…' : 'ยืนยันและบันทึกสัญญา'}</Button>
       </div>}
       {phase === 'REVIEW' && !savedCode && <p className="mb-0 mt-3 text-xs text-slate-500">บันทึกเป็นสถานะรอจ่ายเงิน · บันทึกเอกสารและลายเซ็นตามขั้นตอนที่เลือก</p>}
     </Card>

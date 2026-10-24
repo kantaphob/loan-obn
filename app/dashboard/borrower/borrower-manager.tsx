@@ -5,17 +5,18 @@ import Image from 'next/image'
 import { socialKeys, socialUrl, socialStatus, maxLineQrBytes, type SocialKey } from '@/lib/borrower-social'
 import { cardDateInput, type ThaiIdCard } from '@/lib/thai-id'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, UsersRound, Wallet, CircleDollarSign, ArrowUpRight, ChevronLeft, ChevronRight, X, Eye, Pencil, Trash2, CreditCard, ExternalLink, QrCode, Upload } from 'lucide-react'
+import { Plus, Search, UsersRound, Wallet, CircleDollarSign, ArrowUpRight, ChevronLeft, ChevronRight, X, Eye, Pencil, Trash2, CreditCard, ExternalLink, QrCode, Upload, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useToast } from '@/components/ui/toast'
 import { ReadCardModal } from '@/components/borrower/read-card-modal'
 import { availableBorrowerLimit, borrowerTenure, borrowerStatuses, promptPayTypes, type BorrowerRow, type BorrowerOption } from '@/lib/borrower'
 
 type Option = BorrowerOption & { isActive: boolean }
-const money = (value: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(value)
+const money = (value: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(value)
 const fieldClass = 'mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-const headers = ['จัดการ', 'รหัสผู้กู้', 'ชื่อเล่น', 'ชื่อ', 'สกุล', 'เบอร์โทร', 'เลขบัตร', 'ที่ทำงาน', 'จังหวัด', 'สถานะ', 'ธนาคาร', 'เลขบัญชีธนาคาร', 'ชื่อบัญชีธนาคาร', 'ประเภทพร้อมเพย์', 'หมายเลขพร้อมเพย์', 'ช่องรับเงิน', 'วันที่สมัคร', 'ระยะเวลา', 'FB', 'IG', 'Line', 'Risk Rating', 'Approved Limit', 'Used Limit', 'Available Limit', 'คนแนะนำ']
+const headers = ['รูป', 'รหัสผู้กู้', 'ชื่อเล่น', 'ชื่อ', 'สกุล', 'เบอร์โทร', 'เลขบัตร', 'ที่ทำงาน', 'จังหวัด', 'สถานะ', 'ธนาคาร', 'เลขบัญชีธนาคาร', 'ชื่อบัญชีธนาคาร', 'ประเภทพร้อมเพย์', 'หมายเลขพร้อมเพย์', 'ช่องรับเงิน', 'วันที่สมัคร', 'ระยะเวลา', 'FB', 'IG', 'Line', 'Risk Rating', 'Approved Limit', 'Used Limit', 'Available Limit', 'คนแนะนำ', 'จัดการ']
 function initialForm() {
   return { titleTh: '', middleNameTh: '', titleEn: '', firstNameEn: '', middleNameEn: '', lastNameEn: '', birthDate: '', address: '', houseNumber: '', villageNumber: '', districtId: '', subdistrictId: '', cardIssueDate: '', cardExpiryDate: '', bankCode: '', bankAccountName: '', promptPayType: '', promptPayNumber: '', provinceId: '', nickname: '', firstName: '', lastName: '', phone: '', nationalId: '', workplace: '', bankAccount: '', facebook: '', instagram: '', line: '', referrer: '', status: 'ACTIVE', paymentChannelCode: '', riskRatingCode: '', registeredAt: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()), durationMonths: '0', approvedLimit: '0', usedLimit: '0' }
 }
@@ -41,12 +42,13 @@ function SocialLink({ value, label }: { value: string; label: string }) {
   return url ? <a className="borrower-social-link" href={url} target="_blank" rel="noopener noreferrer" aria-label={`เปิด ${label} ในแท็บใหม่`}>{label}<ExternalLink size={12} /></a> : <span className="borrower-social-status">{socialStatus(value)}</span>
 }
 
-export function BorrowerManager({ borrowers, total, page, query: initialQuery, status: initialStatus, aggregate, channels, ratings, provinces, banks, today, canCreate }: { today: string; borrowers: BorrowerRow[]; total: number; page: number; query: string; status: string; aggregate: { approved: number; used: number; active: number; total: number }; provinces: { id: number; nameTh: string }[]; banks: Option[]; channels: Option[]; ratings: Option[]; canCreate: boolean }) {
+export function BorrowerManager({ borrowers, total, page, query: initialQuery, status: initialStatus, aggregate, channels, ratings, provinces, banks, today, canCreate }: { today: string; borrowers: BorrowerRow[]; total: number; page: number; query: string; status: string; aggregate: { approved: number; used: number; available: number; active: number; total: number }; provinces: { id: number; nameTh: string }[]; banks: Option[]; channels: Option[]; ratings: Option[]; canCreate: boolean }) {
   const router = useRouter()
   const { toast } = useToast()
   const openDialog = useCallback((node: HTMLDialogElement | null) => { if (node && !node.open) node.showModal() }, [])
   const [query, setQuery] = useState(initialQuery)
   const [status, setStatus] = useState(initialStatus)
+  const [expandedColumns, setExpandedColumns] = useState(false)
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<BorrowerRow | null>(null)
   const [viewOnly, setViewOnly] = useState(false)
@@ -55,6 +57,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  useFeedbackToast({ error, success: notice })
   const [card, setCard] = useState<ThaiIdCard | null>(null)
   const [cardReadToken, setCardReadToken] = useState('')
   const [cardNationalId, setCardNationalId] = useState<string | null>(null)
@@ -73,7 +76,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
   const currentPage = page
   const visible = borrowers
   const approved = aggregate.approved
-  const available = Math.max(0, aggregate.approved - aggregate.used)
+  const available = aggregate.available
   const used = aggregate.used
   function navigate(nextPage: number, nextQuery = query, nextStatus = status) {
     const params = new URLSearchParams()
@@ -227,41 +230,61 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
       {[
         { icon: UsersRound, title: 'ผู้กู้ยืมทั้งหมด', value: money(aggregate.total), unit: 'คน', detail: `ใช้งาน ${money(aggregate.active)} คน`, tone: 'blue' },
         { icon: CircleDollarSign, title: 'วงเงินอนุมัติรวม', value: money(approved), unit: 'บาท', detail: `ใช้วงเงินแล้ว ${money(used)} บาท`, tone: 'gold' },
-        { icon: Wallet, title: 'วงเงินคงเหลือรวม', value: money(available), unit: 'บาท', detail: 'รวมวงเงินคงเหลือของแต่ละคน', tone: 'green' },
+        { icon: Wallet, title: 'วงเงินคงเหลือรวม', value: money(available), unit: 'บาท', detail: 'อนุมัติ − เงินต้นคงเหลือ · รวมรายบุคคล', tone: 'green' },
       ].map(({ icon: Icon, title, value, unit, detail, tone }) => <Card key={title} className={`borrower-metric borrower-metric--${tone}`}>
         <div className="borrower-metric-top"><span>{title}</span><span className="borrower-metric-icon"><Icon size={21} strokeWidth={1.6} /></span></div>
         <div className="borrower-metric-value">{value}<span>{unit}</span></div>
         <div className="borrower-metric-detail"><span className="borrower-dot" />{detail}</div>
       </Card>)}
     </div>
-    <Card className="borrower-directory overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div><div className="borrower-directory-heading"><h2>รายชื่อผู้กู้ยืม</h2><span className="borrower-count">{total}</span></div><p className="mt-1 text-xs text-slate-500">ข้อมูลทั้งหมด {total} รายการ · วงเงินเป็นบาท</p></div>
+    <Card className={`borrower-directory overflow-hidden ${expandedColumns ? 'borrower-directory--expanded' : 'borrower-directory--summary'}`}>
+      <div className="borrower-directory-header flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div><div className="borrower-directory-heading"><h2>รายชื่อผู้กู้ยืม</h2><span className="borrower-count">{total}</span></div><p className="mt-1 text-xs text-slate-500">{expandedColumns ? 'ข้อมูลครบทุกคอลัมน์' : 'ภาพรวมข้อมูลติดต่อ สถานะ และวงเงิน'} · {total} รายการ</p></div>
         {canCreate && <Button variant="primary" onClick={() => showForm()}><Plus size={16} />เพิ่มผู้กู้ยืม</Button>}
       </div>
       {notice && <p role="status" className="mx-5 mb-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
+      <div className="borrower-view-bar"><div role="group" aria-label="รูปแบบตาราง"><button type="button" aria-pressed={!expandedColumns} onClick={() => setExpandedColumns(false)}>ภาพรวม</button><button type="button" aria-pressed={expandedColumns} onClick={() => setExpandedColumns(true)}>ข้อมูลทั้งหมด</button></div><div className="borrower-refresh"><span>กดรูปเพื่อดูข้อมูล · ยอดคำนวณเมื่อโหลดหน้า</span><Button onClick={() => router.refresh()}><RefreshCw size={14} />อัปเดตยอด</Button></div></div>
       <div className="borrower-toolbar flex flex-wrap gap-3 px-5 py-4">
-        <form className="flex min-w-60 flex-1 gap-2" onSubmit={e => { e.preventDefault(); navigate(1) }}><label className="relative flex-1"><span className="sr-only">ค้นหาผู้กู้ยืม</span><Search className="absolute left-3 top-3 text-slate-400" size={17} /><input className={`${fieldClass} mt-0 pl-10`} placeholder="ค้นหาชื่อ เบอร์โทร เลขบัตร หรือคนแนะนำ" value={query} onChange={e => setQuery(e.target.value)} /></label><Button type="submit">ค้นหา</Button></form>
+        <form className="flex min-w-60 flex-1 gap-2" onSubmit={e => { e.preventDefault(); navigate(1) }}><label className="relative flex-1"><span className="sr-only">ค้นหาผู้กู้ยืม</span><Search className="absolute left-3 top-3 text-slate-400" size={17} /><input className={`${fieldClass} mt-0 pl-10`} placeholder="ค้นหารหัส ชื่อ เบอร์โทร หรือเลขบัตร" value={query} onChange={e => setQuery(e.target.value)} /></label><Button type="submit">ค้นหา</Button></form>
         <label><span className="sr-only">กรองสถานะ</span><select className={`${fieldClass} mt-0`} value={status} onChange={e => { setStatus(e.target.value); navigate(1, query, e.target.value) }}><option value="">ทุกสถานะ</option>{Object.entries(borrowerStatuses).map(([key, title]) => <option key={key} value={key}>{title}</option>)}</select></label>
       </div>
-      <div className="borrower-table-scroll overflow-x-auto" role="region" aria-label="ตารางผู้กู้ยืม เลื่อนแนวนอนเพื่อดูทุกคอลัมน์" tabIndex={0}>
+      {!expandedColumns && <div className="borrower-overview-scroll" role="region" aria-label="ภาพรวมรายชื่อผู้กู้" tabIndex={0}>
+        <table className="borrower-overview"><thead><tr>{['ผู้กู้ยืม', 'สถานะปัจจุบัน', 'Risk', 'Approved Limit', 'Used Limit', 'Available Limit', 'จัดการ'].map(title => <th key={title} scope="col">{title}</th>)}</tr></thead>
+          <tbody>{visible.map(b => {
+            const used = b.currentUsedLimit ?? b.usedLimit
+            const remaining = availableBorrowerLimit(b.approvedLimit, b.committedLimit ?? used)
+            const risk = b.riskRatingCode || b.currentRiskRating || 'A'
+            return <tr key={b.id}>
+              <td><button type="button" className="borrower-person" onClick={() => showForm(b, true)} aria-label={`ดูข้อมูล ${b.nickname}`}><span className="borrower-portrait">{b.cardReadAt ? <Image unoptimized src={`/api/borrowers/${b.id}/card/photo`} alt="" width={44} height={54} /> : <span>{b.nickname.slice(0, 2) || <Eye size={18} />}</span>}</span><span className="borrower-person-details"><strong>{b.nickname || b.firstName}<small>{b.borrowerId || `BR-${String(b.id).padStart(5, '0')}`}</small></strong><span>{[b.firstName, b.lastName].filter(Boolean).join(' ') || 'ยังไม่ระบุชื่อ'}</span><span className="borrower-person-phone">{b.phone || 'ยังไม่ระบุเบอร์โทร'}</span></span></button></td>
+              <td data-label="สถานะ"><span className="borrower-loan-chip" data-overdue={Boolean(b.overdueDays)} data-neutral={b.positionSource !== 'contracts' || b.currentLoanStatus === 'รอจ่ายเงินกู้'}>{b.positionSource === 'contracts' ? b.currentLoanStatus : borrowerStatuses[b.status]}</span></td>
+              <td data-label="Risk"><span className="borrower-risk-badge" data-grade={risk} title={b.riskRatingCode ? `ผู้ดูแลกำหนด ${b.riskRatingCode} · ระบบประเมิน ${b.currentRiskRating || 'A'}` : b.positionSource !== 'contracts' ? 'เริ่ม A · ยังไม่มีประวัติสัญญา' : b.overdueDays ? `ค้าง ${b.overdueDays} วัน` : 'ไม่ค้างชำระ'} aria-label={`Risk ${risk}${b.overdueDays ? ` ค้าง ${b.overdueDays} วัน` : ''}`}>{risk}</span></td>
+              <td data-label="Approved Limit" className="borrower-money-cell">{money(b.approvedLimit)}</td>
+              <td data-label="Used Limit" className="borrower-money-cell">{money(used)}</td>
+              <td data-label="Available Limit" className="borrower-money-cell borrower-balance-cell"><strong>{money(remaining)}</strong><meter className="borrower-limit-meter" min={0} max={Math.max(1, b.approvedLimit)} value={Math.max(0, Math.min(remaining, b.approvedLimit))} title={`คงเหลือ ${money(remaining)} จาก ${money(b.approvedLimit)} บาท`} aria-label={`วงเงินคงเหลือ ${money(remaining)} จากวงเงินอนุมัติ ${money(b.approvedLimit)} บาท`} /></td>
+              <td data-label="จัดการ"><div className="borrower-overview-actions">{canCreate ? <><Button variant="edit" aria-label={`แก้ไข ${b.nickname}`} onClick={() => showForm(b)}><Pencil size={15} /></Button><Button variant="danger" aria-label={`ลบ ${b.nickname}`} onClick={() => { setDeleting(b); setError(''); setNotice('') }}><Trash2 size={15} /></Button></> : <Button onClick={() => showForm(b, true)}>ดูข้อมูล</Button>}</div></td>
+            </tr>
+          })}</tbody>
+        </table>
+      </div>}
+      {expandedColumns && <div className="borrower-table-scroll overflow-x-auto" role="region" aria-label="ตารางผู้กู้ยืม เลื่อนแนวนอนเพื่อดูทุกคอลัมน์" tabIndex={0}>
         <table className="w-full whitespace-nowrap text-left text-xs">
           <thead><tr>{headers.map(h => <th key={h} scope="col" className="px-4 py-4 font-medium" data-numeric={h.includes("Limit") || undefined}>{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-slate-200/60">{visible.map(b => <tr key={b.id} className="hover:bg-white/50">
-            <td className="borrower-row-actions px-4 py-3"><div className="flex gap-2"><Button aria-label={`ดูรายละเอียด ${b.firstName}`} onClick={() => showForm(b, true)}><Eye size={15} /></Button>{canCreate && <><Button variant="edit" aria-label={`แก้ไข ${b.firstName}`} onClick={() => showForm(b)}><Pencil size={15} /></Button><Button variant="danger" aria-label={`ลบ ${b.firstName}`} onClick={() => { setDeleting(b); setError(''); setNotice('') }}><Trash2 size={15} /></Button></>}</div></td>
+            <td className="borrower-portrait-cell px-4 py-3"><button type="button" className="borrower-portrait" aria-label={`ดูข้อมูล ${b.nickname}`} onClick={() => showForm(b, true)}>{b.cardReadAt ? <Image unoptimized src={`/api/borrowers/${b.id}/card/photo`} alt={`รูป ${b.nickname}`} width={44} height={54} /> : <span>{b.nickname.slice(0, 2) || <Eye size={18} />}</span>}</button></td>
             {[b.borrowerId || `BR-${String(b.id).padStart(5, '0')}`, b.nickname, b.firstName, b.lastName, b.phone, b.nationalId || '', b.workplace || '—'].map((value, i) => <td key={i} className="px-4 py-4">{value}</td>)}
             <td className="px-4 py-4">{provinces.find(p => p.id === b.provinceId)?.nameTh || '—'}</td>
-            <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 ${b.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : b.status === 'BLACKLIST' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>{borrowerStatuses[b.status]}</span></td>
+            <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 ${b.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : b.status === 'BLACKLIST' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>{borrowerStatuses[b.status]}</span><span className="borrower-position-note">{b.currentLoanStatus}</span></td>
             {[label(banks, b.bankCode), b.bankAccount || '—', b.bankAccountName || '—', promptPayTypes[b.promptPayType] || '—', b.promptPayNumber || '—', label(channels, b.paymentChannelCode), new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok' }).format(new Date(b.registeredAt)), borrowerTenure(b.registeredAt, today)].map((value, i) => <td key={i} className="px-4 py-4">{value}</td>)}
             <td className="px-4 py-4"><SocialLink value={b.facebook} label="Facebook" /></td>
             <td className="px-4 py-4"><SocialLink value={b.instagram} label="Instagram" /></td>
             <td className="px-4 py-4"><div className="flex items-center gap-2">{b.line && <SocialLink value={b.line} label="Line" />}{b.hasLineQr && <Button onClick={() => setQrViewing({ src: `/api/borrowers/${b.id}/line-qr`, name: b.nickname })} aria-label={`ดู QR Line ของ ${b.nickname}`}><QrCode size={14} />QR</Button>}{!b.line && !b.hasLineQr && '—'}</div></td>
-            <td className="px-4 py-4">{label(ratings, b.riskRatingCode)}</td>
-            {[b.approvedLimit, b.usedLimit, availableBorrowerLimit(b.approvedLimit, b.usedLimit)].map((value, i) => <td key={i} className={`px-4 py-4 text-right tabular-nums ${i === 2 ? 'borrower-available font-semibold' : ''}`}>{money(value)}</td>)}
+            <td className="px-4 py-4">{b.riskRatingCode || b.currentRiskRating || 'A'}<span className="borrower-position-note">{b.positionSource !== 'contracts' ? 'เริ่ม A · ยังไม่มีประวัติสัญญา' : b.overdueDays ? `ผิดนัด ${b.overdueDays} วัน` : 'ไม่มียอดค้างปัจจุบัน'}</span></td>
+            {[b.approvedLimit, b.currentUsedLimit ?? b.usedLimit, availableBorrowerLimit(b.approvedLimit, b.committedLimit ?? b.currentUsedLimit ?? b.usedLimit)].map((value, i) => <td key={i} className={`px-4 py-4 text-right tabular-nums ${i === 2 ? 'borrower-available font-semibold' : ''}`}>{money(value)}{i === 1 && <span className="borrower-position-note">{b.positionSource === 'contracts' ? 'เงินต้นจากสัญญา' : 'ยอดเดิม · ยังไม่เชื่อมสัญญา'}</span>}</td>)}
             <td className="px-4 py-4">{b.referrer || '—'}</td>
+            <td className="borrower-row-actions px-4 py-3"><div className="flex gap-2">{canCreate && <><Button variant="edit" aria-label={`แก้ไข ${b.firstName}`} onClick={() => showForm(b)}><Pencil size={15} /></Button><Button variant="danger" aria-label={`ลบ ${b.firstName}`} onClick={() => { setDeleting(b); setError(''); setNotice('') }}><Trash2 size={15} /></Button></>}</div></td>
           </tr>)}</tbody>
         </table>
-      </div>
+      </div>}
       {!visible.length && <div className="borrower-empty">
         <span className="borrower-empty-icon"><UsersRound size={30} strokeWidth={1.3} /></span>
         <h3>{total ? 'ไม่พบรายชื่อที่ค้นหา' : 'เริ่มต้นดูแลผู้กู้ยืมของคุณ'}</h3>
@@ -270,18 +293,20 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
       </div>}
       <div className="borrower-pagination flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/60 p-4 text-xs text-slate-500"><span>พบ {total} รายการ · หน้า {currentPage} / {pages}</span><div className="flex gap-2"><Button disabled={currentPage === 1} onClick={() => navigate(currentPage - 1)}><ChevronLeft size={14} />ก่อนหน้า</Button><Button disabled={currentPage === pages} onClick={() => navigate(currentPage + 1)}>ถัดไป<ChevronRight size={14} /></Button></div></div>
     </Card>
-    {open && <dialog ref={openDialog} onCancel={event => { if (busy || reading || qrLoading) event.preventDefault(); else setOpen(false) }} className="borrower-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-3xl p-6" aria-labelledby="borrower-title">
+    {open && <dialog ref={openDialog} onCancel={event => { if (busy || reading || qrLoading) event.preventDefault(); else setOpen(false) }} className="borrower-dialog borrower-profile-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-3xl p-6" aria-labelledby="borrower-title">
       <div className="borrower-dialog-heading">
         <h2 id="borrower-title" className="text-lg font-semibold">{viewOnly ? 'รายละเอียดผู้กู้ยืม' : selected ? 'แก้ไขผู้กู้ยืม' : 'เพิ่มผู้กู้ยืม'}</h2>
         <div className="borrower-dialog-tools">
+          {viewOnly && canCreate && <Button type="button" variant="edit" onClick={() => setViewOnly(false)}><Pencil size={15} />แก้ไขข้อมูล</Button>}
           {(card || !viewOnly) && <button type="button" className="borrower-card-trigger" aria-label={card ? 'ดูข้อมูลบัตรประชาชน' : 'อ่านบัตรประชาชน'} title={card ? 'ดูข้อมูลบัตรประชาชน' : 'อ่านบัตรประชาชน'} disabled={busy || reading || qrLoading} onClick={() => setReadCardOpen(true)}><CreditCard size={20} /><span className="sr-only">{card ? 'ดูข้อมูลบัตรประชาชน' : 'อ่านบัตรประชาชน'}</span>{card && <span className="borrower-card-indicator" aria-hidden="true" />}</button>}
           <button type="button" className="borrower-close" aria-label="ปิดฟอร์ม" disabled={busy || reading || qrLoading} onClick={() => setOpen(false)}><X size={19} /></button>
         </div>
       </div>
       <p className="mb-5 mt-1 text-xs text-slate-500">{selected ? `${selected.borrowerId || `BR-${String(selected.id).padStart(5, '0')}`} · ${viewOnly ? 'ข้อมูลสำหรับอ่านอย่างเดียว' : 'ช่องที่มี * จำเป็นต้องระบุ'}` : 'รหัสผู้กู้ยืมจะสร้างอัตโนมัติหลังบันทึก · ช่องที่มี * จำเป็นต้องระบุ'}</p>
+      <nav className="borrower-form-nav" aria-label="หมวดข้อมูลผู้กู้">{[['identity', 'ข้อมูลบัตร'], ['address', 'ที่อยู่'], ['contact', 'การติดต่อ'], ['social', 'Social / QR'], ['bank', 'บัญชีรับเงิน'], ['limits', 'วงเงิน']].map(([id, title]) => <a key={id} href={`#borrower-section-${id}`}>{title}</a>)}</nav>
       <form onSubmit={submit}>
         <fieldset disabled={busy || reading || qrLoading || viewOnly} className="grid gap-4 sm:grid-cols-2">
-          <legend className="borrower-form-section">ข้อมูลบัตรประชาชน</legend>
+          <legend id="borrower-section-identity" className="borrower-form-section">ข้อมูลบัตรประชาชน</legend>
           <div className="borrower-identity-photo sm:col-span-2">{card?.photo ? <Image unoptimized src={card.photo} alt="รูปผู้กู้จากบัตรประชาชน" width={120} height={152} className="rounded-xl object-cover" /> : <div className="borrower-identity-placeholder"><CreditCard size={30} /><span>ยังไม่มีรูป</span></div>}<div><p className="text-sm font-medium">รูป</p><p className="mt-2 text-xs text-slate-500">อ่านบัตรจากไอคอนด้านบนเพื่อนำรูปและข้อมูลจากชิปมาใช้</p></div></div>
           <label className="text-xs sm:col-span-2">เลขบัตรประชาชน<input className={fieldClass} inputMode="numeric" pattern="[0-9]{13}" maxLength={13} readOnly={cardNationalId !== null} aria-describedby={cardNationalId !== null ? 'borrower-national-id-locked' : undefined} value={form.nationalId} onChange={e => setForm({ ...form, nationalId: e.target.value })} />{cardNationalId !== null && <span id="borrower-national-id-locked" className="mt-2 block text-xs text-slate-500">เลขบัตรจากชิปบัตรประชาชน · ไม่สามารถแก้ไขได้</span>}</label>
           {([
@@ -295,7 +320,7 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
           <label className="borrower-middle-toggle sm:col-span-2"><input type="checkbox" checked={hasMiddleName} onChange={e => { setHasMiddleName(e.target.checked); if (!e.target.checked) setForm({ ...form, middleNameTh: '', middleNameEn: '' }) }} aria-controls="borrower-middle-names" />มีชื่อกลาง</label>
           {hasMiddleName && <div id="borrower-middle-names" className="grid gap-4 sm:grid-cols-2 sm:col-span-2"><label className="text-xs">ชื่อกลางภาษาไทย<input className={fieldClass} maxLength={200} value={form.middleNameTh} onChange={e => setForm({ ...form, middleNameTh: e.target.value })} /></label><label className="text-xs">ชื่อกลางภาษาอังกฤษ<input className={fieldClass} maxLength={200} value={form.middleNameEn} onChange={e => setForm({ ...form, middleNameEn: e.target.value })} /></label></div>}
           <label className="text-xs">วันเกิด<input type="date" max={today} className={fieldClass} value={form.birthDate} onChange={e => setForm({ ...form, birthDate: e.target.value })} /></label>
-          <div className="borrower-form-section sm:col-span-2">ที่อยู่</div>
+          <div id="borrower-section-address" className="borrower-form-section sm:col-span-2">ที่อยู่</div>
           <label className="text-xs sm:col-span-2">ที่อยู่ตามบัตร<textarea className={fieldClass} rows={2} maxLength={200} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></label>
           <label className="text-xs">เลขที่บ้าน<input className={fieldClass} maxLength={200} value={form.houseNumber} onChange={e => setForm({ ...form, houseNumber: e.target.value })} /></label>
           <label className="text-xs">หมู่ที่<input className={fieldClass} maxLength={200} value={form.villageNumber} onChange={e => setForm({ ...form, villageNumber: e.target.value })} /></label>
@@ -305,34 +330,34 @@ export function BorrowerManager({ borrowers, total, page, query: initialQuery, s
           <LocationSelect label="ตำบล" parent={form.districtId} parentKey="districtId" value={form.subdistrictId} onChange={value => setForm({ ...form, subdistrictId: value })} />
           <label className="text-xs">วันออกบัตร<input type="date" className={fieldClass} value={form.cardIssueDate} onChange={e => setForm({ ...form, cardIssueDate: e.target.value })} /></label>
           <label className="text-xs">วันหมดอายุ<input type="date" min={form.cardIssueDate || undefined} className={fieldClass} value={form.cardExpiryDate} onChange={e => setForm({ ...form, cardExpiryDate: e.target.value })} /></label>
-          <div className="borrower-form-section sm:col-span-2">การติดต่อ</div>
+          <div id="borrower-section-contact" className="borrower-form-section sm:col-span-2">การติดต่อ</div>
           <label className="text-xs">เบอร์มือถือ<input type="tel" inputMode="numeric" className={fieldClass} maxLength={10} pattern="0[0-9]{8,9}" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
           <label className="text-xs">ชื่อเล่น *<input required className={fieldClass} maxLength={200} value={form.nickname} onChange={e => setForm({ ...form, nickname: e.target.value })} /></label>
           <label className="text-xs">ที่ทำงาน<input className={fieldClass} maxLength={200} value={form.workplace} onChange={e => setForm({ ...form, workplace: e.target.value })} /></label>
           <label className="text-xs">คนแนะนำ<input className={fieldClass} maxLength={200} value={form.referrer} onChange={e => setForm({ ...form, referrer: e.target.value })} /></label>
-          <div className="borrower-form-section sm:col-span-2">ช่องทาง Social และ Line QR</div>
+          <div id="borrower-section-social" className="borrower-form-section sm:col-span-2">ช่องทาง Social และ Line QR</div>
           {socialKeys.map(key => <label key={key} className="text-xs">{key === 'facebook' ? 'ลิงก์ Facebook' : key === 'instagram' ? 'ลิงก์ Instagram' : 'ลิงก์ Line'}<input type="url" className={fieldClass} maxLength={2048} placeholder={key === 'facebook' ? 'https://www.facebook.com/...' : key === 'instagram' ? 'https://www.instagram.com/...' : 'https://line.me/ti/p/...'} value={form[key]} onChange={e => { setForm({ ...form, [key]: e.target.value }); setSocialChanged(current => current.includes(key) ? current : [...current, key]) }} />{selected?.[key] && !socialUrl(selected[key]) && !socialChanged.includes(key) && <span className="mt-1 block text-xs text-slate-500">ข้อมูลเดิม: {socialStatus(selected[key])}</span>}{viewOnly && socialUrl(form[key]) && <span className="mt-2 block"><SocialLink value={form[key]} label={key === 'facebook' ? 'Facebook' : key === 'instagram' ? 'Instagram' : 'Line'} /></span>}</label>)}
           <div className="borrower-qr-upload sm:col-span-2">
             <div><h3 className="text-sm font-medium">QR สำหรับเพิ่มเพื่อนใน Line</h3><p className="mt-1 text-xs text-slate-500">PNG, JPG หรือ WebP · สูงสุด 2 MB · บันทึกรูปเมื่อบันทึกผู้กู้ยืม</p></div>
             {qrSrc ? <div className="mt-4 flex flex-wrap items-start gap-4"><button type="button" aria-label="ขยายรูป QR Line" onClick={() => setQrViewing({ src: qrSrc, name: form.nickname })}><Image unoptimized src={qrSrc} alt="QR สำหรับเพิ่มเพื่อนใน Line" width={152} height={152} className="borrower-qr-image" /></button>{!viewOnly && <Button variant="danger" onClick={() => setLineQrImage('')}><Trash2 size={14} />ลบรูป QR</Button>}</div> : <p className="my-3 text-xs text-slate-500">ยังไม่มีรูป QR Line</p>}
             {!viewOnly && <label className="mt-4 block text-xs">{qrLoading ? 'กำลังอ่านรูป…' : qrSrc ? 'เปลี่ยนรูป QR' : 'อัปโหลดรูป QR'}<span className="mt-2 flex items-center gap-2"><Upload size={16} /><input type="file" accept="image/png,image/jpeg,image/webp" aria-label="อัปโหลดรูป QR Line" disabled={busy || reading || qrLoading} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; void chooseLineQr(file) }} className="min-w-0 max-w-full text-xs" /></span></label>}
           </div>
-          <div className="borrower-form-section sm:col-span-2">บัญชีธนาคารและพร้อมเพย์</div>
+          <div id="borrower-section-bank" className="borrower-form-section sm:col-span-2">บัญชีธนาคารและพร้อมเพย์</div>
           <label className="text-xs">ธนาคาร<select className={fieldClass} required={Boolean(form.bankAccount) && !(selected?.bankAccount === form.bankAccount && !selected.bankCode)} value={form.bankCode} onChange={e => setForm({ ...form, bankCode: e.target.value })}><option value="">เลือกธนาคาร</option>{banks.filter(bank => bank.isActive || bank.code === form.bankCode).map(bank => <option key={bank.code} value={bank.code}>{bank.nameTh}</option>)}</select></label>
           <label className="text-xs">เลขบัญชีธนาคาร<input className={fieldClass} inputMode="numeric" pattern="[0-9]{6,20}" maxLength={20} required={Boolean(form.bankCode)} placeholder="กรอกเลขบัญชี ไม่ต้องใส่ขีด" value={form.bankAccount} onChange={e => setForm({ ...form, bankAccount: e.target.value })} /></label>
           <label className="text-xs sm:col-span-2">ชื่อบัญชีธนาคาร<input className={fieldClass} maxLength={200} placeholder="ชื่อเจ้าของบัญชี" value={form.bankAccountName} onChange={e => setForm({ ...form, bankAccountName: e.target.value })} /></label>
           <label className="text-xs">ประเภทพร้อมเพย์<select className={fieldClass} value={form.promptPayType} onChange={e => setForm({ ...form, promptPayType: e.target.value, promptPayNumber: '' })}><option value="">ไม่ระบุพร้อมเพย์</option>{Object.entries(promptPayTypes).map(([key, title]) => <option key={key} value={key}>{title}</option>)}</select></label>
           <label className="text-xs">หมายเลขพร้อมเพย์<input className={fieldClass} disabled={!form.promptPayType} required={Boolean(form.promptPayType)} inputMode="numeric" pattern={form.promptPayType === 'PHONE' ? '0[0-9]{9}' : '[0-9]{13}'} maxLength={form.promptPayType === 'PHONE' ? 10 : 13} placeholder={form.promptPayType === 'PHONE' ? 'เบอร์โทรศัพท์ 10 หลัก' : form.promptPayType === 'NATIONAL_ID' ? 'เลขบัตรประชาชน 13 หลัก' : 'เลือกประเภทพร้อมเพย์ก่อน'} value={form.promptPayNumber} onChange={e => setForm({ ...form, promptPayNumber: e.target.value })} /></label>
-          <div className="borrower-form-section sm:col-span-2">สถานะและข้อมูลวงเงิน</div>
+          <div id="borrower-section-limits" className="borrower-form-section sm:col-span-2">สถานะและข้อมูลวงเงิน</div>
           <label className="text-xs">สถานะ *<select className={fieldClass} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{Object.entries(borrowerStatuses).map(([key, title]) => <option key={key} value={key}>{title}</option>)}</select></label>
-          {([['paymentChannelCode', 'ช่องรับเงิน', channels], ['riskRatingCode', 'Risk Rating', ratings]] as const).map(([key, title, options]) => <label key={key} className="text-xs">{title}<select className={fieldClass} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })}><option value="">ยังไม่ระบุ</option>{options.filter(o => o.isActive || o.code === form[key]).map(o => <option key={o.code} value={o.code}>{o.nameTh}</option>)}</select></label>)}
+          {([['paymentChannelCode', 'ช่องรับเงิน', channels], ['riskRatingCode', 'Risk Rating', ratings]] as const).map(([key, title, options]) => <label key={key} className="text-xs">{title}<select className={fieldClass} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })}><option value="">{key === 'riskRatingCode' ? `อัตโนมัติ (${selected?.currentRiskRating || 'A'})` : 'ยังไม่ระบุ'}</option>{options.filter(o => o.isActive || o.code === form[key]).map(o => <option key={o.code} value={o.code}>{o.nameTh}</option>)}</select></label>)}
           <label className="text-xs">วันที่สมัคร *<input required type="date" className={fieldClass} value={form.registeredAt} onChange={e => setForm({ ...form, registeredAt: e.target.value })} /></label>
-          {([['durationMonths', 'ระยะเวลาที่กำหนด (เดือน)', 1200], ['approvedLimit', 'Approved Limit (บาท)', 2000000000], ['usedLimit', 'Used Limit (บาท)', selected?.approvedLimit === Number(form.approvedLimit) ? Math.max(Number(form.approvedLimit), selected.usedLimit) : Number(form.approvedLimit)]] as const).map(([key, title, max]) => <label key={key} className="text-xs">{title} *<input required type="number" min={0} max={max} step={1} className={fieldClass} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>)}
+          {([['durationMonths', 'ระยะเวลาที่กำหนด (เดือน)', 1200], ['approvedLimit', 'Approved Limit (บาท)', 2000000000], ['usedLimit', 'Used Limit (บาท)', selected?.approvedLimit === Number(form.approvedLimit) ? Math.max(Number(form.approvedLimit), selected.usedLimit) : Number(form.approvedLimit)]] as const).map(([key, title, max]) => <label key={key} className="text-xs">{title} *<input required type="number" min={0} max={max} step={key === 'durationMonths' ? 1 : 0.01} readOnly={key === 'usedLimit' && selected?.positionSource === 'contracts'} className={fieldClass} value={key === 'usedLimit' && selected?.positionSource === 'contracts' ? selected.currentUsedLimit : form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>)}
           {Number(form.usedLimit) > Number(form.approvedLimit) && <p className="text-xs leading-6 text-amber-200 sm:col-span-2">วงเงินที่ใช้เกินอนุมัติ {money(Number(form.usedLimit) - Number(form.approvedLimit))} บาท · วงเงินคงเหลือแสดงเป็น 0 บาท ยอดเดิมจากการนำเข้ายังคงอยู่</p>}
-          <div className="borrower-limit-preview rounded-xl p-4 text-sm sm:col-span-2">Available Limit: {money(availableBorrowerLimit(Number(form.approvedLimit), Number(form.usedLimit)))} บาท</div>
+          <div className="borrower-limit-preview rounded-xl p-4 text-sm sm:col-span-2">Available Limit: {money(availableBorrowerLimit(Number(form.approvedLimit), selected?.currentUsedLimit ?? Number(form.usedLimit)))} บาท<p className="mt-2 text-xs">เงินต้นใช้งาน {money(selected?.currentUsedLimit ?? Number(form.usedLimit))} บาท · {selected?.currentLoanStatus || 'ยังไม่มีสัญญา'} · Risk ที่เลือก {form.riskRatingCode || selected?.currentRiskRating || 'A'}</p><p className="mt-2 text-xs">ระบบประเมิน {selected?.currentRiskRating || 'A'} จากวันค้างชำระ · เลือกอัตโนมัติเพื่อให้เกรดเปลี่ยนตามยอดค้าง</p><p className="mt-2 text-xs">{selected?.positionSource === 'contracts' ? 'คำนวณจากสัญญาและรายการชำระ · หักค่าปรับและดอกเบี้ยก่อนเงินต้น' : 'ยอดนำเข้าเดิม · ยังไม่มีสัญญาเชื่อมโยง'} · {selected?.overdueDays ? `ค้างชำระ ${selected.overdueDays} วัน` : 'ไม่มีข้อมูลค้างชำระปัจจุบัน'}</p></div>
         </fieldset>
         {error && <p role="alert" className="mt-4 text-sm text-rose-600">{error}</p>}
-        <div className="mt-6 flex justify-end gap-2"><Button disabled={busy || reading || qrLoading} onClick={() => setOpen(false)}>{viewOnly ? 'ปิด' : 'ยกเลิก'}</Button>{viewOnly ? canCreate && <Button variant="primary" onClick={() => setViewOnly(false)}><Pencil size={15} />แก้ไขข้อมูล</Button> : <Button type="submit" variant="primary" disabled={busy || reading || qrLoading}>{busy ? 'กำลังบันทึก…' : 'บันทึกผู้กู้ยืม'}</Button>}</div>
+        <div className="borrower-form-footer mt-6 flex justify-end gap-2"><Button disabled={busy || reading || qrLoading} onClick={() => setOpen(false)}>{viewOnly ? 'ปิด' : 'ยกเลิก'}</Button>{viewOnly ? canCreate && <Button key="enter-edit" type="button" variant="primary" onClick={event => { event.preventDefault(); setViewOnly(false) }}><Pencil size={15} />แก้ไขข้อมูล</Button> : <Button key="save-borrower" type="submit" variant="primary" disabled={busy || reading || qrLoading}>{busy ? 'กำลังบันทึก…' : 'บันทึกผู้กู้ยืม'}</Button>}</div>
       </form>
     </dialog>}
     <ReadCardModal

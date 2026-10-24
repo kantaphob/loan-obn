@@ -1,5 +1,6 @@
 'use client'
 
+import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowDownLeft, ArrowUpRight, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -21,6 +22,7 @@ export function CategoryManager({ categories, canEdit }: { categories: Category[
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  useFeedbackToast({ error, success: notice })
 
   function showForm(category?: Category, group = 'CAPITAL') {
     setForm(category ? { ...category, nameEn: category.nameEn ?? '' } : { ...empty, group })

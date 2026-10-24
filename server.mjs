@@ -1,6 +1,5 @@
 import 'dotenv/config'
 import { syncRecordFiles } from './lib/record-files.mjs'
-import { createAutomaticBackup } from './lib/automatic-backups.mjs'
 import { createServer } from 'node:http'
 import next from 'next'
 import { WebSocket, WebSocketServer } from 'ws'
@@ -19,16 +18,6 @@ const handleUpgrade = app.getUpgradeHandler()
 const recordDatabaseUrl = process.env.DATABASE_URL ?? 'file:./private/database/ProgressSQL.db'
 syncRecordFiles(recordDatabaseUrl)
 const server = createServer((request, response) => {
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && request.url?.startsWith('/api/')) {
-    response.once('finish', () => {
-      if (response.statusCode >= 400) return
-      try { syncRecordFiles(recordDatabaseUrl) }
-      catch (error) { console.error('Record file sync failed; run npm run storage:sync to repair:', error.code ?? error.name) }
-      createAutomaticBackup().catch((error) => {
-        console.error('Automatic database backup failed; the primary database is unchanged:', error.code ?? error.name ?? 'Unknown error')
-      })
-    })
-  }
   return handle(request, response)
 })
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 1024 })
