@@ -75,7 +75,10 @@ server.listen(port, hostname, () => {
   console.log('> WebSocket endpoint: /api/realtime')
 })
 
+let shuttingDown = false
 function shutdown() {
+  if (shuttingDown) return
+  shuttingDown = true
   clearInterval(heartbeat)
   sockets.close()
   server.close(() => process.exit(0))

@@ -66,12 +66,25 @@ export function ContractsDirectory() {
     }
   }
   const money = (value: number) => new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2 }).format(value / 100)
+  const copyAmount = (value: number) => (value / 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')
   const date = (value: string) => new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'short' }).format(new Date(value))
-  async function copyContractHeaders() {
-    const headers = 'เลขที่สัญญา | ยอดเงินต้น | ดอกเบี้ย | ยอดดอกเบี้ย | วันรับ | วันส่งคืน | ยอดจ่าย'
+  const copyInterestRate = (row: Awaited<ReturnType<typeof listContracts>>[number]) => {
+    const rate = row.internalInterestPercent ?? (row.principalSatang > 0 && row.interestSatang > 0 ? row.interestSatang / row.principalSatang * 100 : null)
+    return rate === null ? '—' : `${Number(rate.toFixed(2))}%`
+  }
+  async function copyContractMessage(row: Awaited<ReturnType<typeof listContracts>>[number]) {
+    const message = [
+      contractCode(row.id),
+      money(row.principalSatang),
+      copyInterestRate(row),
+      copyAmount(row.interestSatang),
+      row.paidAt ? date(row.paidAt) : row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : '—',
+      row.repaymentDueDate ? date(row.repaymentDueDate) : '—',
+      copyAmount(row.netSatang),
+    ].join(' ')
     try {
-      await navigator.clipboard.writeText(headers)
-      toast({ title: 'คัดลอกหัวคอลัมน์แล้ว', description: 'คัดลอกเฉพาะข้อความหัวคอลัมน์ตามที่ระบุ', variant: 'success' })
+      await navigator.clipboard.writeText(message)
+      toast({ title: 'คัดลอกข้อความสัญญาแล้ว', description: `${contractCode(row.id)} · พร้อมนำไปส่งข้อความ`, variant: 'success' })
     } catch {
       toast({ title: 'คัดลอกไม่สำเร็จ', description: 'เบราว์เซอร์ไม่อนุญาตให้เข้าถึงคลิปบอร์ด', variant: 'error' })
     }
@@ -135,7 +148,7 @@ export function ContractsDirectory() {
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="borrower-directory-heading"><h2>ทะเบียนสัญญา</h2><span className="borrower-count">{rows.length} สัญญา</span></div>
-        <div className="flex flex-wrap gap-2"><Button onClick={() => void copyContractHeaders()}><ClipboardCopy size={15} aria-hidden="true" />คัดลอกหัวคอลัมน์</Button><ContractExportButton rows={rows} /><Button onClick={() => setLegacyImporting(true)}>นำเข้ารายการเก่า</Button><Button variant="primary" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />เพิ่มสัญญา</Button></div>
+        <div className="flex flex-wrap gap-2"><ContractExportButton rows={rows} /><Button onClick={() => setLegacyImporting(true)}>นำเข้ารายการเก่า</Button><Button variant="primary" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />เพิ่มสัญญา</Button></div>
       </div>
       <div className="borrower-toolbar flex flex-wrap gap-3 p-4">
         <form onSubmit={search} className="flex min-w-0 flex-1 basis-72 gap-2">
@@ -153,7 +166,7 @@ export function ContractsDirectory() {
           <caption className="sr-only">รายการสัญญาสินเชื่อ</caption>
           <thead><tr>{['จัดการ', 'เลขสัญญา', 'วันที่ทำสัญญา', 'รหัสผู้กู้', 'ชื่อผู้กู้', 'รหัสผู้ให้กู้', 'วงเงินสัญญา', 'สถานะ', 'สัญญาและการลงนาม', 'วันที่จ่ายเงิน', 'วันที่ปิดยอด'].map(label => <th scope="col" key={label} className="px-4 py-4 font-medium">{label}</th>)}</tr></thead>
           <tbody>{visibleRows.map(row => <tr key={row.id}>
-            <td className="border-b px-4 py-3"><div className="flex items-center gap-2"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button>{row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">พิมพ์สัญญา</a>}{row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}</div></td>
+            <td className="border-b px-4 py-3"><div className="flex flex-wrap items-center gap-2"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button><Button aria-label={`คัดลอกข้อความสัญญา ${contractCode(row.id)}`} title="คัดลอกข้อความสัญญาเพื่อส่งต่อ" onClick={() => void copyContractMessage(row)}><ClipboardCopy size={17} aria-hidden="true" /></Button>{row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">พิมพ์สัญญา</a>}{row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}</div></td>
             {[<span key="code">{contractCode(row.id)}{row.legacySourceCode && <span className="mt-1 block text-[10px] text-slate-500">เลขเดิม {row.legacySourceCode}</span>}</span>, row.legacySourceCode && row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : date(row.createdAt), row.borrowerCode, <span key="borrower">{row.borrowerName}{row.legacySourceCode && legacyBorrowerName(row) && <span className="mt-1 block text-[10px] text-slate-500">ชื่อเดิม {legacyBorrowerName(row)}</span>}</span>, lenderCode(row.lenderId), money(row.principalSatang), row.status === 'REJECTED' ? 'ไม่อนุมัติ' : row.limitApprovalRequired ? 'รออนุมัติวงเงิน' : row.legacySourceCode ? legacyStatusLabel(row) : row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : row.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว', signingLabel(row), row.paidAt ? date(row.paidAt) : '—', row.closedDate ? date(row.closedDate) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
           </tr>)}{!matches.length && !loading && !loadError && <tr><td colSpan={11} className="!p-0">
             <div className="borrower-empty" role="status">
@@ -170,6 +183,7 @@ export function ContractsDirectory() {
       </div>
     </Card>
     <Modal open={Boolean(viewing)} title={viewing ? `สัญญา ${contractCode(viewing.id)}` : 'สัญญา'} onClose={() => setViewing(null)}>
+      {viewing && <div className="mb-5 flex justify-end"><Button onClick={() => void copyContractMessage(viewing)}><ClipboardCopy size={15} aria-hidden="true" />คัดลอกข้อความส่งต่อ</Button></div>}
       {viewing && <dl className="grid gap-4 text-sm sm:grid-cols-2">{[
         ...(viewing.legacySourceCode ? [['เลขรายการเดิม', viewing.legacySourceCode], ['ชื่อผู้กู้ในรายการเดิม', legacyBorrowerName(viewing) || '—'], ['สถานะเดิม', legacyStatus(viewing) || '—'], ['ยอดชำระก่อนนำเข้า', `${money(viewing.legacyReceivedSatang)} บาท`], ['ยอดคงเหลือตามข้อมูลเดิม', `${money(Math.max(0, viewing.repaymentSatang - viewing.legacyReceivedSatang))} บาท`]] : []),
         ['ผู้กู้', viewing.borrowerName], ['ผู้ให้กู้', viewing.lenderName],

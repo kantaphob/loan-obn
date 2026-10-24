@@ -1,5 +1,6 @@
 import '../borrower/borrower.css'
 import './credit-workspace.css'
+import { Suspense } from 'react'
 import { connection } from 'next/server'
 import { ShieldCheck } from 'lucide-react'
 import { PageContainer } from '@/components/ui/page-container'
@@ -7,7 +8,11 @@ import { Header } from '@/components/ui/header'
 import { getCreditDirectory } from './actions'
 import { CreditWorkspace } from './credit-workspace'
 
-export default async function CreditBureauPage() {
+export default function CreditBureauPage() {
+  return <Suspense fallback={<PageContainer className="borrower-page credit-page"><p role="status" className="p-6 text-sm text-slate-300">กำลังโหลดประวัติเครดิต…</p></PageContainer>}><CreditBureauContent /></Suspense>
+}
+
+async function CreditBureauContent() {
   await connection()
   const people = await getCreditDirectory()
   return <PageContainer className="borrower-page credit-page">

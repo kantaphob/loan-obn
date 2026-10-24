@@ -48,7 +48,27 @@ async function DashboardContent() {
     <div className={'dash-charts'}>
       <Card as="section" className={'dash-panel'}><div className={'dash-heading'}><h2>กระแสเงินสด 6 เดือน</h2><span>หน่วย: บาท</span></div>
         <div className={'dash-legend'}><span><i style={{ background: colors[0] }} />เงินรับ</span><span><i style={{ background: colors[1] }} />เงินจ่าย</span></div>
-        <div className="dash-area-chart"><svg viewBox="0 0 700 270" role="img" aria-label="กราฟเปรียบเทียบเงินรับและเงินจ่าย 6 เดือน รายละเอียดยอดอยู่ในตาราง"><defs><linearGradient id="cash-in-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7461ed" stopOpacity=".5" /><stop offset="1" stopColor="#7461ed" stopOpacity=".03" /></linearGradient><linearGradient id="cash-out-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#55c8da" stopOpacity=".35" /><stop offset="1" stopColor="#55c8da" stopOpacity=".02" /></linearGradient></defs>{[0,.25,.5,.75,1].map(t => <g key={t}><line x1="54" x2="644" y1={220-t*180} y2={220-t*180} stroke="currentColor" opacity=".12" /><text x="44" y={224-t*180} textAnchor="end" fontSize="9" fill="currentColor">{number(max*t/100)}</text></g>)}<polygon points={`54,220 ${outgoingPoints} 644,220`} fill="url(#cash-out-area)" /><polygon points={`54,220 ${incomingPoints} 644,220`} fill="url(#cash-in-area)" /><polyline points={outgoingPoints} fill="none" stroke="#55c8da" strokeWidth="2.5" strokeLinejoin="round" /><polyline points={incomingPoints} fill="none" stroke="#7461ed" strokeWidth="2.5" strokeLinejoin="round" />{s.months.map((m,i) => <g key={m.key}><circle cx={54+i*118} cy={220-m.incoming/max*180} r="4" fill="#7461ed"><title>{m.label} รับ {money(m.incoming)}</title></circle><circle cx={54+i*118} cy={220-m.outgoing/max*180} r="4" fill="#55c8da"><title>{m.label} จ่าย {money(m.outgoing)}</title></circle><text x={54+i*118} y="250" textAnchor="middle" fontSize="10" fill="currentColor">{m.label}</text></g>)}</svg></div>
+        <div className="dash-area-chart">
+          <svg viewBox="0 0 700 270" role="img" aria-label="กราฟเปรียบเทียบเงินรับและเงินจ่าย 6 เดือน รายละเอียดยอดอยู่ในตาราง">
+            <defs>
+              <linearGradient id="cash-in-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7461ed" stopOpacity=".5" /><stop offset="1" stopColor="#7461ed" stopOpacity=".03" /></linearGradient>
+              <linearGradient id="cash-out-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#55c8da" stopOpacity=".35" /><stop offset="1" stopColor="#55c8da" stopOpacity=".02" /></linearGradient>
+            </defs>
+            {[0, .25, .5, .75, 1].map(t => <g key={t}>
+              <line x1="54" x2="644" y1={220 - t * 180} y2={220 - t * 180} stroke="currentColor" opacity=".12" />
+              <text x="44" y={224 - t * 180} textAnchor="end" fontSize="9" fill="currentColor">{number(max * t / 100)}</text>
+            </g>)}
+            <polygon points={`54,220 ${outgoingPoints} 644,220`} fill="url(#cash-out-area)" />
+            <polygon points={`54,220 ${incomingPoints} 644,220`} fill="url(#cash-in-area)" />
+            <polyline points={outgoingPoints} fill="none" stroke="#55c8da" strokeWidth="2.5" strokeLinejoin="round" />
+            <polyline points={incomingPoints} fill="none" stroke="#7461ed" strokeWidth="2.5" strokeLinejoin="round" />
+            {s.months.map((m, i) => <g key={m.key}>
+              <g role="img" aria-label={`${m.label} รับ ${money(m.incoming)}`}><circle cx={54 + i * 118} cy={220 - m.incoming / max * 180} r="4" fill="#7461ed" /></g>
+              <g role="img" aria-label={`${m.label} จ่าย ${money(m.outgoing)}`}><circle cx={54 + i * 118} cy={220 - m.outgoing / max * 180} r="4" fill="#55c8da" /></g>
+              <text x={54 + i * 118} y="250" textAnchor="middle" fontSize="10" fill="currentColor">{m.label}</text>
+            </g>)}
+          </svg>
+        </div>
         <div className="dash-chart-totals"><div><span>รับ 6 เดือน</span><strong>{money(s.months.reduce((sum,m)=>sum+m.incoming,0))}</strong></div><div><span>จ่าย 6 เดือน</span><strong>{money(s.months.reduce((sum,m)=>sum+m.outgoing,0))}</strong></div></div>
         {!s.months.some(m => m.incoming || m.outgoing) && <p className={'dash-muted'}>ยังไม่มีรายการรับ–จ่ายในช่วงนี้</p>}
 <details className="dash-chart-details"><summary>ตารางยอดรับ–จ่าย</summary>        <div className={'dash-tableWrap'}><table><thead><tr><th>เดือน</th><th>รับ</th><th>จ่าย</th><th>สุทธิ</th></tr></thead><tbody>{s.months.map(m => <tr key={m.key}><th>{m.label}</th><td>{money(m.incoming)}</td><td>{money(m.outgoing)}</td><td>{money(m.incoming - m.outgoing)}</td></tr>)}</tbody></table></div></details>

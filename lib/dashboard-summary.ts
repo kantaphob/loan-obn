@@ -3,13 +3,17 @@ import { bangkokToday, contractLedgerBalance } from '@/lib/ledger'
 import { capitalPosition } from '@/lib/capital'
 import { cashCarryforward, readCashMovements } from '@/lib/cash-carryforward'
 
+const thaiMonthAbbreviations = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+
 /** Read only: monetary totals remain in satang until display. */
 export async function getDashboardSummary() {
   const today = bangkokToday()
   const [year, month] = today.split('-').map(Number)
   const months = Array.from({ length: 6 }, (_, i) => {
     const date = new Date(Date.UTC(year, month - 6 + i, 1))
-    return { key: date.toISOString().slice(0, 7), label: new Intl.DateTimeFormat('th-TH', { month: 'short', year: '2-digit', timeZone: 'UTC' }).format(date), incoming: 0, outgoing: 0 }
+    const buddhistYear = date.getUTCFullYear() + 543
+    const label = `${thaiMonthAbbreviations[date.getUTCMonth()]} ${String(buddhistYear % 100).padStart(2, '0')}`
+    return { key: date.toISOString().slice(0, 7), label, incoming: 0, outgoing: 0 }
   })
   const [borrowers, lenders, limits, contracts, entries, statuses, cashEntries] = await Promise.all([
     prisma.borrower.count(), prisma.lender.count(),
