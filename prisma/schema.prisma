@@ -381,6 +381,9 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  principalReceivedSatang Float?
+  interestReceivedSatang Float?
+  penaltyReceivedSatang Float?
   slipHash String?
   slip LedgerSlip?
   settlementWaivedSatang Float @default(0)
@@ -492,6 +495,7 @@ model ContractRevision {
 
 // Immutable closing journals. Cash movements through endOn are locked by database triggers.
 model AccountingClose {
+  kind String @default("LEGACY")
   id Int @id @default(autoincrement())
   requestKey String @unique
   startOn String
@@ -505,4 +509,19 @@ model AccountingClose {
   createdAt DateTime @default(now())
 
   @@map("accounting_close")
+}
+
+// Monthly cash/receivables review only; does not post closing journal entries.
+model AccountingMonthLock {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  month String @unique
+  startOn String
+  endOn String @unique
+  note String
+  snapshotJson String
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@map("accounting_month_lock")
 }

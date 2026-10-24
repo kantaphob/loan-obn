@@ -2,9 +2,9 @@ export type EquityTarget = 'RETAINED_EARNINGS' | 'CAPITAL'
 export type ClosingBalance = { code: string; name: string; type: 'REVENUE' | 'EXPENSE' | 'DRAWING' | 'DIVIDEND'; amount: string }
 export type ClosingLine = { code: string; name: string; debit: number; credit: number; step?: number }
 export const closingSteps = ['ปิดรายได้เข้าสรุปผลกำไรขาดทุน', 'ปิดค่าใช้จ่ายเข้าสรุปผลกำไรขาดทุน', 'โอนผลกำไรขาดทุนเข้าทุนหรือกำไรสะสม', 'ปิดถอนใช้ส่วนตัวหรือเงินปันผล']
-export function closingJournal(input: ClosingBalance[], equity: EquityTarget = 'RETAINED_EARNINGS') {
+export function closingJournal(input: ClosingBalance[], equity: EquityTarget = 'RETAINED_EARNINGS', options: { allowEmpty?: boolean } = {}) {
   if (!['RETAINED_EARNINGS', 'CAPITAL'].includes(equity)) throw new Error('กรุณาเลือกบัญชีทุนหรือกำไรสะสมให้ถูกต้อง')
-  if (!Array.isArray(input) || input.length < 1 || input.length > 100) throw new Error('กรุณาระบุยอดบัญชี 1–100 รายการ')
+  if (!Array.isArray(input) || (input.length < 1 && !options.allowEmpty) || input.length > 100) throw new Error('กรุณาระบุยอดบัญชี 1–100 รายการ')
   const codes = new Set<string>()
   const balances = input.map(row => {
     if (!row || typeof row.code !== 'string' || !/^[A-Za-z0-9_-]{1,30}$/.test(row.code) || ['RETAINED_EARNINGS', 'CAPITAL', 'INCOME_SUMMARY'].includes(row.code.toUpperCase()) || codes.has(row.code.toUpperCase())) throw new Error('รหัสบัญชีไม่ถูกต้อง ซ้ำกัน หรือเป็นรหัสสงวน')

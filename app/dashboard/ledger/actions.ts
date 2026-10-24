@@ -1,5 +1,7 @@
 'use server'
 
+import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
+
 import { loadPendingContractReview, assertReviewToken } from '@/lib/pending-contract-review'
 
 import { assertUniqueLedgerProof, slipDigest } from '@/lib/ledger-proof'
@@ -56,6 +58,7 @@ export async function saveLedger(input: LedgerInput, file?: File | null) {
         if (!same) throw new Error('รหัสคำขอนี้บันทึกด้วยข้อมูลอื่นแล้ว กรุณาโหลดรายการล่าสุดก่อนทำรายการใหม่')
         return
       }
+      await assertAccountingDateOpen(tx, input.occurredOn)
       await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: input.channelCode, slipHash: slip ? slipDigest(slip.fileData) : null })
       const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
       if (!channel?.isActive) throw new Error('กรุณาเลือกช่องทางชำระเงินที่ใช้งานได้')
@@ -134,6 +137,7 @@ export async function voidLedger(id: number, reason: string) {
     await prisma.$transaction(async tx => {
       const entry = await tx.ledgerEntry.findUnique({ where: { id } })
       if (!entry || entry.voidedAt) throw new Error('ไม่พบรายการ หรือรายการถูกยกเลิกแล้ว')
+      await assertAccountingDateOpen(tx, entry.occurredOn)
       if (entry.contractId) {
         const others = await tx.ledgerEntry.findMany({ where: { contractId: entry.contractId, voidedAt: null, id: { not: id } } })
         if (entry.kind === 'DISBURSEMENT' && others.some(e => e.kind === 'REPAYMENT')) throw new Error('ต้องยกเลิกรายการรับชำระคืนทั้งหมดก่อนยกเลิกจ่ายเงินกู้')
@@ -168,6 +172,7 @@ export async function editLedger(input: {
     await prisma.$transaction(async tx => {
       const entry = await tx.ledgerEntry.findUnique({ where: { id: input.id }, include: { _count: { select: { revisions: true } } } })
       if (!entry || entry.voidedAt) throw new Error('ไม่พบรายการ หรือรายการถูกยกเลิกแล้ว')
+      await assertAccountingDateOpen(tx, entry.occurredOn, input.occurredOn)
       if (entry._count.revisions !== input.expectedRevision) throw new Error('รายการถูกแก้ไขโดยคำขออื่นแล้ว กรุณาโหลดข้อมูลใหม่')
       await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: input.channelCode, excludeId: input.id })
       const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })

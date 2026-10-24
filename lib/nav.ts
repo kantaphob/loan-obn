@@ -15,6 +15,7 @@ import {
   WalletCards,
   BanknoteCheck,
   BanknoteX,
+  ClipboardClock,
 } from "lucide-react";
 
 export type NavItem = { label: string; href: string; icon: LucideIcon };
@@ -35,6 +36,8 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/dashboard/admin/masterdata",
         icon: ScrollText,
       },
+{ label: "Logs", href: "/dashboard/logs", icon: ClipboardClock  },
+
     ],
   },
   {
@@ -66,10 +69,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "บัญชีทุน", href: "/dashboard/capital", icon: BanknoteCheck },
       { label: "ปิดบัญชี", href: "/dashboard/ac", icon: BanknoteX },
     ],
-  },
-  {
-    title: "Logs",
-    items: [{ label: "Logs", href: "/dashboard/logs", icon: ScrollText }],
   },
   {
     title: "Backups",

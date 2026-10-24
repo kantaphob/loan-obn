@@ -9,7 +9,7 @@ const money = (n: number) => (n / 100).toLocaleString('th-TH', { minimumFraction
 export function ClosingForm({ nextStart, today }: { nextStart: string; today: string }) {
   const router = useRouter()
   const [startOn, setStart] = useState(nextStart)
-  const [endOn, setEnd] = useState('')
+  const [endOn, setEnd] = useState(nextStart ? `${nextStart.slice(0, 4)}-12-31` : '')
   const [note, setNote] = useState('')
   const [equity, setEquity] = useState<EquityTarget>('RETAINED_EARNINGS')
   const [balances, setBalances] = useState<ClosingBalance[]>([{ code: '', name: '', type: 'REVENUE', amount: '' }])
@@ -18,7 +18,7 @@ export function ClosingForm({ nextStart, today }: { nextStart: string; today: st
   const [message, setMessage] = useState('')
   const [requestKey, setRequestKey] = useState('')
   let journal: ReturnType<typeof closingJournal> | null = null
-  try { journal = closingJournal(balances, equity) } catch { /* Incomplete input is validated on submit. */ }
+  try { journal = closingJournal(balances, equity, { allowEmpty: true }) } catch { /* Incomplete input is validated on submit. */ }
   function update(index: number, key: keyof ClosingBalance, value: string) {
     setConfirmed(false); setRequestKey('')
     setBalances(rows => rows.map((row, i) => i === index ? { ...row, [key]: value } : row))
@@ -37,9 +37,10 @@ export function ClosingForm({ nextStart, today }: { nextStart: string; today: st
   }}>
     <fieldset disabled={pending} className="space-y-5 disabled:opacity-60">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="text-sm">วันเริ่มงวด<input required type="date" className={field} value={startOn} readOnly={Boolean(nextStart)} max={today} onChange={e => { setStart(e.target.value); setConfirmed(false); setRequestKey('') }} /></label>
-        <label className="text-sm">วันสิ้นงวด<input required type="date" className={field} value={endOn} min={startOn} max={new Date(Date.parse(today) - 86400000).toISOString().slice(0, 10)} onChange={e => { setEnd(e.target.value); setConfirmed(false); setRequestKey('') }} /></label>
+        <label className="text-sm">วันเริ่มปี (1 มกราคม)<input required type="date" className={field} value={startOn} max={today} onChange={e => { setStart(e.target.value); setConfirmed(false); setRequestKey('') }} /></label>
+        <label className="text-sm">วันสิ้นปี (31 ธันวาคม)<input required type="date" className={field} value={endOn} min={startOn} max={new Date(Date.parse(today) - 86400000).toISOString().slice(0, 10)} onChange={e => { setEnd(e.target.value); setConfirmed(false); setRequestKey('') }} /></label>
       </div>
+      <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">ใช้หลังตรวจยอดและล็อกครบ 12 เดือนแล้ว กรอกยอดจากงบทดลองที่ตรวจสอบ รวมรายการปรับปรุง ดอกเบี้ยค้างรับ และการรับรู้ดอกเบี้ยล่วงหน้า การแยกยอดรับเงินรายเดือนไม่ใช่การรับรู้รายได้อัตโนมัติ</p>
       <label className="block text-sm">บัญชีปลายทาง<select className={field} value={equity} onChange={e => { setEquity(e.target.value as EquityTarget); setConfirmed(false); setRequestKey('') }}><option value="RETAINED_EARNINGS">บริษัท — กำไรสะสม / เงินปันผล</option><option value="CAPITAL">บุคคลธรรมดาหรือห้างหุ้นส่วน — ทุน / ถอนใช้ส่วนตัว</option></select></label>
       <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">{closingSteps.map(step => <li key={step}>{step}</li>)}</ol>
       <p className="text-sm text-slate-600">กรอกยอดรายได้ (ยอดเครดิต) และค่าใช้จ่าย (ยอดเดบิต) จากบัญชีที่ตรวจสอบแล้ว รวมยอดถอนใช้ส่วนตัวหรือเงินปันผล (ยอดเดบิต) หากมี เฉพาะงวดนี้ ไม่รวมเงินต้นปล่อยกู้ เงินรับคืนทุน หรือเงินลงทุน</p>
@@ -48,14 +49,15 @@ export function ClosingForm({ nextStart, today }: { nextStart: string; today: st
         <label className="text-xs">ชื่อบัญชี<input required maxLength={150} className={field} value={row.name} onChange={e => update(index, 'name', e.target.value)} /></label>
         <label className="text-xs">ประเภท<select className={field} value={row.type} onChange={e => update(index, 'type', e.target.value)}><option value="REVENUE">รายได้</option><option value="EXPENSE">ค่าใช้จ่าย</option><option value="DRAWING">ถอนใช้ส่วนตัว (ปิดเข้าทุน)</option><option value="DIVIDEND">เงินปันผล (ปิดเข้ากำไรสะสม)</option></select></label>
         <label className="text-xs">ยอดคงเหลือ (บาท)<input required inputMode="decimal" className={field} value={row.amount} onChange={e => update(index, 'amount', e.target.value)} /></label>
-        <button type="button" disabled={balances.length === 1} className="self-end rounded-xl px-3 py-2 text-sm text-rose-700 disabled:opacity-40" onClick={() => { setBalances(rows => rows.filter((_, i) => i !== index)); setConfirmed(false); setRequestKey('') }}>ลบบัญชีแถว {index + 1}</button>
+        <button type="button" className="self-end rounded-xl px-3 py-2 text-sm text-rose-700 disabled:opacity-40" onClick={() => { setBalances(rows => rows.filter((_, i) => i !== index)); setConfirmed(false); setRequestKey('') }}>ลบบัญชีแถว {index + 1}</button>
       </div>)}
       <button type="button" disabled={balances.length >= 100} className="rounded-xl border border-slate-300 px-4 py-2 text-sm" onClick={() => { setBalances(rows => [...rows, { code: '', name: '', type: 'EXPENSE', amount: '' }]); setConfirmed(false); setRequestKey('') }}>เพิ่มบัญชี</button>
+      {!balances.length && <p role="status" className="text-sm text-slate-600">ไม่มีบัญชีรายได้ ค่าใช้จ่าย ถอนใช้ส่วนตัว หรือเงินปันผลให้ปิด ยืนยันได้เฉพาะปีที่ตรวจแล้วว่าไม่มียอดเหล่านี้</p>}
       <label className="block text-sm">แหล่งที่มาของยอด / หมายเหตุ<textarea required maxLength={1000} className={field} value={note} onChange={e => { setNote(e.target.value); setConfirmed(false); setRequestKey('') }} placeholder="เช่น งบทดลองที่ตรวจสอบแล้ว เลขที่เอกสาร…" /></label>
       {journal && <div className="overflow-x-auto rounded-xl border border-slate-200"><table className="w-full text-left text-sm"><caption className="p-3 text-left font-semibold">ตัวอย่างรายการปิดบัญชี · ผลกำไร (ขาดทุน) {money(journal.profit)} บาท</caption><thead><tr><th className="p-3">ขั้นตอน</th><th className="p-3">บัญชี</th><th className="p-3 text-right">เดบิต</th><th className="p-3 text-right">เครดิต</th></tr></thead><tbody>{journal.lines.map((line, index) => <tr key={`${line.step}-${line.code}-${index}`} className="border-t border-slate-200"><td className="p-3">{line.step}</td><td className="p-3">{line.code} · {line.name}</td><td className="p-3 text-right">{money(line.debit)}</td><td className="p-3 text-right">{money(line.credit)}</td></tr>)}</tbody><tfoot><tr className="border-t font-semibold"><th colSpan={2} className="p-3">รวม</th><td className="p-3 text-right">{money(journal.lines.reduce((s, l) => s + l.debit, 0))}</td><td className="p-3 text-right">{money(journal.lines.reduce((s, l) => s + l.credit, 0))}</td></tr></tfoot></table></div>}
       {!journal && balances.some(row => row.code || row.name || row.amount) && <p role="status" className="text-sm text-amber-800">กรอกข้อมูลทุกบัญชีให้ครบ ใช้รหัสไม่ซ้ำ และเลือกถอนใช้ส่วนตัวหรือเงินปันผลให้ตรงกับบัญชีปลายทาง</p>}
       <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={confirmed} required onChange={e => setConfirmed(e.target.checked)} className="mt-1" />ยืนยันตรวจยอดบัญชีและรายการปิดบัญชีแล้ว เมื่อบันทึกจะล็อกการเพิ่ม แก้ไข และยกเลิกรายการรับ–จ่ายทุกวันที่ถึงวันสิ้นงวด รวมวันที่ก่อนวันเริ่มงวด และไม่สามารถเปิดงวดย้อนกลับจากหน้านี้ได้</label>
-      <button disabled={!journal || !confirmed || pending} className="rounded-xl bg-slate-900 px-5 py-3 text-sm text-white disabled:opacity-40">{pending ? 'กำลังบันทึก…' : 'ยืนยันปิดงวดและบันทึกรายการ'}</button>
+      <button disabled={!journal || !confirmed || pending} className="rounded-xl bg-slate-900 px-5 py-3 text-sm text-white disabled:opacity-40">{pending ? 'กำลังบันทึก…' : 'ยืนยันปิดบัญชีสิ้นปี'}</button>
     </fieldset>
     {message && <p role="status" className="rounded-xl bg-slate-100 p-4 text-sm">{message}</p>}
   </form>
