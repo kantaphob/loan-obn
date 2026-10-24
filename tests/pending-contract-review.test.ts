@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict'
+import { after, test } from 'node:test'
+import { randomUUID } from 'node:crypto'
+import { prisma } from '../lib/prisma'
+import { getPendingContractReview, approvePendingContract, editPendingContract } from '../app/dashboard/invoice/review-actions'
+import { saveLedger } from '../app/dashboard/ledger/actions'
+import { bangkokToday } from '../lib/ledger'
+if (!process.env.DATABASE_URL?.includes('loan-review-test-')) throw new Error('Isolated database required')
+after(() => prisma.$disconnect())
+
+test('review shows prior debts and reservations, then approves, edits safely and pays once with optional proof', async () => {
+  const user = await prisma.user.create({ data: { acccode: 'review-admin', password: 'test', role: 'ADMIN', level: 0 } })
+  const borrower = await prisma.borrower.create({ data: { nickname: 'review', firstName: 'Test', lastName: 'Review', phone: '', approvedLimit: 1000 } })
+  const lender = await prisma.lender.create({ data: { nickname: 'lender' } })
+  await prisma.paymentChannel.create({ data: { code: 'BANKING', nameTh: 'ธนาคาร' } })
+  await prisma.financialCategory.create({ data: { code: 'LOAN_DISBURSEMENT', nameTh: 'จ่ายเงินกู้', direction: 'OUT', group: 'LOAN' } })
+  const base = { borrowerId: borrower.id, lenderId: lender.id, borrowerCode: 'BR-TEST', borrowerName: 'Test Review', lenderName: 'Lender', documentChoice: 'NONE', interestMethod: 'INTEREST_WITH_PRINCIPAL', interestPercent: 0, principalSatang: 100000, interestSatang: 0, netSatang: 100000, repaymentSatang: 100000, createdBy: user.id, scheduledDisbursementDate: '2026-10-23', repaymentDueDate: '2027-01-01' }
+  const existing = await prisma.loanContract.create({ data: { ...base, requestKey: randomUUID(), status: 'PAID', paidAt: new Date('2026-01-01T00:00:00+07:00') } })
+  await prisma.ledgerEntry.createMany({ data: [
+    { requestKey: randomUUID(), contractId: existing.id, kind: 'DISBURSEMENT', direction: 'OUT', categoryCode: 'LOAN_DISBURSEMENT', categoryName: 'จ่ายเงินกู้', amountSatang: 100000, occurredOn: '2026-01-01', channelCode: 'BANKING', channelName: 'ธนาคาร', createdBy: user.id },
+    { requestKey: randomUUID(), contractId: existing.id, kind: 'REPAYMENT', direction: 'IN', categoryCode: 'CONTRACT_REPAYMENT', categoryName: 'รับชำระ', amountSatang: 20000, occurredOn: '2026-01-02', channelCode: 'BANKING', channelName: 'ธนาคาร', createdBy: user.id },
+  ] })
+  await prisma.loanContract.create({ data: { ...base, requestKey: randomUUID(), principalSatang: 50000, netSatang: 50000, repaymentSatang: 50000 } })
+  const target = await prisma.loanContract.create({ data: { ...base, requestKey: randomUUID(), limitApprovalRequired: true } })
+  let review = await getPendingContractReview(target.id)
+  assert.equal(review.outstandingContracts.length, 1)
+  assert.equal(review.outstandingContracts[0].id, existing.id)
+  assert.equal(review.outstandingSatang, 80000)
+  assert.equal(review.reservedOtherSatang, 50000)
+  assert.equal(review.availableBeforeSatang, -30000)
+  assert.equal(review.availableAfterSatang, -130000)
+  assert.ok((await approvePendingContract(target.id, '')).error, 'approval requires viewing the summary')
+  await prisma.borrower.update({ where: { id: borrower.id }, data: { approvedLimit: 1200 } })
+  assert.match((await approvePendingContract(target.id, review.reviewToken)).error!, /เปลี่ยนแปลง/)
+  review = await getPendingContractReview(target.id)
+  assert.ok((await approvePendingContract(target.id, review.reviewToken)).success)
+  assert.equal(await prisma.ledgerEntry.count({ where: { contractId: target.id } }), 0, 'approval is not a payment')
+  review = await getPendingContractReview(target.id)
+  const stalePayoutToken = review.reviewToken
+  const edit = { id: target.id, reviewToken: review.reviewToken, principal: '1000', scheduledDisbursementDate: '2026-10-24', repaymentDueDate: '2027-02-01', collateralDescription: '', reason: 'เลื่อนวันนัดจ่าย', confirmResetSignatures: false }
+  assert.ok((await editPendingContract(edit)).success)
+  assert.match((await editPendingContract(edit)).error!, /เปลี่ยนแปลง/)
+  let stored = await prisma.loanContract.findUniqueOrThrow({ where: { id: target.id } })
+  assert.equal(stored.limitApprovalRequired, false, 'date-only changes preserve approval')
+  assert.equal(stored.repaymentDueDate, '2027-02-01')
+  const pay = { requestKey: randomUUID(), contractId: target.id, kind: 'DISBURSEMENT' as const, direction: 'OUT', categoryCode: '', amount: '1000', occurredOn: bangkokToday(), channelCode: 'BANKING', reference: 'REVIEW-PAYMENT', note: '', contractReviewToken: stalePayoutToken }
+  assert.match((await saveLedger(pay)).error!, /เปลี่ยนแปลง/)
+  review = await getPendingContractReview(target.id)
+  assert.ok((await editPendingContract({ ...edit, reviewToken: review.reviewToken, principal: '1500', reason: 'เพิ่มยอดขอจอง' })).success)
+  stored = await prisma.loanContract.findUniqueOrThrow({ where: { id: target.id } })
+  assert.equal(stored.limitApprovalRequired, true, 'increased over-limit principal must be approved again')
+  assert.ok((await saveLedger({ ...pay, amount: '1500', contractReviewToken: undefined })).error)
+  review = await getPendingContractReview(target.id)
+  assert.ok((await approvePendingContract(target.id, review.reviewToken)).success)
+  await prisma.loanContract.update({ where: { id: target.id }, data: { signingMethod: 'E_SIGNATURE', documentChoice: 'CREATE', documentPackage: 'LOAN', witnessCount: 0, borrowerSignedAt: new Date(), lenderSignedAt: new Date(), borrowerSignatureData: 'old-signature' } })
+  review = await getPendingContractReview(target.id)
+  assert.ok(review.hasSignatures)
+  assert.match((await editPendingContract({ ...edit, reviewToken: review.reviewToken, principal: '1500', scheduledDisbursementDate: '2026-10-25', reason: 'แก้ฉบับที่ลงนามแล้ว' })).error!, /ลงนามใหม่/)
+  assert.ok((await editPendingContract({ ...edit, reviewToken: review.reviewToken, principal: '1500', scheduledDisbursementDate: '2026-10-25', reason: 'แก้ฉบับที่ลงนามแล้ว', confirmResetSignatures: true })).success)
+  stored = await prisma.loanContract.findUniqueOrThrow({ where: { id: target.id } })
+  assert.equal(stored.borrowerSignedAt, null)
+  const revision = await prisma.contractRevision.findFirstOrThrow({ where: { contractId: target.id, kind: 'EDIT' }, orderBy: { id: 'desc' } })
+  assert.ok(revision.beforeJson.includes('old-signature'), 'old signature is archived, not lost')
+  review = await getPendingContractReview(target.id)
+  assert.ok((await saveLedger({ ...pay, amount: '1500', contractReviewToken: review.reviewToken })).error, 'edited e-contract must be signed again')
+  await prisma.loanContract.update({ where: { id: target.id }, data: { borrowerSignedAt: new Date(), lenderSignedAt: new Date() } })
+  review = await getPendingContractReview(target.id)
+  const finalPay = { ...pay, amount: '1500', contractReviewToken: review.reviewToken }
+  assert.ok((await saveLedger(finalPay)).success, 'proof is optional')
+  assert.ok((await saveLedger(finalPay)).success, 'retry does not pay twice')
+  assert.equal(await prisma.ledgerEntry.count({ where: { contractId: target.id, kind: 'DISBURSEMENT', voidedAt: null } }), 1)
+  assert.ok((await editPendingContract({ ...edit, reviewToken: review.reviewToken })).error, 'paid contracts are locked')
+  const unpaid = await prisma.loanContract.findFirstOrThrow({ where: { status: 'WAITING_PAYMENT' } })
+  await prisma.user.update({ where: { id: user.id }, data: { role: 'REVIEWER' } })
+  await assert.rejects(getPendingContractReview(unpaid.id), /ไม่มีสิทธิ์/)
+  assert.ok((await approvePendingContract(unpaid.id, 'anything')).error)
+})

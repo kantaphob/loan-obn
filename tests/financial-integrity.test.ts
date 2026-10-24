@@ -1,3 +1,4 @@
+import { getPendingContractReview } from '../app/dashboard/invoice/review-actions'
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { randomUUID } from 'node:crypto'
@@ -62,7 +63,7 @@ test('credit reservation, duplicate references and slip hashes, edits, void and 
   assert.equal(reservation.limitApprovalRequired, true)
   const reservedDisbursement = { requestKey: randomUUID(), contractId: overLimit.id!, kind: 'DISBURSEMENT' as const, direction: 'OUT', categoryCode: '', channelCode: 'BANKING', reference: 'ReservedLimit001', note: '', amount: '250', occurredOn: '2026-01-01' }
   assert.match((await saveLedger(reservedDisbursement)).error!, /อนุมัติก่อนจ่ายเงินจริง/)
-  assert.ok((await approveContractLimit(overLimit.id!)).success)
+  assert.ok((await approveContractLimit(overLimit.id!, (await getPendingContractReview(overLimit.id!)).reviewToken)).success)
   const approvedReservation = await prisma.loanContract.findUniqueOrThrow({ where: { id: overLimit.id! } })
   assert.equal(approvedReservation.limitApprovalRequired, false)
   assert.ok(approvedReservation.limitApprovedAt)

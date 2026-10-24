@@ -489,3 +489,20 @@ model ContractRevision {
   @@index([contractId, createdAt])
   @@map("contract_revision")
 }
+
+// Immutable closing journals. Cash movements through endOn are locked by database triggers.
+model AccountingClose {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  startOn String
+  endOn String @unique
+  note String
+  balancesJson String
+  journalJson String
+  cashSnapshotJson String
+  profitSatang Float
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@map("accounting_close")
+}

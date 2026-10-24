@@ -37,7 +37,7 @@ export async function loadPendingContractReview(tx: Prisma.TransactionClient, id
     outstandingSatang: funded.reduce((sum, { balance }) => sum + balance.remaining, 0),
     principalOutstandingSatang: Math.round(position.currentUsedLimit * 100),
     penaltyOutstandingSatang: funded.reduce((sum, { balance }) => sum + balance.penaltyRemaining, 0),
-    outstandingContracts: funded.map(({ other, balance }) => ({ id: other.id, remainingSatang: balance.remaining, dueDate: other.repaymentDueDate })),
+    outstandingContracts: funded.map(({ other, balance }) => ({ id: other.id, remainingSatang: balance.remaining, dueDate: other.repaymentDueDate, overdueDays: balance.overdueDays, penaltySatang: balance.penaltyRemaining })),
     revisions: c.revisions.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })),
   }
   // The digest includes exposure, dates and the version: stale confirmations cannot authorize changed terms.

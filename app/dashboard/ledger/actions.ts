@@ -1,5 +1,6 @@
-import { loadPendingContractReview, assertReviewToken } from '@/lib/pending-contract-review'
 'use server'
+
+import { loadPendingContractReview, assertReviewToken } from '@/lib/pending-contract-review'
 
 import { assertUniqueLedgerProof, slipDigest } from '@/lib/ledger-proof'
 

@@ -19,7 +19,8 @@ function refresh() {
 }
 export async function getPendingContractReview(id: number) {
   await operator()
-  return prisma.$transaction(async tx => (await loadPendingContractReview(tx, id)).data)
+  try { return await prisma.$transaction(async tx => (await loadPendingContractReview(tx, id)).data) }
+  catch (error) { throw new Error(error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'โหลดข้อมูลสัญญาไม่สำเร็จ กรุณาลองใหม่') }
 }
 export async function approvePendingContract(id: number, expectedToken: string) {
   try {
@@ -34,7 +35,7 @@ export async function approvePendingContract(id: number, expectedToken: string) 
     })
     await syncGoogleContract(id); refresh()
     return { success: true as const }
-  } catch (error) { return { error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'อนุมัติไม่สำเร็จ กรุณาลองใหม่' } }
+  } catch (error) { return { success: false as const, error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'อนุมัติไม่สำเร็จ กรุณาลองใหม่' } }
 }
 export type EditPendingContractInput = {
   id: number; reviewToken: string; principal: string; scheduledDisbursementDate: string; repaymentDueDate: string;
@@ -51,7 +52,8 @@ export async function editPendingContract(input: EditPendingContractInput) {
       assertReviewToken(data.reviewToken, input.reviewToken)
       if (c.limitApprovalRequired) throw new Error('กรุณาอนุมัติรายการจองก่อนแก้ไขสัญญาในขั้นรอจ่าย')
       if (data.hasSignatures && input.confirmResetSignatures !== true) throw new Error('สัญญามีลายเซ็นแล้ว กรุณายืนยันจัดทำเอกสารและลงนามใหม่ก่อนแก้ไข')
-      const amounts = contractAmounts(input.principal, c.internalInterestPercent ?? c.interestPercent, c.interestMethod)
+      const computedAmounts = contractAmounts(input.principal, c.internalInterestPercent ?? c.interestPercent, c.interestMethod)
+      const amounts = computedAmounts.principalSatang === c.principalSatang ? { principalSatang: c.principalSatang, interestSatang: c.interestSatang, netSatang: c.netSatang, repaymentSatang: c.repaymentSatang } : computedAmounts
       const collateralDescription = input.collateralDescription.trim() || null
       const principalChanged = amounts.principalSatang !== c.principalSatang
       const changed = principalChanged || input.scheduledDisbursementDate !== c.scheduledDisbursementDate || input.repaymentDueDate !== c.repaymentDueDate || collateralDescription !== c.collateralDescription
@@ -70,7 +72,7 @@ export async function editPendingContract(input: EditPendingContractInput) {
       const updated = await tx.loanContract.updateMany({ where: { id: c.id, reviewVersion: c.reviewVersion, status: 'WAITING_PAYMENT', paidAt: null }, data: update })
       if (!updated.count) throw new Error('สัญญาเปลี่ยนแปลงแล้ว กรุณาโหลดใหม่')
       // Preserve the old signed version before clearing live signatures.
-      const { borrower: _borrower, lender: _lender, revisions: _revisions, ...snapshot } = c
+      const snapshot = Object.fromEntries(Object.entries(c).filter(([key]) => !['borrower', 'lender', 'revisions'].includes(key)))
       await tx.contractRevision.create({ data: { contractId: c.id, kind: 'EDIT', beforeJson: JSON.stringify(snapshot), afterJson: JSON.stringify({ ...data, ...amounts, scheduledDisbursementDate: input.scheduledDisbursementDate, repaymentDueDate: input.repaymentDueDate, collateralDescription, limitApprovalRequired: needsApproval, reviewVersion: c.reviewVersion + 1 }), reason: input.reason.trim(), createdBy: user.id } })
       await tx.contractWitness.deleteMany({ where: { contractId: c.id } })
       await tx.contractDocumentSignature.deleteMany({ where: { contractId: c.id } })
@@ -78,5 +80,5 @@ export async function editPendingContract(input: EditPendingContractInput) {
     })
     await syncGoogleContract(input.id); refresh()
     return { success: true as const, ...result }
-  } catch (error) { return { error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'แก้ไขไม่สำเร็จ กรุณาลองใหม่' } }
+  } catch (error) { return { success: false as const, error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'แก้ไขไม่สำเร็จ กรุณาลองใหม่' } }
 }

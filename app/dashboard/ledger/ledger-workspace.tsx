@@ -69,7 +69,7 @@ export function LedgerWorkspace({ data }: { data: Data }) {
         return <Card key={String(title)} className="p-5"><div className="flex justify-between text-sm text-slate-500">{String(title)}<MetricIcon size={19} /></div><p className={`mt-3 text-2xl font-semibold tabular-nums ${color}`}>{money(Number(amount))}<span className="ml-1 text-xs font-normal">บาท</span></p><p className="mt-2 text-xs text-slate-400">รวมทุกรายการที่ยังไม่ยกเลิก</p></Card>
       })}
     </div>
-    <nav className="ledger-directory-shortcuts" aria-label="เริ่มทำรายการตามหน้าที่"><Link href="/dashboard/ap" className="text-blue-700 underline">จ่ายเงินตามสัญญา ↗</Link><Link href="/dashboard/repayments" className="text-blue-700 underline">ลูกหนี้และรับชำระ ↗</Link><Link href="/dashboard/ap/trade" className="text-blue-700 underline">จ่ายเจ้าหนี้การค้า ↗</Link></nav>
+    <nav className="ledger-directory-shortcuts" aria-label="เริ่มทำรายการตามหน้าที่"><Link href="/dashboard/ap" className="text-blue-700 underline">จ่ายเงินตามสัญญา ↗</Link><Link href="/dashboard/repayments" className="text-blue-700 underline">ลูกหนี้และรับชำระ ↗</Link></nav>
     <Card className="ledger-directory-card overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{filtered.length} รายการ</span></h2>{data.canWrite && <Button variant="primary" onClick={() => open()}><Plus size={16} /> รับ–จ่ายทั่วไป</Button>}</div>
       <div className="flex flex-wrap items-end gap-3 border-y border-slate-200/70 p-4">

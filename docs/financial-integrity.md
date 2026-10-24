@@ -27,3 +27,11 @@ The Prisma client preserves lazy Prisma promises. Standalone model writes trigge
 Mutations enqueue entity IDs in `google_sync_job`. A Node server worker drains due jobs every 30 seconds while the app is running. Errors persist and retry with exponential backoff up to 15 minutes; work survives restart. Version checks prevent an older upload from marking a newly modified entity synced. Expired processing leases recover interrupted jobs. Slip upload failures fail the job, so a row is not falsely treated as synced without its attachment.
 
 Masterdata shows pending/failed/synced counts and the last successful sync, with a manual retry button. Trade-payable payments use the same ledger queue. No Google request is made without the existing bridge configuration. A successful Google status means delivery succeeded, not an independent reconciliation of hand-edited sheet values.
+
+## AP review, approval and pre-disbursement amendments
+
+Opening an approval or payout dialog loads the latest borrower exposure and outstanding contracts. Approval requires an explicit confirmation of the summary. The server verifies a digest of the reviewed contract, its version, borrower limits and current exposure; if these change, the user must reopen the dialog.
+
+After approval, pending contracts can amend principal, the planned disbursement date, the repayment due date and the collateral description, with a required reason. Date-only changes preserve existing amounts and approval. An increase that exceeds the available limit requires renewed approval. Paid contracts cannot be amended through this action. Editing a captured signed contract requires confirmation, archives the signed snapshot in `contract_revision`, clears live signatures and requires signing the amended electronic documents before disbursement. Changing parties or document types requires a new contract.
+
+The payout dialog shows the contract and exposure summary again. A slip remains optional. The AP payout API requires the current review digest and the ledger transaction checks it before changing status and recording money out. Existing ledger idempotency and duplicate-proof checks still apply. Opening a dialog or approving a reservation creates no cash movement.

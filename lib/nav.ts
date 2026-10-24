@@ -9,6 +9,12 @@ import {
   FolderUser,
   HandCoins,
   ReceiptText,
+  BanknoteArrowDown,
+  Banknote,
+  BanknoteArrowUp,
+  WalletCards,
+  BanknoteCheck,
+  BanknoteX,
 } from "lucide-react";
 
 export type NavItem = { label: string; href: string; icon: LucideIcon };
@@ -53,14 +59,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Accounting",
     items: [
-      { label: "ลูกหนี้และรับชำระ", href: "/dashboard/repayments", icon: HandCoins },
-
-      { label: "จ่ายเงินตามสัญญา", href: "/dashboard/ap", icon: Landmark },
-      { label: "เจ้าหนี้การค้า", href: "/dashboard/ap/trade", icon: ReceiptText },
-      { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: ScrollText },
-      { label: "รายงานบัญชี", href: "/dashboard/accounting", icon: LayoutDashboard },
-      { label: "บัญชีทุน", href: "/dashboard/capital", icon: LayoutDashboard },
-      { label: "ปิดดุล", href: "/dashboard/ac", icon: LayoutDashboard },
+      { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: Banknote },
+      { label: "จ่ายเงินตามสัญญา", href: "/dashboard/ap", icon: BanknoteArrowDown },
+      { label: "รับชำระตามสัญญา", href: "/dashboard/repayments", icon: BanknoteArrowUp },
+      { label: "รายงานบัญชี", href: "/dashboard/accounting", icon: WalletCards },
+      { label: "บัญชีทุน", href: "/dashboard/capital", icon: BanknoteCheck },
+      { label: "ปิดบัญชี", href: "/dashboard/ac", icon: BanknoteX },
     ],
   },
   {
@@ -79,11 +83,10 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export function findActiveNavItem(pathname: string, search = "") {
   const items = NAV_GROUPS.flatMap((group) => group.items);
-  const activePath = pathname === '/dashboard/ap/new' ? '/dashboard/ap/trade' : pathname;
-  const currentHref = `${activePath}${search}`;
+  const currentHref = `${pathname}${search}`;
   return (
     items.find((item) => item.href === currentHref) ??
-    items.find((item) => item.href === activePath) ??
-    items.filter((item) => activePath.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0]
+    items.find((item) => item.href === pathname) ??
+    items.filter((item) => pathname.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0]
   );
 }

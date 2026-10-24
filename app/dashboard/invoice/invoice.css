@@ -45,3 +45,38 @@
 .workspace-theme .invoice-page .invoice-search input:not([type=hidden]) { border: 0; border-radius: 0; box-shadow: none; background: transparent; color: var(--workspace-text); }
 .workspace-theme .invoice-page .invoice-search input::placeholder { color: #65758b; }
 .workspace-theme .invoice-page .invoice-search button { color: #285fa4; }
+
+.workspace-theme .workspace-modal.invoice-review-modal { max-width: 780px; white-space: normal; }
+.workspace-theme .invoice-review-modal .ap-review-summary { color: #334155; font-size: 13px; line-height: 1.7; }
+.ap-review-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; border: 1px solid #dfe7f2; border-radius: 12px; background: #f8fafd; }
+.ap-review-parties small, .ap-review-parties span { display: block; color: #64748b; font-size: 11px; }
+.ap-review-parties strong { display: block; font-size: 14px; margin: 4px 0; }
+.ap-review-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 16px 0; }
+.ap-review-grid>div { padding: 12px; border: 1px solid #e1e8f2; border-radius: 11px; background: #fff; }
+.ap-review-grid dt { color: #64748b; font-size: 11px; }
+.ap-review-grid dd { margin: 5px 0 0; font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ap-review-grid dd small { color: #64748b; font-size: 11px; font-weight: 400; }
+.ap-review-debts { overflow: hidden; border: 1px solid #e1e8f2; border-radius: 12px; margin-bottom: 16px; }
+.ap-review-debts h3 { padding: 12px 14px; font-size: 13px; font-weight: 600; margin: 0; }
+.ap-review-debts h3 span { margin-left: 6px; color: #64748b; font-size: 11px; font-weight: 400; }
+.workspace-theme .invoice-review-modal .ap-review-debts :is(th,td) { padding: 10px 14px; border-top: 1px solid #e5ebf4; font-size: 12px; }
+.ap-review-debts th { background: #f0f5fb; color: #64748b; font-weight: 500; }
+.ap-review-debts p { padding: 0 14px 14px; margin: 0; color: #64748b; font-size: 12px; }
+.ap-review-current { padding: 16px; border: 1px solid #d3e3fa; border-radius: 12px; background: #f2f7ff; }
+.ap-review-current h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: #285fa4; }
+.ap-review-current dl { display: grid; gap: 8px; margin: 0; }
+.ap-review-current dl>div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; }
+.ap-review-current dt { color: #64748b; font-size: 12px; }
+.ap-review-current dd { margin: 0; text-align: right; font-size: 12px; font-weight: 500; }
+.ap-review-net { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; margin-top: 12px; border-top: 1px solid #d3e3fa; color: #285fa4; }
+.workspace-theme .invoice-review-modal .ap-review-net strong { font-size: 26px; }
+.ap-review-net small { font-size: 12px; font-weight: 400; }
+.ap-review-warning, .ap-review-available { margin: 14px 0; padding: 12px 14px; border-radius: 10px; font-size: 12px; white-space: normal; }
+.ap-review-warning { background: #fff6e5; color: #945b16; }
+.ap-review-available { background: #edf8f1; color: #23734a; }
+@media(max-width:600px) { .ap-review-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; } .ap-review-parties { grid-template-columns: 1fr; gap: 10px; } .ap-review-grid dd { font-size: 17px; } }
+.workspace-theme .invoice-review-modal .ap-review-debts table { min-width: 0; width: 100%; table-layout: fixed; white-space: normal; }
+.workspace-theme .invoice-review-modal .ap-review-debts th:nth-child(1) { width: 26%; }
+.workspace-theme .invoice-review-modal .ap-review-debts th:nth-child(2) { width: 44%; }
+.workspace-theme .invoice-review-modal .ap-review-debts th:nth-child(3) { width: 30%; }
+@media(max-width:600px) { .workspace-theme .invoice-review-modal .ap-review-debts :is(th,td) { padding: 10px 8px; font-size: 11px; } }
