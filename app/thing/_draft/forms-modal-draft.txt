@@ -1,0 +1,50 @@
+'use client'
+
+import { useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { today, type LoanRound, type RatePeriod } from './model'
+
+export type Field = { name: string; label: string; value?: string | number; type?: string; optional?: boolean; options?: { value: string; label: string; disabled?: boolean }[]; min?: number; max?: number; step?: string }
+
+function Fields({ fields }: { fields: Field[] }) {
+  return <div className="asset-fields">{fields.map(f => <label key={f.name}><span>{f.label}{!f.optional ? ' *' : ''}</span>{f.options ? <select name={f.name} defaultValue={f.value} required={!f.optional}>{f.options.map(o => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)}</select> : <input name={f.name} type={f.type ?? 'text'} defaultValue={f.value ?? ''} required={!f.optional} min={f.min ?? (f.type === 'number' ? 0 : undefined)} max={f.max} step={f.step ?? (f.type === 'number' ? '.01' : undefined)} maxLength={f.type === 'text' || !f.type ? 3000 : undefined} />}</label>)}</div>
+}
+
+export function AssetFormModal({ title, description, onClose, busy = false, error, onDirty, children }: { title: string; description?: string; onClose: () => void; busy?: boolean; error?: string; onDirty?: () => void; children: ReactNode }) {
+  return <Modal open title={title} description={description} onClose={onClose} closeDisabled={busy} className="asset-form-modal !max-w-4xl">
+    <div className="asset-workspace asset-modal-body" onChange={onDirty}>
+      {error ? <p className="asset-error" role="alert">{error}</p> : null}
+      {busy ? <p className="asset-notice" role="status">กำลังบันทึก…</p> : null}
+      {children}
+    </div>
+  </Modal>
+}
+
+export function AssetRecordForm({ fields, disabled, onSubmit, onCancel, children }: { fields: Field[]; disabled: boolean; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void; children?: ReactNode }) {
+  return <form onSubmit={onSubmit}><fieldset disabled={disabled}>
+    <Fields fields={fields} />
+    {children}
+    <div className="asset-form-actions"><button type="button" className="asset-button secondary" onClick={onCancel}>ยกเลิก</button><button className="asset-button" type="submit">บันทึก</button></div>
+  </fieldset></form>
+}
+
+export function RoundEditor({ initial, latest, remaining, disabled, onCancel, onSave, children }: { initial?: LoanRound; latest?: LoanRound; remaining: number; disabled: boolean; onCancel: () => void; onSave: (round: LoanRound) => Promise<void>; children?: ReactNode }) {
+  const elapsed = latest?.effectiveOn ? Math.max(0, (Number(today().slice(0,4)) - Number(latest.effectiveOn.slice(0,4))) * 12 + Number(today().slice(5,7)) - Number(latest.effectiveOn.slice(5,7))) : 0
+  const defaultMonths = initial?.months ?? Math.max(1, (latest?.months ?? 480) - elapsed)
+  const [periods, setPeriods] = useState<RatePeriod[]>(initial?.periods ?? [{ from: 1, to: defaultMonths, rate: 0, installment: latest?.periods.at(-1)?.installment ?? 0, floating: false, discount: 0 }])
+  const update = (index: number, patch: Partial<RatePeriod>) => setPeriods(rows => rows.map((p, i) => i === index ? { ...p, ...patch } : p))
+  return <form onSubmit={async e => {
+    e.preventDefault(); const fd = new FormData(e.currentTarget); const s = (key: string) => String(fd.get(key) ?? '').trim(); const n = (key: string) => Number(s(key))
+    await onSave({ id: initial?.id ?? crypto.randomUUID(), name: s('name'), effectiveOn: s('effectiveOn'), opening: n('opening'), months: n('months'), mrr: n('mrr'), fee: n('fee'), referenceInterest: n('referenceInterest'), notes: s('notes'), periods })
+  }}><fieldset disabled={disabled}><Fields fields={[
+    { name: 'name', label: 'ชื่อรอบ', value: initial?.name ?? (latest ? 'รีเทนชันรอบใหม่' : 'สัญญาเริ่มต้น') },
+    { name: 'effectiveOn', label: 'วันที่เริ่มมีผล', type: 'date', value: initial?.effectiveOn },
+    { name: 'opening', label: latest && !initial ? 'เงินต้นยกมา (ต้องตรงกับยอดคงเหลือเดิม)' : 'วงเงิน / เงินต้นเริ่มต้น', type: 'number', min: .01, value: initial?.opening ?? (latest ? remaining : '') },
+    { name: 'months', label: 'ระยะเวลาคงเหลือ (เดือน)', type: 'number', step: '1', min: 1, max: 600, value: defaultMonths },
+    { name: 'mrr', label: 'MRR อ้างอิง ณ วันเริ่มรอบ (%)', type: 'number', step: '.001', max: 100, value: initial?.mrr ?? latest?.mrr ?? 6.145 },
+    { name: 'fee', label: 'ค่าธรรมเนียม (แยกจากเงินต้น)', type: 'number', value: initial?.fee ?? 0 },
+    { name: 'referenceInterest', label: 'ดอกเบี้ยรวมอ้างอิงจากสัญญา (0 = ไม่ระบุ)', type: 'number', value: initial?.referenceInterest ?? 0 },
+    { name: 'notes', label: 'เงื่อนไข / เอกสารอ้างอิง', optional: true, value: initial?.notes },
+  ]} /><h3>ดอกเบี้ยและค่างวดแต่ละช่วง</h3><p className="asset-hint">เดือนเริ่มนับใหม่ในแต่ละรอบ ต้องต่อเนื่องจนครบระยะเวลา · ค่าเริ่มต้นของรอบใหม่เป็นตัวอย่าง กรุณาแก้ตามข้อเสนอธนาคาร · ถ้า MRR เปลี่ยน ให้เพิ่มรอบใหม่ตามวันที่มีผล</p><div className="asset-table-scroll"><table><thead><tr><th>เดือนเริ่ม</th><th>เดือนสิ้นสุด</th><th>ประเภทอัตรา</th><th>อัตรา / ส่วนลด %</th><th>ค่างวด</th><th><span className="sr-only">ลบช่วง</span></th></tr></thead><tbody>{periods.map((p, i) => <tr key={i}><td><input aria-label={`เดือนเริ่มช่วง ${i + 1}`} required type="number" min="1" max="600" value={p.from} onChange={e => update(i, { from: Number(e.target.value) })} /></td><td><input aria-label={`เดือนสิ้นสุดช่วง ${i + 1}`} required type="number" min="1" max="600" value={p.to} onChange={e => update(i, { to: Number(e.target.value) })} /></td><td><select aria-label={`ประเภทดอกเบี้ยช่วง ${i + 1}`} value={p.floating ? 'floating' : 'fixed'} onChange={e => update(i, { floating: e.target.value === 'floating' })}><option value="fixed">คงที่</option><option value="floating">MRR − ส่วนลด</option></select></td><td><input aria-label={`อัตราหรือส่วนลดช่วง ${i + 1}`} required type="number" min="0" max="100" step=".001" value={p.floating ? p.discount : p.rate} onChange={e => update(i, p.floating ? { discount: Number(e.target.value) } : { rate: Number(e.target.value) })} /></td><td><input aria-label={`ค่างวดช่วง ${i + 1}`} required type="number" min=".01" step=".01" value={p.installment} onChange={e => update(i, { installment: Number(e.target.value) })} /></td><td><button aria-label={`ลบช่วง ${i + 1}`} type="button" disabled={periods.length === 1} onClick={() => setPeriods(periods.filter((_, j) => j !== i))}><Trash2 size={15} /></button></td></tr>)}</tbody></table></div><button className="asset-button secondary" type="button" onClick={() => { const last = periods.at(-1)!; setPeriods([...periods, { ...last, from: last.to + 1, to: last.to + 12 }]) }}><Plus size={14} />เพิ่มช่วง</button>{children}<div className="asset-form-actions"><button className="asset-button secondary" type="button" onClick={onCancel}><ArrowLeft size={14} />ยกเลิก</button><button className="asset-button">บันทึกเงื่อนไข</button></div></fieldset></form>
+}

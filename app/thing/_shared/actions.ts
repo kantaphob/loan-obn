@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
-import { validateCategories } from './categories'
+import { syncLandRegister } from '@/lib/land-register'
+import { assignAssetCodes, validateCategories, validatePropertyCategories } from '../property/categories'
 import { initialData, migrateAssetData, type AssetData } from './model'
 import { validateAssetData } from './validation'
 import { validateHistory, validateLedgerLinks } from './integrity'
@@ -66,16 +67,18 @@ export async function saveAssetWorkspace(input: AssetData, reason = 'บัน�
       validateHistory(input, current)
       const categories = await tx.assetCategory.findMany({ select: { code: true, nameTh: true, parentCode: true, isActive: true } })
       validateCategories(input.homes, current.homes, categories)
+      validatePropertyCategories(input, categories)
       const ids = [...input.homes.flatMap(h => h.boq.map(b => b.ledgerEntryId)), ...input.loans.flatMap(l => l.payments.map(p => p.ledgerEntryId))].filter((id): id is number => Boolean(id))
       const entries = ids.length ? await tx.ledgerEntry.findMany({ where: { id: { in: ids }, direction: 'OUT', voidedAt: null }, select: ledgerSelect }) : []
       validateLedgerLinks(input, entries)
-      const next: AssetData = { ...input, revision: input.revision + 1 }
+      const next: AssetData = { ...input, homes: assignAssetCodes(input.homes, current.homes, categories), revision: input.revision + 1 }
+      await syncLandRegister(tx, user.id, next, categories)
       const payload = JSON.stringify(next)
       const result = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: input.revision }, data: { revision: next.revision, payload } })
       if (result.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')
       await tx.assetWorkspaceRevision.create({ data: { operatorId: user.id, revision: next.revision, payload, reason: reason.trim() } })
       return next
-    })
+    }, { timeout: 30000 })
     return { data }
   } catch (error) {
     return { error: error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ' }

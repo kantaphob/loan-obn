@@ -10,6 +10,7 @@ model AssetCategory {
   description String          @default("")
   parentCode  String?
   parent      AssetCategory?  @relation("AssetCategoryTree", fields: [parentCode], references: [code], onDelete: Restrict)
+  assets      Asset[]
   children    AssetCategory[] @relation("AssetCategoryTree")
   sortOrder   Int             @default(0)
   isActive    Boolean         @default(true)
@@ -23,6 +24,8 @@ datasource db {
 }
 
 model AssetWorkspaceState {
+  assets Asset[]
+  parties AssetParty[]
   operatorId String @id
   revision Int @default(0)
   payload String
@@ -647,4 +650,227 @@ model AccountingAdjustment {
   createdAt DateTime @default(now())
   @@index([year, occurredOn])
   @@map("accounting_adjustment")
+}
+
+
+// Relational asset register. Composite keys keep each workspace isolated.
+model Asset {
+  operatorId String
+  id String
+  workspace AssetWorkspaceState @relation(fields: [operatorId], references: [operatorId], onDelete: Restrict)
+  code String
+  name String
+  kind String
+  status String @default("ACTIVE")
+  categoryCode String?
+  category AssetCategory? @relation(fields: [categoryCode], references: [code], onDelete: Restrict)
+  archivedOn DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  land Land?
+  transactions AssetTransaction[]
+  valuations AssetValuation[]
+  documents AssetDocument[]
+  buildingLands BuildingLand[]
+
+  @@id([operatorId, id])
+  @@unique([operatorId, code])
+  @@index([operatorId, categoryCode, status])
+  @@map("asset")
+}
+
+model Land {
+  operatorId String
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  titleType String?
+  titleDeedNo String?
+  parcelNo String?
+  surveyNo String?
+  mapSheet String?
+  mapScale String?
+  titleBook String?
+  titlePage String?
+  address String?
+  moo String?
+  subdistrict String?
+  district String?
+  province String?
+  postalCode String?
+  landOffice String?
+  rai Int @default(0)
+  ngan Int @default(0)
+  squareWah Decimal @default(0)
+  latitude Decimal?
+  longitude Decimal?
+  landUse String?
+  zoning String?
+  roadAccess String?
+  utilitiesNotes String?
+  notes String?
+  ownerships LandOwnership[]
+  acquisitions LandAcquisition[]
+  encumbrances LandEncumbrance[]
+  boundaries LandBoundary[]
+  sourceEvents LandParcelHistory[] @relation("ParcelSource")
+  targetEvents LandParcelHistory[] @relation("ParcelTarget")
+  buildings BuildingLand[]
+
+  @@id([operatorId, assetId])
+  @@index([operatorId, province, district, subdistrict])
+  @@index([operatorId, titleDeedNo, province])
+  @@map("land")
+}
+
+model AssetParty {
+  operatorId String
+  id String @default(uuid())
+  workspace AssetWorkspaceState @relation(fields: [operatorId], references: [operatorId], onDelete: Restrict)
+  type String @default("PERSON")
+  name String
+  notes String?
+  ownerships LandOwnership[]
+  sales LandAcquisition[]
+  @@id([operatorId, id])
+  @@index([operatorId, name])
+  @@map("asset_party")
+}
+
+model LandOwnership {
+  operatorId String
+  id String @default(uuid())
+  landId String
+  land Land @relation(fields: [operatorId, landId], references: [operatorId, assetId], onDelete: Restrict)
+  ownerId String
+  owner AssetParty @relation(fields: [operatorId, ownerId], references: [operatorId, id], onDelete: Restrict)
+  ownershipPercent Decimal
+  validFrom DateTime
+  validTo DateTime?
+  createdAt DateTime @default(now())
+  @@id([operatorId, id])
+  @@index([operatorId, landId, validFrom])
+  @@map("land_ownership")
+}
+
+model LandAcquisition {
+  operatorId String
+  id String @default(uuid())
+  landId String
+  land Land @relation(fields: [operatorId, landId], references: [operatorId, assetId], onDelete: Restrict)
+  acquisitionType String
+  acquiredAt DateTime?
+  sellerId String?
+  seller AssetParty? @relation(fields: [operatorId, sellerId], references: [operatorId, id], onDelete: Restrict)
+  notes String?
+  createdAt DateTime @default(now())
+  @@id([operatorId, id])
+  @@index([operatorId, landId, acquiredAt])
+  @@map("land_acquisition")
+}
+
+model AssetTransaction {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  transactionType String
+  amountSatang BigInt
+  occurredAt DateTime?
+  sourceKey String?
+  notes String?
+  createdAt DateTime @default(now())
+  @@id([operatorId, id])
+  @@unique([operatorId, assetId, sourceKey])
+  @@index([operatorId, assetId, occurredAt])
+  @@map("asset_transaction")
+}
+
+model AssetValuation {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  amountSatang BigInt
+  valuationDate DateTime
+  valuationType String
+  source String
+  notes String?
+  sourceKey String?
+  createdAt DateTime @default(now())
+  @@id([operatorId, id])
+  @@unique([operatorId, assetId, sourceKey])
+  @@index([operatorId, assetId, valuationDate])
+  @@map("asset_valuation")
+}
+
+model LandEncumbrance {
+  operatorId String
+  id String @default(uuid())
+  landId String
+  land Land @relation(fields: [operatorId, landId], references: [operatorId, assetId], onDelete: Restrict)
+  type String
+  referenceNo String?
+  description String?
+  registeredAt DateTime?
+  releasedAt DateTime?
+  createdAt DateTime @default(now())
+  @@id([operatorId, id])
+  @@index([operatorId, landId, registeredAt])
+  @@map("land_encumbrance")
+}
+
+model AssetDocument {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  documentType String
+  fileName String
+  storageKey String
+  mimeType String?
+  uploadedAt DateTime @default(now())
+  @@id([operatorId, id])
+  @@index([operatorId, assetId, documentType])
+  @@map("asset_document")
+}
+
+model LandBoundary {
+  operatorId String
+  id String @default(uuid())
+  landId String
+  land Land @relation(fields: [operatorId, landId], references: [operatorId, assetId], onDelete: Restrict)
+  coordinates Json
+  surveyDate DateTime?
+  notes String?
+  createdAt DateTime @default(now())
+  @@id([operatorId, id])
+  @@index([operatorId, landId, surveyDate])
+  @@map("land_boundary")
+}
+
+model LandParcelHistory {
+  operatorId String
+  id String @default(uuid())
+  sourceLandId String
+  targetLandId String
+  sourceLand Land @relation("ParcelSource", fields: [operatorId, sourceLandId], references: [operatorId, assetId], onDelete: Restrict)
+  targetLand Land @relation("ParcelTarget", fields: [operatorId, targetLandId], references: [operatorId, assetId], onDelete: Restrict)
+  eventType String
+  occurredAt DateTime
+  notes String?
+  @@id([operatorId, id])
+  @@index([operatorId, sourceLandId, occurredAt])
+  @@index([operatorId, targetLandId, occurredAt])
+  @@map("land_parcel_history")
+}
+
+model BuildingLand {
+  operatorId String
+  landId String
+  buildingId String
+  land Land @relation(fields: [operatorId, landId], references: [operatorId, assetId], onDelete: Restrict)
+  building Asset @relation(fields: [operatorId, buildingId], references: [operatorId, id], onDelete: Restrict)
+  @@id([operatorId, landId, buildingId])
+  @@index([operatorId, buildingId])
+  @@map("building_land")
 }

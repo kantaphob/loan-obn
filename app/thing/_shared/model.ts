@@ -1,11 +1,14 @@
 export type RatePeriod = { from: number; to: number; rate: number; installment: number; floating: boolean; discount: number }
 export type LoanRound = { id: string; name: string; effectiveOn: string; opening: number; months: number; mrr: number; fee: number; referenceInterest: number; notes: string; periods: RatePeriod[] }
 export type Payment = { id: string; date: string; amount: number; interest: number; principal: number; reference: string; roundId: string; ledgerEntryId?: number }
-export type HomeItem = { id: string; room: string; name: string; size: string; quantity: number; price: number; shop: string; purchasedOn: string; warrantyStart: string; warrantyMonths: number; warrantyUntil: string; notes: string }
-export type BoqItem = { id: string; category: string; name: string; spec: string; quantity: number; unit: string; price: number; labor: number; paid: number; vendor: string; reference: string; ledgerEntryId?: number }
-export type Home = { id: string; categoryCode: string; kind: 'house' | 'vehicle' | 'other'; costSource: 'manual' | 'boq'; financing: 'cash' | 'loan'; name: string; address: string; purchasePrice: number; purchasedOn: string; landValue: number; buildingValue: number; rooms: string[]; items: HomeItem[]; boq: BoqItem[] }
+export type HomeItem = { id: string; room: string; name: string; size: string; quantity: number; price: number; shop: string; purchasedOn: string; warrantyStart: string; warrantyMonths: number; warrantyUntil: string; notes: string; serial?: string; status?: 'active' | 'repair' | 'removed' | 'sold' | 'retired'; includedInMainCost?: boolean; boqId?: string; events?: { date: string; from: string; to: string; status: string }[] }
+export type BoqItem = { id: string; category: string; name: string; spec: string; quantity: number; unit: string; price: number; labor: number; paid: number; vendor: string; reference: string; ledgerEntryId?: number; scope?: 'construction' | 'builtin'; room?: string; replacesId?: string; cancelled?: boolean }
+export type Valuation = { id: string; date: string; landValue: number; buildingValue: number; source: string; notes: string }
+export type LandDetails = { deedNumber: string; areaSquareWa: number; valuationOn: string; valuationSource: string; annualGrowthRate?: number; projectionYears?: number; priceType?: 'appraisal' | 'asking' | 'sale'; priceNotes?: string; priceHistory?: { amount: number; date: string; source: string; type: 'appraisal' | 'asking' | 'sale'; notes: string }[] }
+export type Home = { id: string; assetCode?: string; categoryCode: string; kind: 'house' | 'vehicle' | 'other'; costSource: 'manual' | 'boq'; financing: 'cash' | 'loan'; name: string; address: string; purchasePrice: number; purchasedOn: string; landValue: number; buildingValue: number; rooms: string[]; items: HomeItem[]; boq: BoqItem[]; valuations?: Valuation[]; archivedOn?: string; vehicleType?: 'car' | 'pickup' | 'sedan' | 'other'; landDetails?: LandDetails }
 export type BankLoan = { id: string; assetId: string | null; bank: string; name: string; accountNumber: string; rounds: LoanRound[]; payments: Payment[] }
-export type AssetData = { version: 2; revision: number; homes: Home[]; loans: BankLoan[] }
+export type Property = { id: string; code: string; name: string; landId: string; buildingId: string }
+export type AssetData = { version: 2; revision: number; homes: Home[]; loans: BankLoan[]; properties?: Property[] }
 export type LedgerOption = { id: number; occurredOn: string; amountSatang: number; reference: string; note: string; categoryName: string }
 export const money = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 export const roundMoney = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
@@ -77,10 +80,17 @@ export function ghbPayments(text: string) {
 }
 
 export function assetCosts(home: Home) {
-  const boq = roundMoney(home.boq.reduce((sum, row) => sum + row.quantity * row.price + row.labor, 0))
-  const additions = roundMoney(home.items.reduce((sum, row) => sum + row.quantity * row.price, 0))
+  const boq = roundMoney(home.boq.filter(row => !row.cancelled).reduce((sum, row) => sum + row.quantity * row.price + row.labor, 0))
+  const additions = roundMoney(home.items.filter(row => !['removed', 'sold', 'retired'].includes(row.status ?? '') && !row.includedInMainCost && !(home.costSource === 'boq' && row.boqId && home.boq.some(b => b.id === row.boqId && !b.cancelled))).reduce((sum, row) => sum + row.quantity * row.price, 0))
   const main = home.costSource === 'boq' ? boq : home.purchasePrice
   return { main, boq, additions, total: roundMoney(main + additions) }
+}
+/** A property is a grouping only. Its cost always comes from its source assets. */
+export function propertyCosts(property: Property, homes: Home[]) {
+  const land = homes.find(home => home.id === property.landId)
+  const building = homes.find(home => home.id === property.buildingId)
+  if (!land || !building) throw new Error('ไม่พบที่ดินหรือบ้านที่เชื่อมกับ PROPERTY')
+  return { land: assetCosts(land).total, building: assetCosts(building).total, total: roundMoney(assetCosts(land).total + assetCosts(building).total) }
 }
 export function activeRound(loan: BankLoan, asOf = today()) {
   return loan.rounds.filter(r => !r.effectiveOn || r.effectiveOn <= asOf).at(-1)

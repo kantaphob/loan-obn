@@ -1,0 +1,86 @@
+'use client'
+
+import { useState } from 'react'
+import { Boxes, Pencil, Plus, Trash2, RotateCcw } from 'lucide-react'
+import { PageContainer } from '@/components/ui/page-container'
+import { Header } from '@/components/ui/header'
+import { Card } from '@/components/ui/card'
+import { Modal } from '@/components/ui/modal'
+import { Button } from '@/components/ui/button'
+import { saveAssetWorkspace } from '@/app/thing/_shared/actions'
+import { categoryKind, categoryPath, type AssetCategory } from '../categories'
+import { money, newHome, today, type AssetData, type Home } from '@/app/thing/_shared/model'
+import { AssetForm, type AssetFormValues } from '@/app/thing/asset/_components/asset-form'
+
+type Props = { initial: AssetData; categories: AssetCategory[]; canWrite: boolean; mode?: 'masterdata' | 'basic'; view?: 'active' | 'archived' }
+export function AssetRegistry({ initial, categories, canWrite, mode = 'masterdata', view = 'active' }: Props) {
+  const [data, setData] = useState(initial)
+  const [editing, setEditing] = useState<Home | null>(null)
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [deleting, setDeleting] = useState<Home | null>(null)
+  const showArchived = view === 'archived'
+  const visible = data.homes.filter(item => showArchived ? Boolean(item.archivedOn) : !item.archivedOn)
+  function show(item?: Home) { setEditing(item ?? null); setError(''); setOpen(true) }
+  async function saveDetails(fields: AssetFormValues) {
+    await persist(fields.name, fields.categoryCode, editing?.categoryCode === fields.categoryCode ? editing.vehicleType : undefined, fields.land)
+  }
+  async function persist(assetName: string, categoryCode: string, vehicleType?: Home['vehicleType'], land?: AssetFormValues['land']) {
+    if (!categoryCode || busy || !canWrite) return
+    setBusy(true); setError('')
+    try {
+      const kind = categoryKind(categoryCode, categories)
+      if (editing && editing.kind !== kind && (editing.landValue || editing.costSource === 'boq' || editing.valuations?.some((item) => item.landValue))) throw new Error('สินทรัพย์นี้มีมูลค่าที่ดินหรือ BOQ อยู่ กรุณาเลือกหมวดอสังหาริมทรัพย์ที่สอดคล้องกับข้อมูลเดิม')
+      const asset: Home = { ...(editing ?? newHome(assetName.trim(), kind)), ...land, name: assetName.trim(), categoryCode, kind, vehicleType: kind === 'vehicle' ? vehicleType : undefined }
+      if (land?.landDetails && asset.landDetails) {
+        const history = [...(editing?.landDetails?.priceHistory ?? [])]
+        const previous = editing?.landDetails
+        if (!history.length && editing && editing.landValue > 0 && previous?.valuationOn && previous.valuationSource) history.push({ amount: editing.landValue, date: previous.valuationOn, source: previous.valuationSource, type: previous.priceType ?? 'appraisal', notes: previous.priceNotes ?? '' })
+        const detail = asset.landDetails
+        if (asset.landValue > 0) {
+          const row = { amount: asset.landValue, date: detail.valuationOn, source: detail.valuationSource, type: detail.priceType ?? 'appraisal', notes: detail.priceNotes ?? '' }
+          const last = history.at(-1)
+          if (!last || JSON.stringify(last) !== JSON.stringify(row)) history.push(row)
+        }
+        asset.landDetails = { ...detail, priceHistory: history }
+      }
+      const next = { ...data, homes: editing ? data.homes.map((item) => item.id === asset.id ? asset : item) : [...data.homes, asset] }
+      const result = await saveAssetWorkspace(next, editing ? 'แก้ไขรายละเอียดและหมวดหมู่สินทรัพย์' : 'เพิ่มสินทรัพย์และหมวดหมู่จาก Masterdata')
+      if (!result.data) throw new Error(result.error || 'บันทึกไม่สำเร็จ')
+      setData(result.data); setOpen(false); setNotice('บันทึกสินทรัพย์และหมวดหมู่แล้ว')
+    } catch (error) { setError(error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ') }
+    finally { setBusy(false) }
+  }
+  async function archive(item: Home, remove: boolean) {
+    if (busy || !canWrite) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const next = { ...data, homes: data.homes.map(row => row.id === item.id ? { ...row, archivedOn: remove ? today() : undefined } : row) }
+      const result = await saveAssetWorkspace(next, `${remove ? 'ลบสินทรัพย์แบบกู้คืนได้' : 'กู้คืนสินทรัพย์'}: ${item.name}`)
+      if (!result.data) throw new Error(result.error || 'บันทึกไม่สำเร็จ')
+      setData(result.data); setDeleting(null)
+      setNotice(remove ? `ลบ “${item.name}” แล้ว กู้คืนได้จากรายการที่ลบ` : `กู้คืน “${item.name}” แล้ว`)
+    } catch (error) { setError(error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ') }
+    finally { setBusy(false) }
+  }
+  return <PageContainer>
+    <Header title={showArchived ? 'รายการที่ลบ' : mode === 'basic' ? 'Asset' : 'สินทรัพย์'} icon={showArchived ? <Trash2 size={21} /> : <Boxes size={21} />} description={showArchived ? 'สินทรัพย์ที่ลบไว้และสามารถกู้คืนได้' : 'แสดงประเภทและหมวดหมู่ตาม Masterdata'} actions={canWrite && !showArchived ? <Button variant="primary" disabled={busy} onClick={() => show()}><Plus size={15} />เพิ่มสินทรัพย์</Button> : undefined} />
+    <p role="status" className="mb-4 text-xs text-slate-500">{notice || `${visible.length} รายการ${showArchived ? 'ที่ลบ' : ''}`}</p>
+    {error && !open && !deleting ? <p role="alert" className="mb-4 text-sm text-rose-600">{error}</p> : null}
+    {!visible.length ? <Card className="p-8 text-center text-sm text-slate-500">{showArchived ? 'ไม่มีรายการที่ลบ' : 'ยังไม่มีสินทรัพย์ที่แสดง'}</Card> : null}
+    <div className="space-y-3">{visible.map((item) => <Card key={item.id} className="p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><h2 className="m-0 text-base font-semibold">{item.name}</h2><p className="mb-0 mt-1 text-xs font-medium text-blue-700">รหัสสินทรัพย์: {item.assetCode ?? 'สร้างอัตโนมัติเมื่อบันทึก'}</p><p className="mb-0 mt-2 text-xs leading-6 text-slate-500">ประเภทและหมวดหมู่: {categoryPath(item.categoryCode, categories)}</p>{item.landDetails ? <div className="mt-3 space-y-1 text-xs leading-6 text-slate-600"><p className="m-0">ราคาซื้อที่ดิน: {item.purchasePrice ? `${money(item.purchasePrice)} บาท` : 'ยังไม่ระบุ'} · ราคาที่บันทึกล่าสุด: {item.landValue ? `${money(item.landValue)} บาท` : 'ยังไม่ระบุ'}</p></div> : null}{item.archivedOn ? <p className="mb-0 mt-2 text-xs text-slate-500">ลบเมื่อ {item.archivedOn}</p> : null}</div>{canWrite && <div className="flex gap-2">{showArchived ? <Button disabled={busy} onClick={() => archive(item, false)} aria-label={`กู้คืน ${item.name}`}><RotateCcw size={14} />กู้คืน</Button> : <><Button disabled={busy} onClick={() => show(item)} aria-label={`แก้ไขหมวดหมู่ ${item.name}`}><Pencil size={14} />แก้ไข</Button><Button variant="danger" disabled={busy} onClick={() => { setError(''); setDeleting(item) }} aria-label={`ลบ ${item.name}`}><Trash2 size={14} />ลบ</Button></>}</div>}</div>
+    </Card>)}</div>
+    <Modal open={open} title={editing ? 'แก้ไขสินทรัพย์' : 'เพิ่มสินทรัพย์'} onClose={() => { if (!busy) setOpen(false) }}>
+      <AssetForm key={editing?.id ?? 'new'} initial={editing} categories={categories} busy={busy} error={error} onCancel={() => { if (!busy) setOpen(false) }} onSave={saveDetails} />
+    </Modal>
+    <Modal open={Boolean(deleting)} title="ยืนยันลบสินทรัพย์" onClose={() => { if (!busy) setDeleting(null) }}>
+      <p className="text-sm leading-7">ต้องการลบ “{deleting?.name}” ออกจากรายการสินทรัพย์หรือไม่? สามารถกู้คืนได้จาก “รายการที่ลบ”</p>
+      {deleting && data.loans.some(loan => loan.assetId === deleting.id) ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-800">สินทรัพย์นี้เชื่อมกับเงินกู้ธนาคาร ยอดหนี้และประวัติชำระจะยังคงอยู่</p> : null}
+      {error ? <p role="alert" className="mt-3 text-xs text-rose-600">{error}</p> : null}
+      <div className="mt-5 flex justify-end gap-2"><Button disabled={busy} onClick={() => setDeleting(null)}>ยกเลิก</Button><Button variant="danger" disabled={busy} onClick={() => deleting && archive(deleting, true)}>{busy ? 'กำลังลบ…' : 'ยืนยันลบ'}</Button></div>
+    </Modal>
+  </PageContainer>
+}

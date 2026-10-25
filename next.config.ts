@@ -7,6 +7,17 @@ const nextConfig: NextConfig = {
   },
   cacheComponents: true,
   partialPrefetching: true,
+  async redirects() {
+    return [
+      { source: '/thing/bank-loans', destination: '/thing/asset', permanent: false },
+      { source: '/thing/payments', destination: '/thing/asset/payments', permanent: false },
+      ...['boq', 'built-in', 'inventory', 'valuations', 'history'].map((section) => ({
+        source: `/thing/${section}`,
+        destination: `/thing/property/${section}`,
+        permanent: false,
+      })),
+    ]
+  },
   turbopack: {
     rules: {
       "*.css": {

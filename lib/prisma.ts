@@ -17,7 +17,7 @@ const adapter = new PrismaBetterSqlite3({
 })
 
 // Recreate a cached development client when newly generated models are added.
-const schemaVersion = 'asset-workspace-v16'
+const schemaVersion = 'land-register-v18'
 const basePrisma = globalForPrisma.schemaVersion === schemaVersion && globalForPrisma.databaseUrl === databaseUrl && globalForPrisma.prisma && 'interestRate' in globalForPrisma.prisma && 'loanStatus' in globalForPrisma.prisma && 'borrower' in globalForPrisma.prisma && 'lender' in globalForPrisma.prisma && 'loanContract' in globalForPrisma.prisma && 'ledgerSlip' in globalForPrisma.prisma && 'contractRevision' in globalForPrisma.prisma
   ? globalForPrisma.prisma
   : new PrismaClient({ adapter })

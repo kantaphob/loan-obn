@@ -16,6 +16,7 @@ import {
   BanknoteCheck,
   BanknoteX,
   ClipboardClock,
+  Trash2,
 } from "lucide-react";
 
 export type NavItem = { label: string; href: string; icon: LucideIcon };
@@ -86,11 +87,12 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: "Asset",
+    title: "Thing",
     items: [
-      { label: "สินทรัพย์", href: "/asset", icon: DatabaseBackup },
-      { label: "เงินกู้ธนาคาร / ชำระหนี้", href: "/asset/bank-loans", icon: Landmark },
-    ],
+      { label: "Property", href: "/thing/property", icon: DatabaseBackup },
+      { label: "Asset", href: "/thing/asset", icon: Landmark },
+      { label: "รายการที่ลบ", href: "/thing/deleted", icon: Trash2 },
+ ],
   },
   {
     title: "Backups",
