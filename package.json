@@ -13,6 +13,7 @@
     "db:migrate": "tsx scripts/deploy-database.ts --dev",
     "db:seed": "RUST_LOG=info prisma db seed --config prisma7.config.ts",
     "db:seed-masterdata": "tsx prisma/seed-financial-masterdata.ts",
+    "db:seed-asset-categories": "tsx prisma/seed-asset-categories.ts",
     "db:studio": "prisma studio --config prisma7.config.ts",
     "storage:sync": "tsx scripts/sync-record-files.ts",
     "db:deploy": "tsx scripts/deploy-database.ts",

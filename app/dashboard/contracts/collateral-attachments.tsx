@@ -75,7 +75,7 @@ export function CollateralAttachments({ contractId }: { contractId: number }) {
     {items.length > 0 ? <ul className="m-0 grid list-none gap-2 p-0">
       {items.map(item => <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs">
         <div className="min-w-0"><p className="m-0 font-medium">{item.category} · {item.originalName}</p><p className="mb-0 mt-1 text-slate-500">{formatSize(item.sizeBytes)} · SHA-256 {item.sha256.slice(0, 12)}… · {item.originalStatus === 'STORED' ? `ต้นฉบับเก็บที่ ${item.originalLocation}` : 'ต้นฉบับรอจัดเก็บ'}</p></div>
-        <a className="shrink-0 text-sky-700 underline underline-offset-2" href={`${endpoint}/${item.id}`}>ดาวน์โหลดสำเนา</a>
+        <div className="flex shrink-0 flex-wrap gap-x-3 gap-y-1"><a className="text-sky-700 underline underline-offset-2" href={`${endpoint}/${item.id}`}>ดาวน์โหลดต้นฉบับสแกน</a>{item.category === 'สำเนาบัตรประชาชน' && <a className="text-sky-700 underline underline-offset-2" href={`${endpoint}/${item.id}?watermark=1`}>ดาวน์โหลดสำเนาพร้อมลายน้ำ</a>}</div>
       </li>)}
     </ul> : <p className="m-0 text-xs text-slate-500">ยังไม่มีไฟล์สแกนแนบ</p>}
   </section>

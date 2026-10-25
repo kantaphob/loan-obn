@@ -163,12 +163,12 @@
 .borrower-balance-cell meter::-webkit-meter-optimum-value { background: #52ad89; }
 .borrower-balance-cell meter::-moz-meter-bar { background: #52ad89; }
 .borrower-overview-actions { display: flex; gap: 6px; justify-content: flex-end; }
-.workspace-theme .borrower-page .borrower-overview th { background: #f2f6fb; color: #62748c; }
-.workspace-theme .borrower-page .borrower-overview td { background: #ffffff80; }
-.workspace-theme .borrower-page .borrower-overview tbody tr:hover td { background: #f1f6fd; }
+.workspace-theme .borrower-page .borrower-overview th { background: var(--borrower-table-head, #f2f6fb); color: var(--borrower-table-label, #62748c); }
+.workspace-theme .borrower-page .borrower-overview td { background: var(--borrower-table-cell, #ffffff80); }
+.workspace-theme .borrower-page .borrower-overview tbody tr:hover td { background: var(--borrower-table-hover, #f1f6fd); }
 .workspace-theme .borrower-page .borrower-loan-chip { color: #367561; background: #eaf5ef; border-color: #cde4d9; }
 .workspace-theme .borrower-page .borrower-loan-chip[data-overdue='true'] { color: #ac4255; background: #fceef0; border-color: #f0cdd4; }
-.workspace-theme .borrower-page .borrower-balance-cell strong { color: #197951; }
+.workspace-theme .borrower-page .borrower-balance-cell strong { color: var(--borrower-positive, #197951); }
 .borrower-view-bar > .borrower-refresh { border: none; padding: 0; }
 @media (max-width: 760px) {
   .borrower-overview-scroll { max-height: none; overflow: visible; }

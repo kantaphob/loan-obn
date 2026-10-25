@@ -130,7 +130,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
     else setPhase(documentStages[phaseIndex - 1] ?? 'DETAILS')
   }
   async function save() {
-    if (!ready || !outstandingReviewed || !borrowerInformed || (activeSignatures.length > 0 && !signatureConsent) || saveLock.current || savedCode) return
+    if (!ready || (outstandingContracts.length > 0 && (!outstandingReviewed || !borrowerInformed)) || (activeSignatures.length > 0 && !signatureConsent) || saveLock.current || savedCode) return
     saveLock.current = true
     setSaving(true)
     setSaveError('')
@@ -281,15 +281,17 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
       {phase === 'COLLATERAL' && signingMethod === 'E_SIGNATURE' && <DraftSignaturePad stage="COLLATERAL" borrowerName={borrowerName} lenderName={lenderName} guarantorName={guarantorName} witnessCount={witnessCount} providerName={collateralAgreementData.providerName} custodianName={collateralAgreementData.custodianName} collateralAgreementData={JSON.stringify(collateralAgreementData)} value={draftSignatures} onChange={values => { setDraftSignatures(values); setSignatureConsent(false) }} />}
       {phase !== 'REVIEW' && <div className="mt-6 flex justify-end"><Button variant="primary" disabled={phase === 'DETAILS' ? !detailsReady : phase === 'GUARANTEE' ? !guarantorReady || (signingMethod === 'E_SIGNATURE' && !phaseSignaturesReady('GUARANTEE', ['GUARANTOR', 'LENDER', ...Array.from({ length: signerCount }, (_, index) => `WITNESS_${index + 1}`)])) : phase === 'LOAN' && signingMethod === 'E_SIGNATURE' && !phaseSignaturesReady('LOAN', ['BORROWER', 'LENDER', ...Array.from({ length: signerCount }, (_, index) => `WITNESS_${index + 1}`)]) || phase === 'COLLATERAL' && signingMethod === 'E_SIGNATURE' && (!collateralSignatureSetupReady(JSON.stringify(collateralAgreementData)) || !collateralSignaturesReady)} onClick={() => { nextPhase(); if (phase === 'DETAILS') setSaveError('') }}>{phase === 'DETAILS' ? 'ถัดไป: เริ่มเอกสาร 3.1' : phase === 'LOAN' ? documentStages.length > 1 ? 'ถัดไป: สัญญาค้ำประกัน 3.2' : 'ถัดไป: สรุปและบันทึก' : phase === 'GUARANTEE' ? documentPackage === 'LOAN_GUARANTEE_COLLATERAL' ? 'ถัดไป: สัญญาหลักประกัน 3.3' : 'ถัดไป: สรุปและบันทึก' : 'ถัดไป: สรุปและบันทึก'}</Button></div>}
       {phase === 'REVIEW' && <section aria-labelledby="borrower-outstanding-heading" className="mt-5 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id="borrower-outstanding-heading" className="m-0 text-sm font-semibold text-amber-950">สัญญาคงค้างของผู้กู้</h3><span className="text-xs text-amber-900">{outstandingContracts.length} สัญญา</span></div>
-        {outstandingContracts.length ? <ul className="mb-0 mt-2 divide-y divide-amber-200/80 p-0">{outstandingContracts.map(item => <li key={item.contractId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2 text-sm first:pt-0 last:pb-0"><span className="font-medium text-slate-800">CT-{String(item.contractId).padStart(6, '0')} · {item.label}</span><span className="tabular-nums text-slate-700">{item.amount}</span></li>)}</ul> : <p className="mb-0 mt-2 text-sm text-slate-600">ไม่พบสัญญาที่ยังคงค้างหรือรอจ่ายเงิน</p>}
-        <div className="mt-3 grid gap-2 border-t border-amber-200/80 pt-3 text-sm sm:grid-cols-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id="borrower-outstanding-heading" className="m-0 text-sm font-semibold text-amber-950">สัญญาเดิมที่คงค้างของผู้กู้</h3><span className="text-xs text-amber-900">{outstandingContracts.length} สัญญา</span></div>
+        <p className="mb-0 mt-1 text-xs text-amber-900">ส่วนนี้แสดงเฉพาะสัญญาที่มีอยู่ก่อนเริ่มทำรายการใหม่</p>
+        {outstandingContracts.length ? <ul className="mb-0 mt-2 divide-y divide-amber-200/80 p-0">{outstandingContracts.map(item => <li key={item.contractId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2 text-sm first:pt-0 last:pb-0"><span className="font-medium text-slate-800">CT-{String(item.contractId).padStart(6, '0')} · {item.label}</span><span className="tabular-nums text-slate-700">{item.amount}</span></li>)}</ul> : <p className="mb-0 mt-2 text-sm text-slate-600">ไม่พบสัญญาเดิมค้างหรือรอจ่าย จึงไม่ต้องยืนยันสถานะสัญญาเดิม</p>}
+        {outstandingContracts.length > 0 && <div className="mt-3 grid gap-2 border-t border-amber-200/80 pt-3 text-sm sm:grid-cols-2">
           <label className="flex cursor-pointer items-start gap-2"><input type="checkbox" checked={outstandingReviewed} onChange={event => onOutstandingReviewedChange(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-amber-700" /><span>ตรวจสอบข้อมูลผู้กู้และสัญญาคงค้างเรียบร้อยแล้ว</span></label>
           <label className="flex cursor-pointer items-start gap-2"><input type="checkbox" checked={borrowerInformed} onChange={event => onBorrowerInformedChange(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-amber-700" /><span>แจ้งผู้กู้รับทราบสถานะสัญญาคงค้างแล้ว</span></label>
-        </div>
+        </div>}
       </section>}
       {phase === 'REVIEW' && <div aria-live="polite" className="mt-6 rounded-2xl border border-slate-200 bg-white/50 p-5">
-        <h3 className="m-0 text-sm font-semibold">สรุปรายละเอียดสัญญา</h3>
+        <h3 className="m-0 text-sm font-semibold">สรุปสัญญาใหม่ที่กำลังจะบันทึก</h3>
+        <p className="mb-4 mt-1 text-xs text-slate-500">รายการด้านล่างคือสัญญาใหม่ ยังไม่รวมในจำนวนสัญญาเดิมด้านบน เมื่อบันทึกแล้วจะอยู่ในสถานะรอจ่ายเงินหรือรออนุมัติวงเงิน</p>
         <dl className="mb-5 grid gap-4 border-b border-slate-200 pb-5 text-sm sm:grid-cols-2">
           {[
             ['ผู้กู้', borrowerName], ['ผู้ให้กู้', lenderName],
@@ -324,7 +326,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
       {phase === 'REVIEW' && signingMethod === 'E_SIGNATURE' && !signaturesReady && <p role="alert" className="mt-4 text-sm text-red-700">กรุณาให้ผู้ลงนามและพยานตามที่เลือกลงลายมือชื่อในขั้นเอกสารให้ครบก่อนบันทึก</p>}
       {saveError && <p role="alert" className="text-sm text-red-700">{saveError}</p>}
       {savedCode ? <p role="status" className="mt-5 text-sm text-emerald-800">บันทึกสัญญา {savedCode} สำเร็จ · {limitApprovalNeeded ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงิน'}</p> : phase === 'REVIEW' && <div className="mt-6 flex justify-end">
-        <Button variant="primary" disabled={saving || !ready || !outstandingReviewed || !borrowerInformed || !signaturesReady || (activeSignatures.length > 0 && !signatureConsent)} onClick={save}>{saving ? 'กำลังบันทึก…' : 'ยืนยันและบันทึกสัญญา'}</Button>
+        <Button variant="primary" disabled={saving || !ready || (outstandingContracts.length > 0 && (!outstandingReviewed || !borrowerInformed)) || !signaturesReady || (activeSignatures.length > 0 && !signatureConsent)} onClick={save}>{saving ? 'กำลังบันทึก…' : 'ยืนยันและบันทึกสัญญา'}</Button>
       </div>}
       {phase === 'REVIEW' && !savedCode && <p className="mb-0 mt-3 text-xs text-slate-500">บันทึกเป็นสถานะรอจ่ายเงิน · บันทึกเอกสารและลายเซ็นตามขั้นตอนที่เลือก</p>}
     </Card>

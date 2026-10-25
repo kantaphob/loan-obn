@@ -36,8 +36,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/dashboard/admin/masterdata",
         icon: ScrollText,
       },
-{ label: "Logs", href: "/dashboard/logs", icon: ClipboardClock  },
-
+      { label: "Logs", href: "/dashboard/logs", icon: ClipboardClock },
     ],
   },
   {
@@ -46,11 +45,15 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Creditors", href: "/dashboard/lenders", icon: HandCoins },
     ],
   },
-    {
+  {
     title: "Borrower",
     items: [
       { label: "Borrowers", href: "/dashboard/borrower", icon: FolderUser },
-      { label: "Credit Bureau", href: "/dashboard/credit-burea", icon: UserShield },
+      {
+        label: "Credit Bureau",
+        href: "/dashboard/credit-burea",
+        icon: UserShield,
+      },
     ],
   },
   {
@@ -63,20 +66,38 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Accounting",
     items: [
       { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: Banknote },
-      { label: "จ่ายเงินตามสัญญา", href: "/dashboard/ap", icon: BanknoteArrowDown },
-      { label: "รับชำระตามสัญญา", href: "/dashboard/repayments", icon: BanknoteArrowUp },
-      { label: "รายงานบัญชี", href: "/dashboard/accounting", icon: WalletCards },
+      {
+        label: "จ่ายเงินตามสัญญา",
+        href: "/dashboard/ap",
+        icon: BanknoteArrowDown,
+      },
+      {
+        label: "รับชำระตามสัญญา",
+        href: "/dashboard/repayments",
+        icon: BanknoteArrowUp,
+      },
+      {
+        label: "รายงานบัญชี",
+        href: "/dashboard/accounting",
+        icon: WalletCards,
+      },
       { label: "บัญชีทุน", href: "/dashboard/capital", icon: BanknoteCheck },
       { label: "ปิดดุลบัญชี", href: "/dashboard/ac", icon: BanknoteX },
     ],
   },
   {
+    title: "Asset",
+    items: [{ label: "สินทรัพย์", href: "/asset", icon: DatabaseBackup }],
+  },
+  {
     title: "Backups",
     items: [
-      { label: "สำรองข้อมูล", href: "/dashboard/admin/backups", icon: DatabaseBackup },
-
+      {
+        label: "สำรองข้อมูล",
+        href: "/dashboard/admin/backups",
+        icon: DatabaseBackup,
+      },
     ],
-
   },
 ];
 
@@ -89,6 +110,8 @@ export function findActiveNavItem(pathname: string, search = "") {
   return (
     items.find((item) => item.href === currentHref) ??
     items.find((item) => item.href === pathname) ??
-    items.filter((item) => pathname.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0]
+    items
+      .filter((item) => pathname.startsWith(`${item.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0]
   );
 }

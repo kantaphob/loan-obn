@@ -3,6 +3,21 @@ generator client {
   output   = "../generated/prisma"
 }
 
+model AssetCategory {
+  code        String          @id
+  nameTh      String
+  nameEn      String
+  description String          @default("")
+  parentCode  String?
+  parent      AssetCategory?  @relation("AssetCategoryTree", fields: [parentCode], references: [code], onDelete: Restrict)
+  children    AssetCategory[] @relation("AssetCategoryTree")
+  sortOrder   Int             @default(0)
+  isActive    Boolean         @default(true)
+
+  @@index([parentCode, sortOrder])
+  @@map("asset_category")
+}
+
 datasource db {
   provider = "sqlite"
 }

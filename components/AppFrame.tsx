@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { WorkspaceBar } from "@/components/dashboard/workspace-bar";
 
 export default function AppFrame({
   children,
@@ -16,8 +17,9 @@ export default function AppFrame({
         <span className="absolute -bottom-48 right-[20%] h-[440px] w-[440px] rounded-full bg-[#173d55]/15 blur-[120px]" />
       </div>
       {sidebar && <div className="dashboard-sidebar relative z-10 max-[760px]:w-full"><Sidebar /></div>}
-      <main className="relative z-10 h-full min-h-0 w-0 min-w-0 flex-1 max-[760px]:w-full">
-        {children}
+      <main className="relative z-10 flex h-full min-h-0 w-0 min-w-0 flex-1 flex-col max-[760px]:w-full">
+        <WorkspaceBar />
+        <div className="workspace-content">{children}</div>
       </main>
     </div>
   );
