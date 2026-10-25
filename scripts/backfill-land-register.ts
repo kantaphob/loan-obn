@@ -1,5 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { syncLandRegister } from '../lib/land-register'
+import { syncPropertyRegister } from '../lib/property-register'
+import { validatePropertyCategories } from '../app/thing/property/categories'
 import { migrateAssetData } from '../app/thing/_shared/model'
 import { validateAssetData } from '../app/thing/_shared/validation'
 
@@ -10,7 +12,9 @@ async function main() {
     const data = migrateAssetData(JSON.parse(current.payload))
     validateAssetData(data)
     const categories = await tx.assetCategory.findMany({ select: { code: true, nameTh: true, parentCode: true, isActive: true } })
+    validatePropertyCategories(data, categories)
     await syncLandRegister(tx, current.operatorId, data, categories)
+    await syncPropertyRegister(tx, current.operatorId, data)
   }, { timeout: 30000 })
   console.log(`Land register synchronized for ${workspaces.length} workspace(s).`)
 }

@@ -20,7 +20,7 @@
     "test:integrity": "node tests/run-integrity.mjs && node --test tests/infrastructure.test.mjs",
     "test:review": "node tests/run-review.mjs",
     "test:closing": "node tests/run-closing.mjs",
-    "test:assets": "node tests/run-assets.mjs && node --test tests/land-schema.test.mjs",
+    "test:assets": "node tests/run-assets.mjs && node --test tests/land-schema.test.mjs tests/property-schema.test.mjs",
     "db:backfill-land": "tsx scripts/backfill-land-register.ts"
   },
   "dependencies": {

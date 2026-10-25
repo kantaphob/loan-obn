@@ -19,7 +19,7 @@ export function AssetHistory({ rows, canWrite, revision, restore }: { rows: Revi
       catch { setError('ไฟล์สำรองไม่ถูกต้อง'); setCandidate(null) }
       e.target.value = ''
     }} /></label>
-    {candidate ? <div className="asset-notice"><p>ไฟล์นี้มีสินทรัพย์ {candidate.homes.length} รายการ และเงินกู้ {candidate.loans.length} รายการ การยืนยันจะแทนที่ชุดปัจจุบันและเก็บประวัติชุดเดิมไว้</p><div className="asset-tools"><button className="asset-button secondary" onClick={() => setCandidate(null)}>ยกเลิก</button><button className="asset-button" disabled={!canWrite} onClick={async () => { if (await restore(candidate)) setCandidate(null) }}>ยืนยันกู้คืนข้อมูล</button></div></div> : null}
+    {candidate ? <div className="asset-notice"><p>ไฟล์นี้มีสินทรัพย์ {candidate.homes.length} รายการ Property {candidate.properties?.length ?? 0} รายการ และเงินกู้ {candidate.loans.length} รายการ การยืนยันจะแทนที่ชุดปัจจุบันและเก็บประวัติชุดเดิมไว้</p><div className="asset-tools"><button className="asset-button secondary" onClick={() => setCandidate(null)}>ยกเลิก</button><button className="asset-button" disabled={!canWrite} onClick={async () => { if (await restore(candidate)) setCandidate(null) }}>ยืนยันกู้คืนข้อมูล</button></div></div> : null}
     {rows.map(row => <div className="asset-summary-row" key={row.revision}><span>รุ่น {row.revision} · {row.reason}<small>{new Date(row.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</small></span><button className="asset-button secondary" onClick={async () => { try { download(await getAssetRevision(row.revision), `assets-revision-${row.revision}.json`) } catch { setError('ดาวน์โหลดประวัติไม่สำเร็จ') } }}>ดาวน์โหลด</button></div>)}
   </section>
 }

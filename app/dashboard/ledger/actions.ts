@@ -36,7 +36,21 @@ export async function getLedger() {
       orderBy: [{ occurredOn: 'desc' }, { id: 'desc' }],
       skip: page * batchSize,
       take: batchSize,
-      include: { slip: { select: { originalName: true, mimeType: true } }, contract: { select: { borrowerName: true, interestMethod: true, principalSatang: true, interestSatang: true, netSatang: true, repaymentSatang: true } }, revisions: { orderBy: { id: 'desc' } } },
+      include: {
+        slip: { select: { originalName: true, mimeType: true } },
+        contract: { select: { borrowerName: true, interestMethod: true, principalSatang: true, interestSatang: true, netSatang: true, repaymentSatang: true } },
+        revisions: { orderBy: { id: 'desc' } },
+        landDevelopmentCosts: {
+          select: {
+            development: {
+              select: {
+                name: true, treatment: true,
+                land: { select: { asset: { select: { code: true, name: true } } } },
+              },
+            },
+          },
+        },
+      },
     }),
   ))
   const entries = entryPages.flat()

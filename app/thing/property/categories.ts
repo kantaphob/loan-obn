@@ -1,4 +1,4 @@
-import type { AssetData, Home } from '../_shared/model'
+import { propertyAssetIds, type AssetData, type Home } from '../_shared/model'
 
 export function isPropertyComponent(code: string, root: 'LAND' | 'BUILDINGS', categories: AssetCategory[]) {
   const chain = categoryChain(code, categories)
@@ -7,9 +7,16 @@ export function isPropertyComponent(code: string, root: 'LAND' | 'BUILDINGS', ca
 
 export function validatePropertyCategories(data: AssetData, categories: AssetCategory[]) {
   for (const property of data.properties ?? []) {
-    const land = data.homes.find(home => home.id === property.landId)
-    const building = data.homes.find(home => home.id === property.buildingId)
-    if (!land || !building || !isPropertyComponent(land.categoryCode, 'LAND', categories) || !isPropertyComponent(building.categoryCode, 'BUILDINGS', categories)) throw new Error('PROPERTY ต้องเชื่อมที่ดินกับอาคารแยกกัน ไม่ใช้สินทรัพย์บ้านพร้อมที่ดินที่รวมต้นทุนแล้ว')
+    if (!property.assetIds) {
+      const land = data.homes.find(home => home.id === property.landId)
+      const building = data.homes.find(home => home.id === property.buildingId)
+      if (!land || !building || !isPropertyComponent(land.categoryCode, 'LAND', categories) || !isPropertyComponent(building.categoryCode, 'BUILDINGS', categories)) throw new Error('PROPERTY ต้องเชื่อมที่ดินกับอาคารแยกกัน ไม่ใช้สินทรัพย์บ้านพร้อมที่ดินที่รวมต้นทุนแล้ว')
+    }
+    for (const id of propertyAssetIds(property)) {
+      const home = data.homes.find(home => home.id === id)
+      if (!home || !isPropertyComponent(home.categoryCode, 'LAND', categories) && !isPropertyComponent(home.categoryCode, 'BUILDINGS', categories)) throw new Error('เลือกได้เฉพาะที่ดิน อาคาร และสิ่งปลูกสร้างที่แยกต้นทุน ไม่ใช้บ้านพร้อมที่ดินที่รวมต้นทุนแล้ว')
+      if (property.type === 'LAND_ONLY' && !isPropertyComponent(home.categoryCode, 'LAND', categories)) throw new Error('PROPERTY ประเภทที่ดินเปล่าเชื่อมได้เฉพาะที่ดิน')
+    }
   }
 }
 

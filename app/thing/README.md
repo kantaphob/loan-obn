@@ -18,21 +18,33 @@ optionally reference one asset. Payments belong to loans, never to the house pri
 The existing operator identity is used, with active status and reviewer write restrictions.
 Masterdata supplies category codes and their hierarchy.
 
-The optional `properties` collection stores only `{ id, code, name, landId, buildingId }`.
-Older v2 payloads without it remain compatible. A PROPERTY is not another `Home`:
-its total is derived through `propertyCosts` from the two source assets, and is never
-added again to asset totals or posted to the ledger. Server validation requires
-distinct, active LAND and BUILDINGS category members, excludes HOUSE_WITH_LAND
-sources, and prevents sharing a component between multiple properties. Reassign a
-property before archiving one of its sources. Category changes are checked too.
+The optional `properties` collection stores grouping metadata and `assetIds`.
+Legacy `{ landId, buildingId }` snapshots and PROPERTY-001 codes remain readable;
+new groups use PROP-001 codes. A group can start with land only and later contain
+multiple parcels, buildings and improvements categorized under BUILDINGS. Sources
+must be active, independently costed LAND/BUILDINGS records; HOUSE_WITH_LAND is
+excluded because it already combines costs. An asset may belong to one group only.
 
-The creation form offers existing assets or new LAND/BLD records saved atomically
-with the relationship using the existing permissions, revision checks and audit
-snapshots. Its initial editable example is deed XXX (1,000,000 baht) plus house 99
-(BOQ 1,970,000 baht), forming PROPERTY-001 (2,970,000 baht). These are draft values,
-not seeded financial data. The initial BOQ is one user-supplied summary row with
-zero paid amount. Any future detailed BOQ must replace this summary rather than
-add the same budget again. Land valuation is separate from purchase cost.
+The `/thing/property` page selects existing assets rather than inventing new source
+records or prices. It supports names, usage type, lifecycle status, structured
+address, coordinates, searching, adding/removing members and dissolving a grouping.
+Removing a membership or dissolving a group preserves all source assets and costs.
+`propertyTotalCost` derives costs through `assetCosts`, including its existing BOQ
+and equipment deduplication rules. Appraisal values are deliberately not summed:
+a valuation may already cover the entire house and land.
+
+`Property` and `PropertyAsset` are relational projections of the versioned workspace,
+just like the existing Asset/Land register. Every save commits projections, workspace
+revision and audit snapshot atomically. Composite workspace keys and a unique
+(operatorId, assetId) membership constraint prevent cross-workspace or duplicate
+links. Property stores no money fields. `linkedAt` is retained on unchanged links.
+Known BuildingLand relationships are preserved inside a grouping; adding multiple
+parcels does not imply every building physically occupies every parcel.
+
+Migration `20261026060000_property_register` adds only the two new tables.
+`npm run db:backfill-land` also backfills Property projections from saved payloads;
+it does not manufacture memberships or update historical audit snapshots. This
+installation continues using its configured SQLite database through Prisma.
 
 The workspace payload lives in `AssetWorkspaceState` in the existing SQLite database.
 Each successful transaction also writes an `AssetWorkspaceRevision`, with a reason,
@@ -109,4 +121,11 @@ URLs redirect through `next.config.ts`; no duplicate route folders are retained.
 - `AssetDocument`, `LandBoundary`, `LandParcelHistory`: private document storage references, surveyed coordinates, subdivision/consolidation links.
 - `BuildingLand`: connects existing building assets to land without copying costs.
 
-Run `npm run db:backfill-land` after deploying the migration to project existing snapshots into these tables. It is idempotent, does not change snapshots or audit history, and preserves supplemental fields. Missing legal/title/owner details are not invented. Existing forms currently write deed number, area, address, purchase price/date and price history. Additional ownership/title/location/encumbrance/document editing screens are not implemented by this schema change. Ownership percentages are individually constrained to 0–100; any future ownership service must additionally validate overlapping periods and combined shares. Use soft archive for assets; referenced land and owner records are protected from hard deletion.
+Land development work is recorded as child items of each land asset. The `LandDevelopment`
+projection indexes work category, mobility, CAPEX/OPEX treatment, budget, actual cost, and
+recognized asset value. `LandDevelopmentCost` links payments to existing ledger entries;
+the workspace item keeps pricing inputs, dimensions, BOQ lines, contractor/reference details,
+warranty dates, document/photo references, and maintenance history. Estimates, delivered
+cost, payments, and recognized value stay separate from land purchase/appraisal values.
+
+Run `npm run db:backfill-land` after deploying the migration to project existing snapshots into these tables. It is idempotent, does not change snapshots or audit history, and preserves supplemental fields. Missing legal/title/owner details are not invented. Existing forms currently write deed type/number, parcel and survey references, map sheet/scale/book/page, full address and district fields, rai/ngan/square wah, GPS coordinates, land use/zoning/access/utilities notes, purchase price/date and price history. Additional ownership/title/location/encumbrance/document editing screens are not implemented by this schema change. Ownership percentages are individually constrained to 0–100; any future ownership service must additionally validate overlapping periods and combined shares. Use soft archive for assets; referenced land and owner records are protected from hard deletion.

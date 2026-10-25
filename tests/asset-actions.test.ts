@@ -3,7 +3,7 @@ import { test, after } from 'node:test'
 import { prisma } from '../lib/prisma'
 import { getAssetWorkspace, saveAssetWorkspace, getAssetHistory, getAssetRevision } from '../app/thing/_shared/actions'
 import { ASSET_CATEGORY_DEFAULTS } from '../lib/asset-category-data'
-import { assetCosts, propertyCosts, outstanding, newHome } from '../app/thing/_shared/model'
+import { assetCosts, propertyCosts, propertyTotalCost, outstanding, newHome } from '../app/thing/_shared/model'
 if (!process.env.DATABASE_URL?.includes('loan-assets-test-')) throw new Error('Isolated database required')
 after(() => prisma.$disconnect())
 
@@ -78,6 +78,39 @@ test('assets, independent debt, immutable terms, audit snapshots and ledger reco
   assert.equal(await prisma.buildingLand.count({ where: { landId: land.id } }), 0)
   assert.equal(await prisma.land.count({ where: { assetId: land.id } }), 1, 'unlinking a building preserves the land')
   assert.equal(await prisma.assetValuation.count({ where: { assetId: land.id } }), 1)
+  const multi = structuredClone(unlinked.data)
+  const secondLand = { ...newHome('โฉนดที่สอง'), categoryCode: 'LAND', purchasePrice: 500000 }
+  const wall = { ...newHome('กำแพงและรั้ว'), categoryCode: 'OTHER_BUILDING', purchasePrice: 150000 }
+  multi.homes.push(secondLand, wall)
+  multi.properties = [{ id: 'site-one', code: 'PROP-001', name: 'บ้านเลขที่ 99', type: 'RESIDENTIAL', status: 'DEVELOPING', houseNumber: '99', moo: '7', village: 'สว่างไทรงาม', postalCode: '40000', latitude: 16.4, longitude: 102.8, assetIds: [land.id, secondLand.id, home.id, wall.id] }]
+  const multiSaved = await saveAssetWorkspace(multi, 'รวมหลายโฉนด บ้าน และรั้ว'); assert.ok(multiSaved.data, multiSaved.error)
+  const site = await prisma.property.findUniqueOrThrow({ where: { operatorId_id: { operatorId: user.id, id: 'site-one' } }, include: { assets: true } })
+  assert.equal(site.assets.length, 4)
+  assert.equal(site.village, 'สว่างไทรงาม')
+  assert.equal(site.status, 'DEVELOPING')
+  assert.equal(Number(site.latitude), 16.4)
+  assert.equal(propertyTotalCost(multiSaved.data.properties![0], multiSaved.data.homes), 3620000)
+  assert.equal(await prisma.buildingLand.count(), 0, 'a group does not imply buildings occupy every parcel')
+  assert.equal(await prisma.ledgerEntry.count(), 1)
+  const linkedAt = site.assets[0].linkedAt
+  const metadata = structuredClone(multiSaved.data); metadata.properties![0].name = 'บ้าน 99 ปรับชื่อ'
+  const renamed = await saveAssetWorkspace(metadata); assert.ok(renamed.data, renamed.error)
+  const unchangedLink = await prisma.propertyAsset.findFirstOrThrow({ where: { operatorId: user.id, propertyId: site.id, assetId: site.assets[0].assetId } })
+  assert.equal(unchangedLink.linkedAt.toISOString(), linkedAt.toISOString())
+  const duplicate = structuredClone(renamed.data)
+  duplicate.properties!.push({ id: 'site-two', code: 'PROP-002', name: 'ใช้ซ้ำ', assetIds: [land.id] })
+  assert.match((await saveAssetWorkspace(duplicate)).error ?? '', /PROPERTY อื่น/)
+  const before = (await getAssetWorkspace()).data
+  assert.deepEqual(before, renamed.data)
+  const detach = structuredClone(before); detach.properties![0].assetIds = [secondLand.id]
+  const detached = await saveAssetWorkspace(detach); assert.ok(detached.data, detached.error)
+  assert.equal(await prisma.propertyAsset.count(), 1)
+  assert.equal(await prisma.asset.count(), detached.data.homes.length)
+  const clear = structuredClone(detached.data); clear.properties = []
+  const cleared = await saveAssetWorkspace(clear); assert.ok(cleared.data, cleared.error)
+  assert.equal(await prisma.property.count(), 0)
+  assert.equal(await prisma.propertyAsset.count(), 0)
+  assert.equal(await prisma.asset.count(), cleared.data.homes.length, 'unlinking a property never deletes its assets')
   await prisma.user.update({ where: { id: user.id }, data: { role: 'REVIEWER' } })
   assert.match((await saveAssetWorkspace(paid.data)).error ?? '', /ไม่มีสิทธิ์/)
 })

@@ -15,12 +15,12 @@ export function AssetScreen({ section = 'assets', tab = 'overview' }: { section?
 async function Content({ section, tab }: { section: 'assets' | 'debts' | 'history' | 'basic-assets' | 'archived-assets'; tab: string }) {
   await connection()
   if (section === 'archived-assets') {
-    const { data, categories, canWrite } = await getAssetWorkspace()
-    return <AppFrame><AssetRegistry key="archived" initial={data} categories={categories} canWrite={canWrite} view="archived" /></AppFrame>
+    const { data, categories, canWrite, ledger, financialCategories, channels } = await getAssetWorkspace()
+    return <AppFrame><AssetRegistry key="archived" initial={data} categories={categories} canWrite={canWrite} ledger={ledger} financialCategories={financialCategories} channels={channels} view="archived" /></AppFrame>
   }
   if (section === 'basic-assets') {
-    const { data, categories, canWrite } = await getAssetWorkspace()
-    return <AppFrame><AssetRegistry initial={data} categories={categories} canWrite={canWrite} mode="basic" /></AppFrame>
+    const { data, categories, canWrite, ledger, financialCategories, channels } = await getAssetWorkspace()
+    return <AppFrame><AssetRegistry initial={data} categories={categories} canWrite={canWrite} ledger={ledger} financialCategories={financialCategories} channels={channels} mode="basic" /></AppFrame>
   }
   if (section === 'assets' && tab === 'overview') {
     const { data, categories, canWrite } = await getAssetWorkspace()

@@ -16,6 +16,7 @@ const financialCategories = [
   { code: 'PRINCIPAL_REPAYMENT', nameTh: 'รับชำระเงินต้น', nameEn: 'Principal repayment', group: 'LOAN', direction: 'IN', sortOrder: 50 },
   { code: 'INTEREST_RECEIVED', nameTh: 'รับดอกเบี้ย', nameEn: 'Interest received', group: 'INCOME', direction: 'IN', sortOrder: 60 },
   { code: 'FEE_RECEIVED', nameTh: 'รับค่าธรรมเนียม', nameEn: 'Fee received', group: 'INCOME', direction: 'IN', sortOrder: 70 },
+  { code: 'OTHER_INCOME', nameTh: 'รับคืนเงิน / รายรับอื่น', nameEn: 'Refunds and other income', group: 'INCOME', direction: 'IN', sortOrder: 75 },
   { code: 'LATE_FEE_RECEIVED', nameTh: 'รับค่าปรับล่าช้า', nameEn: 'Late fee received', group: 'INCOME', direction: 'IN', sortOrder: 80 },
   { code: 'OPERATING_EXPENSE', nameTh: 'ค่าใช้จ่ายดำเนินงาน', nameEn: 'Operating expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 90 },
   { code: 'BORROWED_CAPITAL_RECEIVED', nameTh: 'รับเงินทุนจากผู้ให้ทุน', nameEn: 'Funding received', group: 'CAPITAL', direction: 'IN', sortOrder: 100 },

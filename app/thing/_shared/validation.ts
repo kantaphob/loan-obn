@@ -1,4 +1,4 @@
-import { balance, roundMoney, today, type AssetData } from './model'
+import { balance, roundMoney, today, propertyAssetIds, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData } from './model'
 
 export function validateAssetData(data: AssetData) {
   const fail = (message: string): never => { throw new Error(message) }
@@ -22,16 +22,47 @@ export function validateAssetData(data: AssetData) {
       const land = home.landDetails
       if (!land || home.kind !== 'house') fail('รายละเอียดที่ดินใช้กับอสังหาริมทรัพย์เท่านั้น')
       text(land.deedNumber); amount(land.areaSquareWa); date(land.valuationOn, true); text(land.valuationSource)
+      for (const value of [land.titleType, land.parcelNo, land.surveyNo, land.mapSheet, land.mapScale, land.titleBook, land.titlePage, land.village, land.moo, land.subdistrict, land.district, land.province, land.postalCode, land.landOffice, land.landUse, land.zoning, land.roadAccess, land.utilitiesNotes, land.notes]) if (value !== undefined) text(value)
+      if (land.latitude !== undefined && (!Number.isFinite(land.latitude) || land.latitude < -90 || land.latitude > 90)) fail('ละติจูดต้องอยู่ระหว่าง -90 ถึง 90')
+      if (land.longitude !== undefined && (!Number.isFinite(land.longitude) || land.longitude < -180 || land.longitude > 180)) fail('ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180')
       if (land.valuationOn > today() || home.purchasedOn > today()) fail('วันที่ซื้อและวันที่ประเมินต้องไม่เป็นอนาคต')
       if (home.landValue > 0 && (!land.valuationOn || !land.valuationSource.trim())) fail('กรุณาระบุวันที่และแหล่งประเมินราคาที่ดิน')
-      if (land.priceType !== undefined && !['appraisal', 'asking', 'sale'].includes(land.priceType)) fail('ประเภทราคาไม่ถูกต้อง')
+      if (land.priceType !== undefined && !['appraisal', 'official_appraisal', 'market_appraisal', 'asking', 'sale'].includes(land.priceType)) fail('ประเภทราคาไม่ถูกต้อง')
       if (land.priceNotes !== undefined) text(land.priceNotes)
       if (land.priceHistory !== undefined) {
         if (!Array.isArray(land.priceHistory) || land.priceHistory.length > 10000) fail('ประวัติราคาไม่ถูกต้อง')
         for (const row of land.priceHistory) {
           amount(row.amount, true); date(row.date); text(row.source); text(row.notes)
-          if (!row.source.trim() || row.date > today() || !['appraisal', 'asking', 'sale'].includes(row.type)) fail('ประวัติราคาไม่ถูกต้อง')
+          if (!row.source.trim() || row.date > today() || !['appraisal', 'official_appraisal', 'market_appraisal', 'asking', 'sale'].includes(row.type)) fail('ประวัติราคาไม่ถูกต้อง')
         }
+      }
+    }
+    if (home.landDevelopments !== undefined) {
+      if (!Array.isArray(home.landDevelopments) || home.landDevelopments.length > 2000 || !home.landDetails && home.landDevelopments.length > 0) fail('รายการงานภายนอกต้องผูกกับทะเบียนที่ดิน')
+      for (const work of home.landDevelopments) {
+        id(work.id); text(work.name); text(work.description); text(work.unit); text(work.vendor); text(work.reference); text(work.beforePhotoRef); text(work.afterPhotoRef)
+        if (!work.name.trim() || !['site_clearing', 'fill_compaction', 'wall_fence', 'gate', 'road_concrete', 'permanent_garage', 'drainage', 'utilities', 'landscape', 'planted_tree', 'garden_light', 'other'].includes(work.type)) fail('ประเภทงานภายนอกไม่ถูกต้อง')
+        if (!['fixed_to_land', 'fixed_to_building', 'detachable', 'movable'].includes(work.mobility) || !['planned', 'approved', 'in_progress', 'completed', 'maintenance', 'retired', 'cancelled'].includes(work.status)) fail('สถานะหรือการเคลื่อนย้ายงานไม่ถูกต้อง')
+        if (!['capital', 'expense'].includes(work.treatment) || !['quantity', 'lump_sum'].includes(work.pricingMode) || !['contract_lump_sum', 'labor_plus_materials', 'materials_self'].includes(work.costMethod)) fail('วิธีคิดราคา/ประเภทต้นทุนไม่ถูกต้อง')
+        for (const value of [work.quantity, work.unitPrice, work.lumpSum, work.laborCost, work.contractPrice, work.laborAmount, work.areaRai, work.areaNgan, work.areaSquareWah, work.fillHeightMeters, work.areaSquareMeters, work.lengthMeters, work.heightMeters, work.depthMeters, work.volumeCubicMeters, work.budget, work.actualCost, work.recognizedAssetValue]) amount(value)
+        if (!Number.isInteger(work.areaRai) || !Number.isInteger(work.areaNgan) || work.areaNgan > 3 || work.areaSquareWah >= 100) fail('เนื้อที่ไร่ งาน หรือตารางวาไม่ถูกต้อง')
+        const materialsCost = work.materials.reduce((sum, row) => sum + row.quantity * row.unitPrice, 0)
+        const expectedBudget = work.costMethod === 'contract_lump_sum' ? work.contractPrice : work.costMethod === 'labor_plus_materials' ? work.laborAmount + materialsCost : materialsCost
+        if (Math.abs(Math.round(expectedBudget * 100) - Math.round(work.budget * 100)) > 1) fail('ยอดรวมต้นทุนไม่ตรงกับวิธีคิดราคา')
+        if (work.costMethod === 'materials_self' && work.laborAmount > 0) fail('รายการวัสดุทำเองไม่ควรมีค่าแรง')
+        if (work.treatment === 'expense' && work.recognizedAssetValue > 0 || work.recognizedAssetValue > 0 && work.status !== 'completed') fail('บำรุงรักษาหรือเงินที่ยังไม่ส่งมอบงานห้ามรับรู้เป็นมูลค่าสินทรัพย์')
+        if (work.recognizedAssetValue > work.actualCost) fail('มูลค่าสินทรัพย์ที่รับรู้ต้องไม่เกินต้นทุนจริง')
+        if (work.resultingAssetId && !data.homes.some(asset => asset.id === work.resultingAssetId && asset.id !== home.id)) fail('ไม่พบสินทรัพย์ที่เกิดจากงานพัฒนา')
+        date(work.startedOn, true); date(work.completedOn, true); date(work.warrantyUntil, true)
+        if (work.completedOn && work.startedOn && work.completedOn < work.startedOn) fail('วันเสร็จงานต้องไม่ก่อนวันเริ่มงาน')
+        if (work.boq.length > 500 || work.maintenance.length > 2000) fail('รายการ BOQ หรือประวัติซ่อมบำรุงมากเกินไป')
+        if (!Array.isArray(work.materials) || work.materials.length > 1000 || !Array.isArray(work.documentRefs) || work.documentRefs.length > 1000) fail('รายการวัสดุหรือเอกสารมากเกินไป')
+        for (const row of work.materials) { id(row.id); text(row.name); text(row.unit); amount(row.quantity, true); amount(row.unitPrice); if (!row.name.trim()) fail('กรุณาระบุชื่อวัสดุ') }
+        for (const row of work.documentRefs) { id(row.id); text(row.name); text(row.reference); if (!row.name.trim() || !row.reference.trim()) fail('ชื่อเอกสารและที่อ้างอิงต้องไม่ว่าง') }
+        for (const line of work.boq) { id(line.id); text(line.name); text(line.specification); text(line.unit); text(line.vendor); text(line.reference); amount(line.quantity); amount(line.materialCost); amount(line.laborCost); amount(line.paid); if (!line.name.trim()) fail('กรุณาระบุชื่อรายการ BOQ') }
+        for (const record of work.maintenance) { id(record.id); date(record.date); text(record.description); text(record.vendor); text(record.reference); amount(record.cost); if (!record.description.trim() || record.date > today()) fail('ประวัติซ่อมบำรุงไม่ถูกต้อง') }
+        if (!Array.isArray(work.payments) || work.payments.length > 10000) fail('ประวัติธุรกรรมไม่ถูกต้อง')
+        for (const payment of work.payments) { const direction = payment.direction ?? 'OUT'; id(payment.id); date(payment.date); amount(payment.amount, true); text(payment.reference); text(payment.note); if (!Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1 || payment.date > today() || !['deposit', 'progress', 'final', 'maintenance', 'refund'].includes(payment.type) || payment.direction !== undefined && !['IN', 'OUT'].includes(payment.direction) || direction === 'IN' && payment.type !== 'refund' || direction === 'OUT' && payment.type === 'refund') fail('ธุรกรรมรับ–จ่ายงานพัฒนาไม่ถูกต้อง') }
       }
     }
     for (const key of ['rooms', 'items', 'boq'] as const) if (!Array.isArray(home[key]) || home[key].length > 10000) fail('รายการมากเกินไป')
@@ -79,13 +110,23 @@ export function validateAssetData(data: AssetData) {
   if (data.properties !== undefined && (!Array.isArray(data.properties) || data.properties.length > 100)) fail('รายการ PROPERTY ไม่ถูกต้อง')
   const propertyCodes = new Set<string>(), linkedAssets = new Set<string>()
   for (const property of data.properties ?? []) {
-    if (!property || Object.keys(property).some(key => !['id', 'code', 'name', 'landId', 'buildingId'].includes(key))) fail('PROPERTY เก็บเฉพาะความสัมพันธ์ ไม่บันทึกต้นทุนซ้ำ')
+    const keys = ['id', 'code', 'name', 'landId', 'buildingId', 'assetIds', 'type', 'status', 'latitude', 'longitude', ...Object.keys(propertyAddressFields)]
+    if (!property || Object.keys(property).some(key => !keys.includes(key))) fail('PROPERTY เก็บเฉพาะความสัมพันธ์ ไม่บันทึกต้นทุนซ้ำ')
     id(property.id); text(property.code); text(property.name)
-    if (!/^PROPERTY-[0-9]{3,}$/.test(property.code) || propertyCodes.has(property.code)) fail('รหัส PROPERTY ซ้ำหรือไม่ถูกต้อง')
+    if (!/^(?:PROP|PROPERTY)-[0-9]{3,}$/.test(property.code) || propertyCodes.has(property.code)) fail('รหัส PROPERTY ซ้ำหรือไม่ถูกต้อง')
     propertyCodes.add(property.code)
     if (!property.name.trim()) fail('กรุณาระบุชื่อ PROPERTY')
-    if (property.landId === property.buildingId) fail('ที่ดินและบ้านต้องเป็นคนละสินทรัพย์')
-    for (const assetId of [property.landId, property.buildingId]) {
+    if (property.type !== undefined && !Object.hasOwn(propertyTypes, property.type)) fail('ประเภท PROPERTY ไม่ถูกต้อง')
+    if (property.status !== undefined && !Object.hasOwn(propertyStatuses, property.status)) fail('สถานะ PROPERTY ไม่ถูกต้อง')
+    for (const key of Object.keys(propertyAddressFields) as (keyof typeof propertyAddressFields)[]) if (property[key] !== undefined) text(property[key])
+    if (property.postalCode && !/^\d{5}$/.test(property.postalCode)) fail('รหัสไปรษณีย์ต้องมี 5 หลัก')
+    for (const [value, limit] of [[property.latitude, 90], [property.longitude, 180]] as const) if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > limit)) fail('พิกัด PROPERTY ไม่ถูกต้อง')
+    if (property.assetIds !== undefined && (!Array.isArray(property.assetIds) || property.assetIds.length > 100)) fail('รายการสินทรัพย์ใน PROPERTY ไม่ถูกต้อง')
+    if (property.assetIds !== undefined && (property.landId !== undefined || property.buildingId !== undefined)) fail('กรุณาใช้รูปแบบความสัมพันธ์ PROPERTY เพียงรูปแบบเดียว')
+    const members = propertyAssetIds(property)
+    if (!members.length || new Set(members).size !== members.length) fail('เลือกสินทรัพย์อย่างน้อย 1 รายการ และห้ามเลือกซ้ำ')
+    for (const assetId of members) {
+      text(assetId)
       const asset = data.homes.find(home => home.id === assetId)
       if (!asset || asset.kind !== 'house' || asset.archivedOn) fail('กรุณาเลือกสินทรัพย์อสังหาริมทรัพย์ที่ยังใช้งานอยู่')
       if (linkedAssets.has(assetId)) fail('สินทรัพย์นี้เชื่อมกับ PROPERTY อื่นแล้ว')

@@ -4,12 +4,36 @@ export type Payment = { id: string; date: string; amount: number; interest: numb
 export type HomeItem = { id: string; room: string; name: string; size: string; quantity: number; price: number; shop: string; purchasedOn: string; warrantyStart: string; warrantyMonths: number; warrantyUntil: string; notes: string; serial?: string; status?: 'active' | 'repair' | 'removed' | 'sold' | 'retired'; includedInMainCost?: boolean; boqId?: string; events?: { date: string; from: string; to: string; status: string }[] }
 export type BoqItem = { id: string; category: string; name: string; spec: string; quantity: number; unit: string; price: number; labor: number; paid: number; vendor: string; reference: string; ledgerEntryId?: number; scope?: 'construction' | 'builtin'; room?: string; replacesId?: string; cancelled?: boolean }
 export type Valuation = { id: string; date: string; landValue: number; buildingValue: number; source: string; notes: string }
-export type LandDetails = { deedNumber: string; areaSquareWa: number; valuationOn: string; valuationSource: string; annualGrowthRate?: number; projectionYears?: number; priceType?: 'appraisal' | 'asking' | 'sale'; priceNotes?: string; priceHistory?: { amount: number; date: string; source: string; type: 'appraisal' | 'asking' | 'sale'; notes: string }[] }
-export type Home = { id: string; assetCode?: string; categoryCode: string; kind: 'house' | 'vehicle' | 'other'; costSource: 'manual' | 'boq'; financing: 'cash' | 'loan'; name: string; address: string; purchasePrice: number; purchasedOn: string; landValue: number; buildingValue: number; rooms: string[]; items: HomeItem[]; boq: BoqItem[]; valuations?: Valuation[]; archivedOn?: string; vehicleType?: 'car' | 'pickup' | 'sedan' | 'other'; landDetails?: LandDetails }
+export type LandPriceType = 'appraisal' | 'official_appraisal' | 'market_appraisal' | 'asking' | 'sale'
+export type LandDevelopmentType = 'site_clearing' | 'fill_compaction' | 'wall_fence' | 'gate' | 'road_concrete' | 'permanent_garage' | 'drainage' | 'utilities' | 'landscape' | 'planted_tree' | 'garden_light' | 'other'
+export type LandMobility = 'fixed_to_land' | 'fixed_to_building' | 'detachable' | 'movable'
+export type LandDevelopmentStatus = 'planned' | 'in_progress' | 'completed' | 'maintenance' | 'retired'
+export type LandDevelopmentBoqLine = { id: string; name: string; specification: string; quantity: number; unit: string; materialCost: number; laborCost: number; paid: number; vendor: string; reference: string }
+export type LandMaintenanceRecord = { id: string; date: string; description: string; cost: number; vendor: string; reference: string }
+export type LandDevelopmentPayment = { id: string; ledgerEntryId: number; date: string; amount: number; direction?: 'IN' | 'OUT'; type: 'deposit' | 'progress' | 'final' | 'maintenance' | 'refund'; reference: string; note: string }
+export type LandDevelopmentMaterial = { id: string; name: string; quantity: number; unit: string; unitPrice: number }
+export type LandDevelopmentDocumentReference = { id: string; name: string; reference: string }
+export type LandDevelopment = { id: string; name: string; type: LandDevelopmentType; mobility: LandMobility; status: LandDevelopmentStatus | 'approved' | 'cancelled'; treatment: 'capital' | 'expense'; costMethod: 'contract_lump_sum' | 'labor_plus_materials' | 'materials_self'; pricingMode: 'quantity' | 'lump_sum'; description: string; quantity: number; unit: string; unitPrice: number; lumpSum: number; laborCost: number; contractPrice: number; laborAmount: number; materials: LandDevelopmentMaterial[]; areaRai: number; areaNgan: number; areaSquareWah: number; fillHeightMeters: number; areaSquareMeters: number; lengthMeters: number; heightMeters: number; depthMeters: number; volumeCubicMeters: number; budget: number; actualCost: number; recognizedAssetValue: number; resultingAssetId: string; vendor: string; reference: string; documentRefs: LandDevelopmentDocumentReference[]; startedOn: string; completedOn: string; warrantyUntil: string; beforePhotoRef: string; afterPhotoRef: string; boq: LandDevelopmentBoqLine[]; maintenance: LandMaintenanceRecord[]; payments: LandDevelopmentPayment[] }
+export type LandDetails = { deedNumber: string; areaSquareWa: number; valuationOn: string; valuationSource: string; titleType?: string; parcelNo?: string; surveyNo?: string; mapSheet?: string; mapScale?: string; titleBook?: string; titlePage?: string; village?: string; moo?: string; subdistrict?: string; district?: string; province?: string; postalCode?: string; landOffice?: string; latitude?: number; longitude?: number; landUse?: string; zoning?: string; roadAccess?: string; utilitiesNotes?: string; notes?: string; annualGrowthRate?: number; projectionYears?: number; priceType?: LandPriceType; priceNotes?: string; priceHistory?: { amount: number; date: string; source: string; type: LandPriceType; notes: string }[] }
+export type Home = { id: string; assetCode?: string; categoryCode: string; kind: 'house' | 'vehicle' | 'other'; costSource: 'manual' | 'boq'; financing: 'cash' | 'loan'; name: string; address: string; purchasePrice: number; purchasedOn: string; landValue: number; buildingValue: number; rooms: string[]; items: HomeItem[]; boq: BoqItem[]; valuations?: Valuation[]; archivedOn?: string; vehicleType?: 'car' | 'pickup' | 'sedan' | 'other'; landDetails?: LandDetails; landDevelopments?: LandDevelopment[] }
 export type BankLoan = { id: string; assetId: string | null; bank: string; name: string; accountNumber: string; rounds: LoanRound[]; payments: Payment[] }
-export type Property = { id: string; code: string; name: string; landId: string; buildingId: string }
+export const propertyTypes = { RESIDENTIAL: 'ที่อยู่อาศัย', COMMERCIAL: 'พาณิชยกรรม', INDUSTRIAL: 'อุตสาหกรรม', AGRICULTURAL: 'เกษตรกรรม', LAND_ONLY: 'ที่ดินเปล่า', MIXED_USE: 'ใช้ประโยชน์ผสม', OTHER: 'อื่น ๆ' } as const
+export const propertyStatuses = { PLANNING: 'วางแผน', DEVELOPING: 'กำลังพัฒนา', ACTIVE: 'ใช้งาน', INACTIVE: 'พักใช้งาน', DISPOSED: 'จำหน่ายแล้ว' } as const
+export const propertyAddressFields = { houseNumber: 'บ้านเลขที่', moo: 'หมู่', village: 'หมู่บ้าน', subdistrict: 'ตำบล / แขวง', district: 'อำเภอ / เขต', province: 'จังหวัด', postalCode: 'รหัสไปรษณีย์', description: 'รายละเอียดเพิ่มเติม' } as const
+export type Property = { id: string; code: string; name: string; assetIds?: string[]; landId?: string; buildingId?: string; type?: keyof typeof propertyTypes; status?: keyof typeof propertyStatuses; latitude?: number; longitude?: number } & Partial<Record<keyof typeof propertyAddressFields, string>>
+/** Legacy one-land/one-building snapshots remain readable without rewriting their history. */
+export function propertyAssetIds(property: Property): string[] {
+  return property.assetIds ?? [property.landId, property.buildingId].filter((id): id is string => typeof id === 'string')
+}
+export function propertyTotalCost(property: Property, homes: Home[]) {
+  return roundMoney(propertyAssetIds(property).reduce((sum, id) => {
+    const asset = homes.find(home => home.id === id)
+    if (!asset) throw new Error('ไม่พบสินทรัพย์ที่เชื่อมกับ PROPERTY')
+    return sum + assetCosts(asset).total
+  }, 0))
+}
 export type AssetData = { version: 2; revision: number; homes: Home[]; loans: BankLoan[]; properties?: Property[] }
-export type LedgerOption = { id: number; occurredOn: string; amountSatang: number; reference: string; note: string; categoryName: string }
+export type LedgerOption = { id: number; occurredOn: string; amountSatang: number; reference: string; note: string; categoryName: string; direction?: string }
 export const money = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 export const roundMoney = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 export const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -114,6 +138,14 @@ export function migrateAssetData(input: unknown): AssetData {
   for (const home of data.homes) {
     home.categoryCode ??= home.kind === 'house' ? 'BUILDINGS' : home.kind === 'vehicle' ? 'VEHICLES' : ''
     home.costSource ??= 'manual'
+    const legacyHome = home as Home & { landImprovements?: LandDevelopment[] }
+    home.landDevelopments ??= legacyHome.landImprovements
+    delete legacyHome.landImprovements
+    home.landDevelopments = (home.landDevelopments ?? []).map((work) => {
+      const legacy = work as unknown as Record<string, unknown>
+      const oldDocs = legacy.documentRefs
+      return { ...legacy, treatment: legacy.treatment === 'expense' ? 'expense' : 'capital', costMethod: 'contract_lump_sum', contractPrice: Number(legacy.contractPrice ?? legacy.budget ?? 0), laborAmount: Number(legacy.laborAmount ?? 0), materials: Array.isArray(legacy.materials) ? legacy.materials : [], areaRai: Number(legacy.areaRai ?? 0), areaNgan: Number(legacy.areaNgan ?? 0), areaSquareWah: Number(legacy.areaSquareWah ?? 0), fillHeightMeters: Number(legacy.fillHeightMeters ?? 0), pricingMode: legacy.pricingMode === 'quantity' ? 'quantity' : 'lump_sum', unitPrice: Number(legacy.unitPrice ?? 0), lumpSum: Number(legacy.lumpSum ?? legacy.budget ?? 0), laborCost: Number(legacy.laborCost ?? 0), recognizedAssetValue: Number(legacy.recognizedAssetValue ?? 0), resultingAssetId: String(legacy.resultingAssetId ?? ''), documentRefs: Array.isArray(oldDocs) ? oldDocs : typeof oldDocs === 'string' && oldDocs ? oldDocs.split('\n').filter(Boolean).map((reference, index) => ({ id: `legacy-doc-${index}`, name: 'เอกสารเดิม', reference })) : [], payments: Array.isArray(legacy.payments) ? legacy.payments : [] } as LandDevelopment
+    })
   }
   for (const loan of data.loans ?? []) for (const round of loan.rounds) round.referenceInterest ??= 0
   return data

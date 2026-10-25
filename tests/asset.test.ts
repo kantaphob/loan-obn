@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { initialData, balance, forecast, ghbPayments, newHome, assetCosts, propertyCosts, outstanding, migrateAssetData } from '../app/thing/_shared/model'
+import { initialData, balance, forecast, ghbPayments, newHome, assetCosts, propertyCosts, propertyTotalCost, propertyAssetIds, outstanding, migrateAssetData } from '../app/thing/_shared/model'
 import { validateHistory, validateLedgerLinks } from '../app/thing/_shared/integrity'
 import { projectLandValue } from '../app/thing/asset/land-value'
 import { validateAssetData } from '../app/thing/_shared/validation'
@@ -190,4 +190,40 @@ test('asset codes follow category families and reserve archived and existing num
   const rows = assignAssetCodes([old, land, building], [old], master)
   assert.deepEqual(rows.map(row => row.assetCode), ['LAND-001', 'LAND-002', 'BLD-001'])
   assert.equal(assignAssetCodes([{ ...rows[1], categoryCode: 'BUILDINGS', assetCode: 'FAKE-001' }], rows, master)[0].assetCode, 'LAND-002')
+})
+
+
+test('Property supports land-only and multiple parcels/buildings without copying costs', () => {
+  const data = initialData()
+  const a = { ...newHome('แปลง 1'), id: 'parcel-a', categoryCode: 'LAND', purchasePrice: 1000000 }
+  const b = { ...newHome('แปลง 2'), id: 'parcel-b', categoryCode: 'LAND', purchasePrice: 500000 }
+  const c = { ...newHome('บ้าน'), id: 'house-c', purchasePrice: 1970000 }
+  const d = { ...newHome('กำแพง'), id: 'wall-d', purchasePrice: 150000 }
+  data.homes.push(a, b, c, d)
+  const masterdata = [...categories, { code: 'LAND', nameTh: 'ที่ดิน', parentCode: 'TANGIBLE_ASSETS', isActive: true }]
+  data.properties = [{ id: 'group-a', code: 'PROP-001', name: 'สถานที่เดียวกัน', type: 'LAND_ONLY', status: 'PLANNING', assetIds: [a.id] }]
+  validateAssetData(data); validatePropertyCategories(data, masterdata)
+  assert.equal(propertyTotalCost(data.properties[0], data.homes), 1000000)
+  data.properties[0].type = 'RESIDENTIAL'
+  data.properties[0].assetIds = [a.id, b.id, c.id, d.id]
+  validateAssetData(data); validatePropertyCategories(data, masterdata)
+  assert.deepEqual(propertyAssetIds(data.properties[0]), [a.id, b.id, c.id, d.id])
+  assert.equal(propertyTotalCost(data.properties[0], data.homes), 3620000)
+  d.purchasePrice = 160000
+  assert.equal(propertyTotalCost(data.properties[0], data.homes), 3630000)
+  data.properties[0].type = 'LAND_ONLY'
+  assert.throws(() => validatePropertyCategories(data, masterdata), /ที่ดินเปล่า/)
+  data.properties[0].assetIds = []
+  assert.throws(() => validateAssetData(data), /อย่างน้อย 1/)
+  data.properties[0].assetIds = [a.id, a.id]
+  assert.throws(() => validateAssetData(data), /ห้ามเลือกซ้ำ/)
+  data.properties[0].assetIds = [a.id]
+  data.properties[0].latitude = 91
+  assert.throws(() => validateAssetData(data), /พิกัด/)
+  delete data.properties[0].latitude
+  data.properties[0].postalCode = '123'
+  assert.throws(() => validateAssetData(data), /ไปรษณีย์/)
+  delete data.properties[0].postalCode
+  data.properties[0].landId = a.id
+  assert.throws(() => validateAssetData(data), /รูปแบบเดียว/)
 })

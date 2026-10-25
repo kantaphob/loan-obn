@@ -26,6 +26,7 @@ datasource db {
 model AssetWorkspaceState {
   assets Asset[]
   parties AssetParty[]
+  properties Property[]
   operatorId String @id
   revision Int @default(0)
   payload String
@@ -431,6 +432,7 @@ model LedgerEntry {
   penaltyWaivedSatang Float @default(0)
   penaltyWaiverReason String @default("")
   revisions LedgerRevision[]
+  landDevelopmentCosts LandDevelopmentCost[]
   payableId Int?
   payable TradePayable? @relation(fields: [payableId], references: [id], onDelete: Restrict)
   id Int @id @default(autoincrement())
@@ -672,6 +674,7 @@ model Asset {
   valuations AssetValuation[]
   documents AssetDocument[]
   buildingLands BuildingLand[]
+  propertyLink PropertyAsset?
 
   @@id([operatorId, id])
   @@unique([operatorId, code])
@@ -692,6 +695,7 @@ model Land {
   titleBook String?
   titlePage String?
   address String?
+  village String?
   moo String?
   subdistrict String?
   district String?
@@ -715,11 +719,56 @@ model Land {
   sourceEvents LandParcelHistory[] @relation("ParcelSource")
   targetEvents LandParcelHistory[] @relation("ParcelTarget")
   buildings BuildingLand[]
+  developments LandDevelopment[]
 
   @@id([operatorId, assetId])
   @@index([operatorId, province, district, subdistrict])
   @@index([operatorId, titleDeedNo, province])
   @@map("land")
+}
+
+model LandDevelopment {
+  operatorId String
+  id String
+  landId String
+  land Land @relation(fields: [operatorId, landId], references: [operatorId, assetId], onDelete: Restrict)
+  name String
+  category String
+  mobility String
+  status String
+  treatment String @default("CAPITAL")
+  pricingMode String @default("LUMP_SUM")
+  budgetSatang BigInt @default(0)
+  actualCostSatang BigInt @default(0)
+  recognizedAssetValueSatang BigInt @default(0)
+  resultingAssetId String?
+  detailsJson String
+  costs LandDevelopmentCost[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, id])
+  @@index([operatorId, landId, category, status])
+  @@map("land_development")
+}
+
+model LandDevelopmentCost {
+  operatorId String
+  id String
+  developmentId String
+  development LandDevelopment @relation(fields: [operatorId, developmentId], references: [operatorId, id], onDelete: Restrict)
+  ledgerEntryId Int @unique
+  ledgerEntry LedgerEntry @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  paymentType String
+  amountSatang BigInt
+  paidOn DateTime
+  reference String @default("")
+  notes String @default("")
+  createdAt DateTime @default(now())
+
+  @@id([operatorId, id])
+  @@index([operatorId, developmentId, paidOn])
+  @@map("land_development_cost")
 }
 
 model AssetParty {
@@ -873,4 +922,65 @@ model BuildingLand {
   @@id([operatorId, landId, buildingId])
   @@index([operatorId, buildingId])
   @@map("building_land")
+}
+
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  AGRICULTURAL
+  LAND_ONLY
+  MIXED_USE
+  OTHER
+}
+
+enum PropertyStatus {
+  PLANNING
+  DEVELOPING
+  ACTIVE
+  INACTIVE
+  DISPOSED
+}
+
+// Grouping only: no purchase price, cost or valuation is stored here.
+model Property {
+  operatorId String
+  id String @default(uuid())
+  workspace AssetWorkspaceState @relation(fields: [operatorId], references: [operatorId], onDelete: Restrict)
+  code String
+  name String
+  type PropertyType @default(RESIDENTIAL)
+  status PropertyStatus @default(ACTIVE)
+  houseNumber String?
+  moo String?
+  village String?
+  subdistrict String?
+  district String?
+  province String?
+  postalCode String?
+  latitude Decimal?
+  longitude Decimal?
+  description String?
+  assets PropertyAsset[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, id])
+  @@unique([operatorId, code])
+  @@index([operatorId, status, type])
+  @@map("property")
+}
+
+model PropertyAsset {
+  operatorId String
+  propertyId String
+  assetId String
+  property Property @relation(fields: [operatorId, propertyId], references: [operatorId, id], onDelete: Restrict)
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  linkedAt DateTime @default(now())
+
+  @@id([operatorId, propertyId, assetId])
+  @@unique([operatorId, assetId])
+  @@map("property_asset")
 }
