@@ -14,6 +14,28 @@ export function validateAssetData(data: AssetData) {
     if (!home.name.trim()) fail('กรุณาระบุชื่อบ้าน')
     if (!['house', 'vehicle', 'other'].includes(home.kind) || !['cash', 'loan'].includes(home.financing)) fail('ประเภทสินทรัพย์หรือการชำระไม่ถูกต้อง')
     if (home.vehicleType !== undefined && (home.kind !== 'vehicle' || !['car', 'pickup', 'sedan', 'other'].includes(home.vehicleType))) fail('ประเภทรถไม่ถูกต้อง')
+    if (home.vehicleDetails !== undefined) {
+      if (home.kind !== 'vehicle') fail('รายละเอียดรถใช้กับสินทรัพย์ประเภทยานพาหนะเท่านั้น')
+      const vehicle = home.vehicleDetails
+      for (const value of [vehicle.brand, vehicle.model, vehicle.variant, vehicle.plateNumber, vehicle.plateProvince, vehicle.vin, vehicle.engineNumber, vehicle.color, vehicle.fuelType, vehicle.transmission, vehicle.purchaseSeller ?? '', vehicle.purchaseReference ?? '']) text(value)
+      amount(vehicle.modelYear); amount(vehicle.engineCc); amount(vehicle.odometerKm)
+      if (vehicle.modelYear && (!Number.isInteger(vehicle.modelYear) || vehicle.modelYear < 1900 || vehicle.modelYear > new Date().getFullYear() + 1)) fail('ปีรถไม่ถูกต้อง')
+      if (!Number.isInteger(vehicle.engineCc) || !Number.isInteger(vehicle.odometerKm)) fail('ขนาดเครื่องยนต์และเลขไมล์ต้องเป็นจำนวนเต็ม')
+    }
+    if (home.vehicleRecords !== undefined) {
+      if (!Array.isArray(home.vehicleRecords) || home.vehicleRecords.length > 10000 || home.kind !== 'vehicle') fail('รายการยานพาหนะไม่ถูกต้อง')
+      for (const record of home.vehicleRecords) {
+        id(record.id); text(record.name); text(record.category); text(record.vendor); text(record.replacesId); text(record.reference); text(record.notes)
+        if (!record.name.trim() || !['maintenance', 'repair', 'component', 'customization', 'insurance', 'tax'].includes(record.type) || !['active', 'removed', 'disposed'].includes(record.status)) fail('ประเภทรายการรถไม่ถูกต้อง')
+        date(record.date); date(record.warrantyUntil, true); date(record.expiresOn, true)
+        amount(record.odometerKm); amount(record.partsCost); amount(record.laborCost)
+        if (!Number.isInteger(record.odometerKm) || record.type !== 'component' && record.type !== 'customization' && record.status !== 'active' || record.type !== 'insurance' && record.type !== 'tax' && record.expiresOn) fail('รายละเอียดรายการรถไม่ถูกต้อง')
+      }
+    }
+    if (home.vehicleValuations !== undefined) {
+      if (!Array.isArray(home.vehicleValuations) || home.vehicleValuations.length > 10000 || home.kind !== 'vehicle') fail('ประวัติมูลค่ารถไม่ถูกต้อง')
+      for (const valuation of home.vehicleValuations) { id(valuation.id); date(valuation.date); amount(valuation.amount, true); text(valuation.source); text(valuation.notes); if (valuation.date > today() || !valuation.source.trim()) fail('ประวัติประเมินรถไม่ถูกต้อง') }
+    }
     amount(home.purchasePrice); date(home.purchasedOn, true)
     if (!['manual', 'boq'].includes(home.costSource) || home.costSource === 'boq' && home.kind !== 'house') fail('แหล่งต้นทุนไม่ถูกต้อง')
     if (home.kind !== 'house' && home.landValue !== 0) fail('มูลค่าที่ดินใช้เฉพาะอสังหาริมทรัพย์')
@@ -41,7 +63,8 @@ export function validateAssetData(data: AssetData) {
       if (!Array.isArray(home.landDevelopments) || home.landDevelopments.length > 2000 || !home.landDetails && home.landDevelopments.length > 0) fail('รายการงานภายนอกต้องผูกกับทะเบียนที่ดิน')
       for (const work of home.landDevelopments) {
         id(work.id); text(work.name); text(work.description); text(work.unit); text(work.vendor); text(work.reference); text(work.beforePhotoRef); text(work.afterPhotoRef)
-        if (!work.name.trim() || !['site_clearing', 'fill_compaction', 'wall_fence', 'gate', 'road_concrete', 'permanent_garage', 'drainage', 'utilities', 'landscape', 'planted_tree', 'garden_light', 'other'].includes(work.type)) fail('ประเภทงานภายนอกไม่ถูกต้อง')
+        if (!work.name.trim() || !['site_clearing', 'fill_compaction', 'wall_fence', 'gate', 'road_concrete', 'permanent_garage', 'drainage', 'utilities', 'landscape', 'planted_tree', 'garden_light', 'repair_maintenance', 'service', 'other'].includes(work.type)) fail('ประเภทงานภายนอกไม่ถูกต้อง')
+        if (['repair_maintenance', 'service'].includes(work.type) && work.treatment !== 'expense') fail('งานซ่อมบำรุงและบริการต้องบันทึกเป็นค่าใช้จ่าย ไม่รวมในต้นทุนสินทรัพย์')
         if (!['fixed_to_land', 'fixed_to_building', 'detachable', 'movable'].includes(work.mobility) || !['planned', 'approved', 'in_progress', 'completed', 'maintenance', 'retired', 'cancelled'].includes(work.status)) fail('สถานะหรือการเคลื่อนย้ายงานไม่ถูกต้อง')
         if (!['capital', 'expense'].includes(work.treatment) || !['quantity', 'lump_sum'].includes(work.pricingMode) || !['contract_lump_sum', 'labor_plus_materials', 'materials_self'].includes(work.costMethod)) fail('วิธีคิดราคา/ประเภทต้นทุนไม่ถูกต้อง')
         for (const value of [work.quantity, work.unitPrice, work.lumpSum, work.laborCost, work.contractPrice, work.laborAmount, work.areaRai, work.areaNgan, work.areaSquareWah, work.fillHeightMeters, work.areaSquareMeters, work.lengthMeters, work.heightMeters, work.depthMeters, work.volumeCubicMeters, work.budget, work.actualCost, work.recognizedAssetValue]) amount(value)
@@ -61,6 +84,10 @@ export function validateAssetData(data: AssetData) {
         for (const row of work.documentRefs) { id(row.id); text(row.name); text(row.reference); if (!row.name.trim() || !row.reference.trim()) fail('ชื่อเอกสารและที่อ้างอิงต้องไม่ว่าง') }
         for (const line of work.boq) { id(line.id); text(line.name); text(line.specification); text(line.unit); text(line.vendor); text(line.reference); amount(line.quantity); amount(line.materialCost); amount(line.laborCost); amount(line.paid); if (!line.name.trim()) fail('กรุณาระบุชื่อรายการ BOQ') }
         for (const record of work.maintenance) { id(record.id); date(record.date); text(record.description); text(record.vendor); text(record.reference); amount(record.cost); if (!record.description.trim() || record.date > today()) fail('ประวัติซ่อมบำรุงไม่ถูกต้อง') }
+        if (work.actualCostHistory !== undefined) {
+          if (!Array.isArray(work.actualCostHistory) || work.actualCostHistory.length > 10000) fail('ประวัติต้นทุนจริงไม่ถูกต้อง')
+          for (const record of work.actualCostHistory) { id(record.id); date(record.date); amount(record.amount, true); text(record.note); if (record.date > today()) fail('วันที่บันทึกต้นทุนจริงต้องไม่เป็นอนาคต') }
+        }
         if (!Array.isArray(work.payments) || work.payments.length > 10000) fail('ประวัติธุรกรรมไม่ถูกต้อง')
         for (const payment of work.payments) { const direction = payment.direction ?? 'OUT'; id(payment.id); date(payment.date); amount(payment.amount, true); text(payment.reference); text(payment.note); if (!Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1 || payment.date > today() || !['deposit', 'progress', 'final', 'maintenance', 'refund'].includes(payment.type) || payment.direction !== undefined && !['IN', 'OUT'].includes(payment.direction) || direction === 'IN' && payment.type !== 'refund' || direction === 'OUT' && payment.type === 'refund') fail('ธุรกรรมรับ–จ่ายงานพัฒนาไม่ถูกต้อง') }
       }
@@ -86,7 +113,7 @@ export function validateAssetData(data: AssetData) {
       }
     }
     for (const item of home.boq) {
-      id(item.id); [item.category, item.name, item.spec, item.unit, item.vendor, item.reference].forEach(text)
+      id(item.id); [item.category, item.subcategory ?? '', item.name, item.spec, item.unit, item.vendor, item.reference].forEach(text)
       if (!item.name.trim()) fail('กรุณาระบุชื่อรายการ BOQ')
       amount(item.quantity, true); [item.price, item.labor, item.paid].forEach(n => amount(n))
       if (item.ledgerEntryId !== undefined && (!Number.isSafeInteger(item.ledgerEntryId) || item.ledgerEntryId < 1)) fail('เลขรายการบัญชีไม่ถูกต้อง')
@@ -98,6 +125,25 @@ export function validateAssetData(data: AssetData) {
         if (!previous || previous.id === item.id || !previous.cancelled) fail('รายการ BOQ ที่ถูกแทนต้องอยู่ในบ้านเดียวกันและยกเลิกงบเดิมแล้ว')
         const visited = new Set([item.id]); let cursor: typeof previous | undefined = previous
         while (cursor) { if (visited.has(cursor.id)) fail('การแทนที่ BOQ วนซ้ำ'); visited.add(cursor.id); cursor = home.boq.find(b => b.id === cursor!.replacesId) }
+      }
+    }
+    if (home.buildingDetails !== undefined) {
+      const details = home.buildingDetails
+      if (home.kind !== 'house') fail('ข้อมูลอาคารใช้กับสินทรัพย์บ้านเท่านั้น')
+      amount(details.usableAreaSqm); amount(details.floorCount); text(details.buildingType); text(details.notes); date(details.completedOn, true)
+      if (!Number.isInteger(details.floorCount)) fail('จำนวนชั้นต้องเป็นจำนวนเต็ม')
+      if (details.completedOn && details.completedOn > today()) fail('วันที่สร้างเสร็จต้องไม่เป็นอนาคต')
+      if (details.roomCounts !== undefined) {
+        if (!Array.isArray(details.roomCounts) || details.roomCounts.length > 500 || new Set(details.roomCounts.map(row => row.name)).size !== details.roomCounts.length) fail('จำนวนห้องไม่ถูกต้อง')
+        for (const row of details.roomCounts) { text(row.name); amount(row.count); if (!row.name.trim() || !home.rooms.includes(row.name) || !Number.isInteger(row.count) || row.count < 1) fail('ชื่อและจำนวนห้องไม่ถูกต้อง') }
+      }
+    }
+    if (home.buildingWorks !== undefined) {
+      if (home.kind !== 'house' || !Array.isArray(home.buildingWorks) || home.buildingWorks.length > 10000) fail('รายการจัดการบ้านไม่ถูกต้อง')
+      for (const work of home.buildingWorks) {
+        id(work.id); text(work.name); text(work.vendor); text(work.reference); text(work.notes); date(work.date); date(work.warrantyUntil, true); amount(work.amount)
+        if (!work.name.trim() || work.date > today() || !['construction', 'repair', 'improvement', 'decoration', 'built_in', 'equipment'].includes(work.type) || !['capital', 'expense'].includes(work.treatment)) fail('รายละเอียดงานบ้านไม่ถูกต้อง')
+        if (!Array.isArray(work.roomNames) || new Set(work.roomNames).size !== work.roomNames.length || work.roomNames.some(room => !home.rooms.includes(room))) fail('เลือกห้องที่เกี่ยวข้องกับงานให้ถูกต้อง')
       }
     }
     const replacements = home.boq.filter(b => !b.cancelled && b.replacesId).map(b => b.replacesId)

@@ -1,7 +1,9 @@
 'use server'
 
 import { readFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
 import { syncLandRegister } from '@/lib/land-register'
@@ -10,6 +12,8 @@ import { assignAssetCodes, validateCategories, validatePropertyCategories } from
 import { initialData, migrateAssetData, type AssetData } from './model'
 import { validateAssetData } from './validation'
 import { validateHistory, validateLedgerLinks } from './integrity'
+
+const requireFromProject = createRequire(path.join(process.cwd(), 'package.json'))
 import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
 import { assertUniqueLedgerProof } from '@/lib/ledger-proof'
 import { ledgerAmount, validLedgerDate } from '@/lib/ledger'
@@ -172,4 +176,41 @@ export async function getAssetHistory() {
   const user = await operator()
   const rows = await prisma.assetWorkspaceRevision.findMany({ where: { operatorId: user.id }, orderBy: { revision: 'desc' }, take: 30, select: { revision: true, reason: true, createdAt: true } })
   return rows.map(row => ({ ...row, createdAt: row.createdAt.toISOString() }))
+}
+
+/** Extract selectable text from a BOQ PDF for local review before saving it as construction items. */
+export async function extractBoqPdfText(formData: FormData) {
+  await operator(true)
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size < 1 || file.size > 15 * 1024 * 1024 || file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) throw new Error('เลือกไฟล์ PDF ขนาดไม่เกิน 15 MB')
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  if (new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') throw new Error('ไฟล์นี้ไม่ใช่ PDF ที่อ่านได้')
+  const pdfjsEntry = pathToFileURL(requireFromProject.resolve('pdfjs-dist/legacy/build/pdf.mjs')).href
+  const pdfjsWorker = pathToFileURL(requireFromProject.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')).href
+  const pdfjs = await import(/* webpackIgnore: true */ pdfjsEntry) as typeof import('pdfjs-dist/legacy/build/pdf.mjs')
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
+  const loadingTask = pdfjs.getDocument({ data: bytes, useSystemFonts: true, stopAtErrors: false })
+  const document = await loadingTask.promise
+  try {
+    if (document.numPages > 100) throw new Error('PDF ต้องมีไม่เกิน 100 หน้า')
+    const pages: string[][] = []
+    let lineCount = 0
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
+      const page = await document.getPage(pageNumber)
+      const content = await page.getTextContent()
+      const lines = new Map<number, { x: number; text: string }[]>()
+      for (const item of content.items) {
+        if (!('str' in item) || !item.str.trim()) continue
+        const y = Math.round(item.transform[5] / 2) * 2
+        const row = lines.get(y) ?? []
+        row.push({ x: item.transform[4], text: item.str.trim() }); lines.set(y, row)
+      }
+      const pageLines = [...lines.entries()].sort(([a], [b]) => b - a).map(([, row]) => row.sort((a, b) => a.x - b.x).map(item => item.text).join(' ').replace(/\s+/g, ' ').trim()).filter(Boolean)
+      lineCount += pageLines.length
+      if (lineCount > 30000) throw new Error('PDF มีข้อความมากเกินไปสำหรับการนำเข้า')
+      pages.push(pageLines)
+      page.cleanup()
+    }
+    return { pages }
+  } finally { await loadingTask.destroy() }
 }
