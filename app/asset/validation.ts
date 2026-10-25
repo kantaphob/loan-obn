@@ -1,4 +1,4 @@
-import { balance, roundMoney, type AssetData } from './model'
+import { balance, roundMoney, today, type AssetData } from './model'
 
 export function validateAssetData(data: AssetData) {
   const fail = (message: string): never => { throw new Error(message) }
@@ -7,16 +7,16 @@ export function validateAssetData(data: AssetData) {
   const date = (value: string, optional = false) => optional && value === '' || /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value || fail('กรุณาระบุวันที่ให้ถูกต้อง')
   const ids = new Set<string>()
   const id = (value: string) => { text(value); if (!/^[a-zA-Z0-9-]{1,80}$/.test(value) || ids.has(value)) fail('รหัสรายการซ้ำหรือไม่ถูกต้อง'); ids.add(value) }
-  if (!data || data.version !== 1 || !Number.isSafeInteger(data.revision) || data.revision < 0 || !Array.isArray(data.homes) || data.homes.length < 1 || data.homes.length > 100) fail('ข้อมูลสินทรัพย์ไม่ถูกต้อง')
+  if (!data || data.version !== 2 || !Number.isSafeInteger(data.revision) || data.revision < 0 || !Array.isArray(data.homes) || data.homes.length < 1 || data.homes.length > 100) fail('ข้อมูลสินทรัพย์ไม่ถูกต้อง')
   for (const home of data.homes) {
-    id(home.id); text(home.name); text(home.address)
+    id(home.id); text(home.name); text(home.address); text(home.categoryCode)
     if (!home.name.trim()) fail('กรุณาระบุชื่อบ้าน')
     if (!['house', 'vehicle', 'other'].includes(home.kind) || !['cash', 'loan'].includes(home.financing)) fail('ประเภทสินทรัพย์หรือการชำระไม่ถูกต้อง')
     amount(home.purchasePrice); date(home.purchasedOn, true)
-    if (home.financing === 'cash' && home.rounds.length) fail('สินทรัพย์เงินสดต้องไม่มีสัญญากู้')
+    if (!['manual', 'boq'].includes(home.costSource) || home.costSource === 'boq' && home.kind !== 'house') fail('แหล่งต้นทุนไม่ถูกต้อง')
     if (home.kind !== 'house' && home.landValue !== 0) fail('มูลค่าที่ดินใช้เฉพาะอสังหาริมทรัพย์')
     amount(home.landValue); amount(home.buildingValue)
-    for (const key of ['rooms', 'items', 'boq', 'rounds', 'payments'] as const) if (!Array.isArray(home[key]) || home[key].length > 10000) fail('รายการมากเกินไป')
+    for (const key of ['rooms', 'items', 'boq'] as const) if (!Array.isArray(home[key]) || home[key].length > 10000) fail('รายการมากเกินไป')
     home.rooms.forEach(r => { text(r); if (!r.trim()) fail('ชื่อห้องว่าง') })
     if (new Set(home.rooms).size !== home.rooms.length) fail('ชื่อห้องซ้ำ')
     for (const item of home.items) {
@@ -32,8 +32,15 @@ export function validateAssetData(data: AssetData) {
       id(item.id); [item.category, item.name, item.spec, item.unit, item.vendor, item.reference].forEach(text)
       if (!item.name.trim()) fail('กรุณาระบุชื่อรายการ BOQ')
       amount(item.quantity, true); [item.price, item.labor, item.paid].forEach(n => amount(n))
-      if (item.paid > roundMoney(item.quantity * item.price + item.labor)) fail('ยอดจ่าย BOQ เกินงบรายการ')
+      if (item.ledgerEntryId !== undefined && (!Number.isSafeInteger(item.ledgerEntryId) || item.ledgerEntryId < 1)) fail('เลขรายการบัญชีไม่ถูกต้อง')
     }
+  }
+  if (!Array.isArray(data.loans) || data.loans.length > 1000) fail('รายการเงินกู้ไม่ถูกต้อง')
+  for (const home of data.loans) {
+    id(home.id); text(home.bank); text(home.name); text(home.accountNumber)
+    if (!home.bank.trim() || !home.name.trim()) fail('กรุณาระบุธนาคารและชื่อเงินกู้')
+    if (home.assetId !== null && !data.homes.some(asset => asset.id === home.assetId)) fail('ไม่พบสินทรัพย์ที่เชื่อมกับเงินกู้')
+    if (!Array.isArray(home.rounds) || !Array.isArray(home.payments) || home.rounds.length > 1000 || home.payments.length > 10000) fail('รายการสัญญาหรือชำระไม่ถูกต้อง')
     for (let index = 0; index < home.rounds.length; index++) {
       const r = home.rounds[index]; id(r.id); text(r.name); text(r.notes); date(r.effectiveOn, index === 0)
       if (!r.name.trim()) fail('กรุณาระบุชื่อรอบสัญญา')
@@ -57,6 +64,8 @@ export function validateAssetData(data: AssetData) {
     for (const p of home.payments) {
       id(p.id); text(p.reference); date(p.date); amount(p.amount, true); amount(p.interest); amount(p.principal)
       if (Math.abs(roundMoney(p.amount - p.interest) - p.principal) > .01) fail('ยอดชำระต้องเท่ากับเงินต้นบวกดอกเบี้ย')
+      if (p.date > today()) fail('รายการชำระจริงต้องไม่เป็นวันที่ในอนาคต')
+      if (p.ledgerEntryId !== undefined && (!Number.isSafeInteger(p.ledgerEntryId) || p.ledgerEntryId < 1)) fail('เลขรายการบัญชีไม่ถูกต้อง')
       const ri = home.rounds.findIndex(r => r.id === p.roundId); const r = home.rounds[ri]; const nextRound = home.rounds[ri + 1]
       if (!r || !r.effectiveOn || p.date < r.effectiveOn || nextRound && p.date >= nextRound.effectiveOn) fail('วันชำระต้องอยู่ในช่วงรอบสัญญาที่เลือก')
       const key = `${p.roundId}|${p.date}|${p.amount}|${p.interest}|${p.reference}`

@@ -22,6 +22,25 @@ datasource db {
   provider = "sqlite"
 }
 
+model AssetWorkspaceState {
+  operatorId String @id
+  revision Int @default(0)
+  payload String
+  updatedAt DateTime @updatedAt
+  @@map("asset_workspace_state")
+}
+
+model AssetWorkspaceRevision {
+  id Int @id @default(autoincrement())
+  operatorId String
+  revision Int
+  payload String
+  reason String
+  createdAt DateTime @default(now())
+  @@unique([operatorId, revision])
+  @@map("asset_workspace_revision")
+}
+
 //--------------------------------------------
 // admin user management
 //--------------------------------------------

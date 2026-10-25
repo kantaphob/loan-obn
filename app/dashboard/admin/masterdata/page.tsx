@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma'
 type OverviewItem = { code: string; label: string; note?: string; href?: string }
 
 export default async function Masterdata() {
-  const [categories, rates, statuses, risks, banks, postcodes, channels] = await Promise.all([
+  const [categories, rates, statuses, risks, banks, postcodes, channels, assetCategories] = await Promise.all([
     prisma.financialCategory.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, select: { code: true, nameTh: true, direction: true } }),
     prisma.interestRate.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, select: { code: true, percent: true } }),
     prisma.loanStatus.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, select: { code: true, nameTh: true } }),
@@ -19,8 +19,10 @@ export default async function Masterdata() {
     prisma.bank.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, select: { code: true, nameTh: true } }),
     prisma.postcode.findMany({ orderBy: { code: 'asc' }, select: { code: true } }),
     prisma.paymentChannel.findMany({ where: { isActive: true }, orderBy: { code: 'asc' }, select: { code: true, nameTh: true } }),
+    prisma.assetCategory.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }], select: { code: true, nameTh: true, parent: { select: { nameTh: true } } } }),
   ])
   const data: Record<string, OverviewItem[]> = {
+    'asset-category': assetCategories.map((item) => ({ code: item.code, label: item.nameTh, note: item.parent?.nameTh ?? 'ประเภทหลัก' })),
     category: categories.map((item) => ({ code: item.code, label: item.nameTh, note: item.direction === 'IN' ? 'เงินเข้า' : 'เงินออก' })),
     'interest-rate': rates.map((item) => ({ code: item.code, label: `${item.percent}%`, note: 'ร้อยละดอกเบี้ย' })),
     'loan-status': statuses.map((item) => ({ code: item.code, label: item.nameTh })),

@@ -87,7 +87,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: "Asset",
-    items: [{ label: "สินทรัพย์", href: "/asset", icon: DatabaseBackup }],
+    items: [
+      { label: "สินทรัพย์", href: "/asset", icon: DatabaseBackup },
+      { label: "เงินกู้ธนาคาร / ชำระหนี้", href: "/asset/bank-loans", icon: Landmark },
+    ],
   },
   {
     title: "Backups",

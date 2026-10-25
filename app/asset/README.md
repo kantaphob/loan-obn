@@ -5,6 +5,15 @@ parent assets (property, vehicle, other), nested rooms/categories and items,
 purchase costs versus current valuation, warranty dates, property BOQ, actual
 loan payments, rate schedules, retention rounds and a monthly repayment simulation.
 
+Asset classifications are loaded from the same `AssetCategory` catalog used by
+`/dashboard/admin/masterdata/asset-category`. The JSON workspace stores category
+codes, while current names and hierarchy come from the catalog. Only active
+categories can be newly assigned. Existing inactive/missing assignments remain
+readable and unchanged records can still be saved. Legacy property and vehicle
+records default to `BUILDINGS` and `VEHICLES`; other legacy records remain
+unclassified until selected. Descendants of `BUILDINGS`/`LAND` use property detail
+forms; descendants of `VEHICLES` use vehicle forms.
+
 ## Persistence
 
 Server actions use the installation's existing operator identity and reject writes

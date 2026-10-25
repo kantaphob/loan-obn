@@ -2,6 +2,34 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { initialData, balance, forecast, ghbPayments, newHome } from '../app/asset/model'
 import { validateAssetData } from '../app/asset/validation'
+import { categoryKind, categoryPath, validateCategories, type AssetCategory } from '../app/asset/categories'
+
+const categories: AssetCategory[] = [
+  { code: 'TANGIBLE_ASSETS', nameTh: 'สินทรัพย์ที่มีตัวตน', parentCode: null, isActive: true },
+  { code: 'BUILDINGS', nameTh: 'อาคารและสิ่งปลูกสร้าง', parentCode: 'TANGIBLE_ASSETS', isActive: true },
+  { code: 'VEHICLES', nameTh: 'ยานพาหนะ', parentCode: 'TANGIBLE_ASSETS', isActive: true },
+  { code: 'MOTORCYCLES', nameTh: 'รถจักรยานยนต์', parentCode: 'VEHICLES', isActive: true },
+  { code: 'OLD', nameTh: 'หมวดเดิม', parentCode: null, isActive: false },
+]
+
+test('masterdata categories support hierarchy and inherited asset detail forms', () => {
+  assert.equal(categoryPath('MOTORCYCLES', categories), 'สินทรัพย์ที่มีตัวตน / ยานพาหนะ / รถจักรยานยนต์')
+  assert.equal(categoryKind('MOTORCYCLES', categories), 'vehicle')
+  assert.equal(categoryKind('BUILDINGS', categories), 'house')
+  assert.equal(categoryKind('UNKNOWN', categories), 'other')
+})
+test('category writes reject inactive or unknown selections but preserve legacy assignments', () => {
+  const asset = newHome('Forza', 'vehicle')
+  validateCategories([asset], [], categories)
+  asset.categoryCode = 'OLD'
+  assert.throws(() => validateCategories([asset], [], categories), /Masterdata/)
+  validateCategories([asset], [structuredClone(asset)], categories)
+  asset.categoryCode = 'MISSING'
+  assert.throws(() => validateCategories([asset], [], categories), /Masterdata/)
+  validateCategories([asset], [structuredClone(asset)], categories)
+  asset.categoryCode = 'BUILDINGS'
+  assert.throws(() => validateCategories([asset], [], categories), /ไม่ตรง/)
+})
 
 test('contract reference has correct loan, period rates and payments', () => {
   const data = initialData(); validateAssetData(data)
