@@ -7,7 +7,7 @@ import { ledgerAmount, validLedgerDate } from '@/lib/ledger'
 import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
 import { assertUniqueLedgerProof } from '@/lib/ledger-proof'
 import { syncGoogleLedger } from '@/lib/google-sync'
-import { migrateAssetData, type Payment } from '@/app/thing/_shared/model'
+import { migrateAssetData, contractPaymentStages, type Payment } from '@/app/thing/_shared/model'
 import { validateAssetData } from '@/app/thing/_shared/validation'
 import { assetLedgerIds, validateHistory, validateLedgerLinks } from '@/app/thing/_shared/integrity'
 
@@ -37,7 +37,7 @@ export async function recordBankLoanCash(input: BankLoanCashInput) {
       const loan = current.loans.find(row => row.id === input.loanId)
       if (!loan) throw new Error('ไม่พบสัญญาเงินกู้')
       const contractor = input.contractorPayment ? loan.contractorContracts?.find(row => row.id === input.contractorPayment!.contractId) : undefined
-      const stage = contractor?.stages.find(row => row.id === input.contractorPayment?.stageId)
+      const stage = contractor && contractPaymentStages(contractor, input.date).find(row => row.id === input.contractorPayment?.stageId)
       if (input.contractorPayment && (!contractor || !stage)) throw new Error('กรุณาเลือกสัญญาจ้างเหมาและงวดงานที่มีอยู่')
       const categoryCode = input.direction === 'IN' ? input.drawType === 'land' ? 'BANK_LOAN_LAND_RECEIVED' : input.drawType === 'house' ? 'BANK_LOAN_HOUSE_RECEIVED' : 'BANK_LOAN_RECEIVED' : contractor?.kind === 'land_purchase' ? 'LAND_PURCHASE_PAYMENT' : contractor ? 'CONTRACTOR_PROGRESS_PAYMENT' : 'BANK_LOAN_PAYMENT'
       const categoryName = input.direction === 'IN' ? `รับเงินกู้ธนาคาร${input.drawType === 'land' ? ' - ที่ดิน' : input.drawType === 'house' ? ' - บ้าน' : ''}` : contractor?.kind === 'land_purchase' ? 'จ่ายค่าซื้อที่ดิน' : contractor ? 'จ่ายค่างวดงานผู้รับเหมา' : 'จ่ายชำระหนี้ธนาคาร'

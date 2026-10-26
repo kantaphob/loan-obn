@@ -139,7 +139,7 @@ export async function createLandDevelopmentPayment(input: LandDevelopmentPayment
 }
 
 export type BuildingProjectPaymentInput = {
-  requestKey: string; buildingId: string; projectId: string; paymentId: string
+  requestKey: string; buildingId: string; projectId?: string; changeOrderId?: string; paymentId: string
   direction: 'IN' | 'OUT'; categoryCode: string; amount: string; occurredOn: string; channelCode: string
   reference: string; note: string; paymentType: 'deposit' | 'progress' | 'final' | 'refund'
 }
@@ -148,7 +148,7 @@ export type BuildingProjectPaymentInput = {
 export async function createBuildingProjectPayment(input: BuildingProjectPaymentInput, file?: File | null) {
   try {
     const user = await operator(true)
-    if (!input || !/^[a-f0-9-]{36}$/i.test(input.requestKey) || !/^[a-f0-9-]{36}$/i.test(input.paymentId) || typeof input.buildingId !== 'string' || typeof input.projectId !== 'string') throw new Error('ข้อมูลรายการไม่ถูกต้อง')
+    if (!input || !/^[a-f0-9-]{36}$/i.test(input.requestKey) || !/^[a-f0-9-]{36}$/i.test(input.paymentId) || typeof input.buildingId !== 'string' || Boolean(input.projectId) === Boolean(input.changeOrderId)) throw new Error('ข้อมูลรายการไม่ถูกต้อง')
     const amountSatang = ledgerAmount(input.amount)
     if (!validLedgerDate(input.occurredOn)) throw new Error('วันที่รับหรือจ่ายไม่ถูกต้อง หรือเป็นวันที่ในอนาคต')
     if (!['IN', 'OUT'].includes(input.direction) || !['deposit', 'progress', 'final', 'refund'].includes(input.paymentType) || input.direction === 'IN' && input.paymentType !== 'refund' || input.direction === 'OUT' && input.paymentType === 'refund') throw new Error('เลือกประเภทการรับ–จ่ายให้ถูกต้อง')
@@ -158,12 +158,14 @@ export async function createBuildingProjectPayment(input: BuildingProjectPayment
       const state = await tx.assetWorkspaceState.findUniqueOrThrow({ where: { operatorId: user.id } })
       const current = migrateAssetData(JSON.parse(state.payload))
       const building = current.homes.find(home => home.id === input.buildingId)
-      const project = building?.buildingProjects?.find(row => row.id === input.projectId)
-      if (!building || building.kind !== 'house' || !project || building.archivedOn) throw new Error('ไม่พบบ้านหรือโครงการนี้ กรุณาโหลดหน้าใหม่')
+      const project = input.projectId ? building?.buildingProjects?.find(row => row.id === input.projectId) : undefined
+      const changeOrder = input.changeOrderId ? building?.buildingChangeOrders?.find(row => row.id === input.changeOrderId) : undefined
+      const targetPayments = project?.payments ?? changeOrder?.payments ?? []
+      if (!building || building.kind !== 'house' || (!project && !changeOrder) || building.archivedOn || changeOrder && changeOrder.status !== 'approved') throw new Error('ไม่พบบ้านหรือใบงานที่อนุมัติแล้ว กรุณาโหลดหน้าใหม่')
       if (input.direction === 'IN') {
-        const paidOut = project.payments.filter(payment => payment.direction === 'OUT').reduce((sum, payment) => sum + payment.amount, 0)
-        const returned = project.payments.filter(payment => payment.direction === 'IN').reduce((sum, payment) => sum + payment.amount, 0)
-        if (amountSatang / 100 > Math.round((paidOut - returned + Number.EPSILON) * 100) / 100) throw new Error('ยอดรับคืนเกินยอดที่จ่ายให้ผู้รับเหมาสำหรับโครงการนี้')
+        const paidOut = targetPayments.filter(payment => payment.direction === 'OUT').reduce((sum, payment) => sum + payment.amount, 0)
+        const returned = targetPayments.filter(payment => payment.direction === 'IN').reduce((sum, payment) => sum + payment.amount, 0)
+        if (amountSatang / 100 > Math.round((paidOut - returned + Number.EPSILON) * 100) / 100) throw new Error('ยอดรับคืนเกินยอดที่จ่ายให้ผู้รับเหมาสำหรับรายการนี้')
       }
       const category = await tx.financialCategory.findUnique({ where: { code: input.categoryCode } })
       if (!category?.isActive || category.direction !== input.direction || category.direction === 'OUT' && category.group === 'LOAN' || input.direction === 'IN' && category.group !== 'INCOME' || ['INTEREST_RECEIVED', 'TRADE_PAYABLE'].includes(category.code)) throw new Error('เลือกหมวดรับ–จ่ายที่ตรงกับประเภทและใช้งานได้')
@@ -175,10 +177,13 @@ export async function createBuildingProjectPayment(input: BuildingProjectPayment
       const homes = assignAssetCodes(current.homes, current.homes, categories)
       const savedBuilding = homes.find(home => home.id === input.buildingId)!
       const label = `${savedBuilding.assetCode ?? 'BLD'} · ${savedBuilding.name}`
-      const paymentNote = [`${label} / ${project.name} / ${input.direction === 'IN' ? 'รับเงินคืนจากผู้รับเหมา' : 'จ่ายค่าโครงการบ้าน'}`, input.note.trim()].filter(Boolean).join(' · ')
+      const targetName = project?.name ?? `ใบงาน ${changeOrder!.number} · ${changeOrder!.title}`
+      const paymentNote = [`${label} / ${targetName} / ${input.direction === 'IN' ? 'รับเงินคืนจากผู้รับเหมา' : project ? 'จ่ายค่าโครงการบ้าน' : 'จ่ายใบงานเพิ่ม-ลด'}`, input.note.trim()].filter(Boolean).join(' · ')
       const entry = await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: 'GENERAL', contractId: null, direction: input.direction, categoryCode: category.code, categoryName: category.nameTh, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: paymentNote, createdBy: user.id, ...(slip ? { slip: { create: slip } } : {}) } })
       const payment = { id: input.paymentId, ledgerEntryId: entry.id, date: input.occurredOn, amount: amountSatang / 100, direction: input.direction, type: input.paymentType, reference: input.reference.trim(), note: input.note.trim() } as const
-      const updated = { ...savedBuilding, buildingProjects: (savedBuilding.buildingProjects ?? []).map(row => row.id === input.projectId ? { ...row, payments: [...row.payments, payment] } : row) }
+      const updated = project
+        ? { ...savedBuilding, buildingProjects: (savedBuilding.buildingProjects ?? []).map(row => row.id === input.projectId ? { ...row, payments: [...row.payments, payment] } : row) }
+        : { ...savedBuilding, buildingChangeOrders: (savedBuilding.buildingChangeOrders ?? []).map(row => row.id === input.changeOrderId ? { ...row, payments: [...(row.payments ?? []), payment] } : row) }
       const nextInput: AssetData = { ...current, homes: homes.map(home => home.id === input.buildingId ? updated : home) }
       validateAssetData(nextInput); validateHistory(nextInput, current)
       const linkedIds = assetLedgerIds(nextInput)
@@ -191,7 +196,7 @@ export async function createBuildingProjectPayment(input: BuildingProjectPayment
       const payload = JSON.stringify(next)
       const saved = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: current.revision }, data: { revision: next.revision, payload } })
       if (saved.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')
-      await tx.assetWorkspaceRevision.create({ data: { operatorId: user.id, revision: next.revision, payload, reason: `${input.direction === 'IN' ? 'รับคืน' : 'จ่าย'}โครงการบ้าน: ${project.name}` } })
+      await tx.assetWorkspaceRevision.create({ data: { operatorId: user.id, revision: next.revision, payload, reason: `${input.direction === 'IN' ? 'รับคืน' : 'จ่าย'}${project ? `โครงการบ้าน: ${project.name}` : `ใบงาน: ${targetName}`}` } })
       return { entryId: entry.id, data: next }
     }, { timeout: 30000 })
     await syncGoogleLedger(result.entryId)
@@ -199,6 +204,58 @@ export async function createBuildingProjectPayment(input: BuildingProjectPayment
     return { success: true as const, ...result }
   } catch (error) {
     return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'เลขอ้างอิงหรือสลิปซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ กรุณาลองอีกครั้ง' }
+  }
+}
+
+export type HomeSaleReceiptInput = { requestKey: string; homeId: string; saleId: string; paymentId: string; categoryCode: string; amount: string; occurredOn: string; channelCode: string; reference: string; note: string }
+
+/** Record actual sale proceeds as income and link the receipt to the sale record atomically. */
+export async function createHomeSaleReceipt(input: HomeSaleReceiptInput, file?: File | null) {
+  try {
+    const user = await operator(true)
+    if (!input || !/^[a-f0-9-]{36}$/i.test(input.requestKey) || !/^[a-f0-9-]{36}$/i.test(input.paymentId) || typeof input.homeId !== 'string' || typeof input.saleId !== 'string') throw new Error('ข้อมูลรายการรับเงินไม่ถูกต้อง')
+    const amountSatang = ledgerAmount(input.amount)
+    if (!validLedgerDate(input.occurredOn)) throw new Error('วันที่รับเงินไม่ถูกต้อง หรือเป็นวันที่ในอนาคต')
+    if (typeof input.reference !== 'string' || input.reference.length > 150 || typeof input.note !== 'string' || input.note.length > 1000) throw new Error('เลขอ้างอิงหรือหมายเหตุยาวเกินกำหนด')
+    const slip = await readRepaymentSlip(file)
+    const result = await prisma.$transaction(async tx => {
+      const state = await tx.assetWorkspaceState.findUniqueOrThrow({ where: { operatorId: user.id } })
+      const current = migrateAssetData(JSON.parse(state.payload))
+      const home = current.homes.find(row => row.id === input.homeId)
+      const sale = home?.sale
+      if (!home || home.kind !== 'house' || !sale || sale.id !== input.saleId || home.archivedOn) throw new Error('ไม่พบรายการขายบ้าน กรุณาโหลดหน้าใหม่')
+      const alreadyReceived = sale.payments.reduce((sum, payment) => sum + payment.amount, 0)
+      if (input.occurredOn < sale.date || alreadyReceived + amountSatang / 100 > sale.salePrice + .009) throw new Error('ยอดรับสะสมต้องไม่เกินราคาขาย และวันที่รับต้องไม่ก่อนวันขาย')
+      const category = await tx.financialCategory.findUnique({ where: { code: input.categoryCode } })
+      if (!category?.isActive || category.direction !== 'IN' || category.group !== 'INCOME' || ['INTEREST_RECEIVED', 'TRADE_PAYABLE'].includes(category.code)) throw new Error('เลือกหมวดรายรับจากการขายที่ใช้งานได้')
+      const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
+      if (!channel?.isActive) throw new Error('เลือกช่องทางรับเงินที่ใช้งานได้')
+      await assertAccountingDateOpen(tx, input.occurredOn)
+      await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: channel.code, slipHash: slip ? slipDigest(slip.fileData) : null })
+      const categories = await tx.assetCategory.findMany({ select: { code: true, nameTh: true, parentCode: true, isActive: true } })
+      const homes = assignAssetCodes(current.homes, current.homes, categories)
+      const savedHome = homes.find(row => row.id === input.homeId)!
+      const entry = await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: 'GENERAL', contractId: null, direction: 'IN', categoryCode: category.code, categoryName: category.nameTh, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: [`${savedHome.assetCode ?? 'BLD'} · ${savedHome.name}`, `รับเงินจากการขายบ้าน${sale.buyer ? ` · ผู้ซื้อ ${sale.buyer}` : ''}`, input.note.trim()].filter(Boolean).join(' / '), createdBy: user.id, ...(slip ? { slip: { create: slip } } : {}) } })
+      const updatedHome = { ...savedHome, sale: { ...sale, payments: [...sale.payments, { id: input.paymentId, ledgerEntryId: entry.id, date: input.occurredOn, amount: amountSatang / 100, reference: input.reference.trim(), note: input.note.trim() }] } }
+      const nextInput: AssetData = { ...current, homes: homes.map(row => row.id === savedHome.id ? updatedHome : row) }
+      validateAssetData(nextInput); validateHistory(nextInput, current)
+      const linkedIds = assetLedgerIds(nextInput)
+      const linkedEntries = await tx.ledgerEntry.findMany({ where: { id: { in: linkedIds }, voidedAt: null }, select: ledgerSelect })
+      validateLedgerLinks(nextInput, linkedEntries)
+      const next: AssetData = { ...nextInput, revision: current.revision + 1 }
+      validateCategories(next.homes, current.homes, categories); validatePropertyCategories(next, categories)
+      await syncLandRegister(tx, user.id, next, categories); await syncPropertyRegister(tx, user.id, next); await syncBuildingBoqRegister(tx, user.id, next)
+      const payload = JSON.stringify(next)
+      const saved = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: current.revision }, data: { revision: next.revision, payload } })
+      if (saved.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')
+      await tx.assetWorkspaceRevision.create({ data: { operatorId: user.id, revision: next.revision, payload, reason: `รับเงินจากการขายบ้าน ${savedHome.name}` } })
+      return { entryId: entry.id, data: next }
+    }, { timeout: 30000 })
+    await syncGoogleLedger(result.entryId)
+    revalidatePath('/dashboard/ledger'); revalidatePath('/thing/asset'); revalidatePath('/thing/property')
+    return { success: true as const, ...result }
+  } catch (error) {
+    return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'เลขอ้างอิงหรือสลิปซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกรับเงินจากการขายไม่สำเร็จ กรุณาลองอีกครั้ง' }
   }
 }
 export async function saveAssetWorkspace(input: AssetData, reason = 'บันทึกรายการ'): Promise<{ data?: AssetData; error?: string }> {

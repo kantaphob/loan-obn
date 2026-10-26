@@ -48,3 +48,24 @@ test('appraisals exclude asking and sale prices, preserve coverage and require d
   home.valuations = []; home.landDetails.priceHistory = []
   assert.equal(latestAssetAppraisal(home), null)
 })
+
+test('reported sale has no invented sale date and preserves costs while excluding held assets', async () => {
+  const { initialData, isHomeDisposed, saleDeclarationAmounts, today } = await import('../app/thing/_shared/model')
+  const { validateAssetData } = await import('../app/thing/_shared/validation')
+  const { summarizeDashboardAssets } = await import('../lib/dashboard-assets')
+  const data = initialData()
+  const home = data.homes[0]
+  home.purchasePrice = 2662000
+  home.saleDeclaration = { id: 'reported-sale', reportedOn: today(), salePrice: 3200000, bankPayoff: 2800000, designRefund: 25000, mortgageRate: 1, transferRate: 1, stampRate: 0.05 }
+  data.properties = [{ id: 'sold-property', code: 'PROP-002', name: 'Reported sold house', status: 'DISPOSED', assetIds: [home.id] }]
+  validateAssetData(data)
+  assert.equal(isHomeDisposed(home), true)
+  assert.equal(home.disposedOn, undefined)
+  assert.equal(home.sale, undefined, 'an undated owner declaration must not invent an accounting sale receipt')
+  assert.deepEqual(saleDeclarationAmounts(home.saleDeclaration), { mortgage: 32000, transfer: 32000, stamp: 1600, fees: 65600, income: 3225000, outflow: 2865600, remaining: 359400 })
+  const summary = summarizeDashboardAssets(data, today())
+  assert.equal(summary.sold, 1)
+  assert.equal(summary.count, 0)
+  assert.equal(summary.propertyCost, 0)
+  assert.equal(home.purchasePrice, 2662000)
+})

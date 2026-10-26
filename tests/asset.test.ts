@@ -367,3 +367,23 @@ test('contract percentage stages price land 70/30 and house seven installments e
   const badPercent = structuredClone(data); badPercent.loans[0].contractorContracts![0].stages[0].percent = 69
   assert.throws(() => validateAssetData(badPercent), /100%/)
 })
+
+test('approved work variations adjust net contract and stages without rewriting original BOQ price', async () => {
+  const { contractPrice, contractPaymentStages } = await import('../app/thing/_shared/model')
+  const data = initialData()
+  const contract = { id: 'vo-contract', code: 'CT-VO-001', name: 'บ้าน', contractor: 'ช่างทดสอบ', amount: 100000, signedOn: '2020-01-01', description: '', stages: [{ id: 'vo-base-stage', number: 1, name: 'งานเดิม', amount: 100000, percent: 100, dueOn: '' }], variations: [
+    { id: 'vo-add', code: 'VO-001', kind: 'add' as const, name: 'งานเพิ่ม', quantity: 2, unit: 'งาน', unitPrice: 5000, amount: 10000, date: '2020-02-01', status: 'approved' as const, reference: 'BOQ-1', notes: '' },
+    { id: 'vo-deduct', code: 'VO-002', kind: 'deduct' as const, name: 'ลดงานเดิม', quantity: 1, unit: 'งาน', unitPrice: 20000, amount: 20000, date: '2020-02-01', status: 'approved' as const, stageId: 'vo-base-stage', reference: '', notes: '' },
+    { id: 'vo-draft', code: 'VO-003', kind: 'add' as const, name: 'ยังไม่ตกลง', quantity: 1, unit: 'งาน', unitPrice: 50000, amount: 50000, date: '2020-02-01', status: 'draft' as const, reference: '', notes: '' },
+  ] }
+  data.loans[0].contractorContracts = [contract]
+  validateAssetData(data)
+  assert.deepEqual(contractPrice(contract), { original: 100000, additions: 10000, deductions: 20000, net: 90000 })
+  assert.deepEqual(contractPaymentStages(contract).map(row => [row.id, row.amount]), [['vo-base-stage', 80000], ['vo-add', 10000]])
+  assert.equal(contractPaymentStages(contract, '2020-01-31').length, 1)
+  assert.equal(contract.stages[0].amount, 100000)
+  const bad = structuredClone(data); bad.loans[0].contractorContracts![0].variations![1].unitPrice = 200000; bad.loans[0].contractorContracts![0].variations![1].amount = 200000
+  assert.throws(() => validateAssetData(bad), /ลดงานเกิน/)
+  const removed = structuredClone(data); removed.loans[0].contractorContracts![0].variations!.pop()
+  assert.throws(() => validateHistory(removed, data), /เก็บประวัติ/)
+})

@@ -129,6 +129,18 @@ land price 400,000 at 70/30 and house price 2,600,000 at 20/20/15/15/15/10/5 (se
 stages), ready for review and counterparty entry. They do not save or post cash
 automatically. Percentages and calculated amounts persist in the workspace/audit
 database and are validated again on the server.
+The Work Additions/Deductions tab (งานเพิ่ม–งานลด) records VO-coded changes to
+construction agreements with BOQ/quote references, quantity, unit, unit price,
+dated scope and draft/approved/cancelled status. Only approved changes affect the
+net price: original + additions - deductions. Original contract price and stage
+percentages are retained. Changes can adjust an original stage; an approved
+addition without a target stage becomes a separate payable VO stage. Deductions
+must target an original stage. Derived payment stages and caps are used consistently
+by the cash form, server save, contract display and ledger action. A paid stage
+cannot be reduced below payments already recorded, and paid extra work cannot be
+cancelled out of the stage list. Variation records are retained and cancelled rather
+than deleted; workspace revisions preserve their edits. Agreements never post cash
+automatically and never rewrite the source BOQ or bank loan balance.
 The Receipt Tranches tab (งวดรับ) lists bank receipts by draw number, receipt date,
 amount, reference and linked TX. Add Receipt opens the shared cash form in IN mode.
 Receipts optionally retain `drawType` (land / house); new forms require a type.

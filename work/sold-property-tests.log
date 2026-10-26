@@ -1,0 +1,54 @@
+
+> loan-obn@0.1.0 test:assets
+> node tests/run-assets.mjs && node --test tests/land-schema.test.mjs tests/property-schema.test.mjs
+
+✔ assets, independent debt, immutable terms, audit snapshots and ledger reconciliation persist atomically (380.194917ms)
+✔ PROPERTY derives land plus BOQ costs and rejects duplicate or missing sources and copied costs (14.753666ms)
+✔ land growth compounds the supplied rate and supports zero and negative assumptions (0.180458ms)
+✔ masterdata categories support hierarchy and inherited asset detail forms (0.089667ms)
+✔ category writes reject inactive or unknown selections but preserve legacy assignments (0.230375ms)
+✔ contract reference has correct loan, period rates and payments (0.544083ms)
+✔ actual bank interest is preserved and retention carries remaining principal (0.424791ms)
+✔ invalid payment splits, duplicate payments, rate gaps and historic cutoff are rejected (0.943333ms)
+✔ cash vehicle supports nested decorations without a loan (0.146167ms)
+✔ GHB import only reads paid rows, preserves blank dates and handles quoted money (0.239708ms)
+✔ extra principal reduces interest and payoff time; negative amortization is surfaced (0.299458ms)
+✔ construction BOQ is the main house cost once, replacement excludes cancelled budget and preserves actual spend (0.115583ms)
+✔ legacy JSON separates the debt without changing prices or payment amounts (0.18625ms)
+✔ real payments cannot be future-dated and never change house cost (0.383167ms)
+✔ the server integrity guard freezes contract terms once payments exist (0.278791ms)
+✔ ledger links reconcile amount and date and cannot be counted twice (0.184583ms)
+✔ manual land prices retain dated history without growth settings (0.322ms)
+✔ asset codes follow category families and reserve archived and existing numbers (0.14375ms)
+✔ Property supports land-only and multiple parcels/buildings without copying costs (0.913709ms)
+✔ loan drawdowns determine actual balance and payments separate fees and extra principal (1.096375ms)
+✔ retention carries only drawn principal less actual principal and locks original drawdowns (0.196292ms)
+✔ loan document links and uploaded file types are validated (0.452583ms)
+✔ one bank loan can link land and house without duplicating its debt (0.4755ms)
+✔ initial loan settings preserve stepped interest while applying annual bank installments (5.696083ms)
+✔ GHB supplied insurance and customer terms remain floating MRR formulas (1.5845ms)
+✔ pre-existing bank debt is separate from full credit and does not become a new cash receipt (0.765167ms)
+✔ contract percentage stages price land 70/30 and house seven installments exactly (1.2955ms)
+✔ approved work variations adjust net contract and stages without rewriting original BOQ price (0.6185ms)
+✔ property presentation separates capital, expenses, project spending and refunds (6.882291ms)
+✔ completed project costs appear once in additions while payments stay separate (0.497875ms)
+✔ appraisals exclude asking and sale prices, preserve coverage and require dated evidence (5.759875ms)
+✔ reported sale has no invented sale date and preserves costs while excluding held assets (102.140959ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 754.091625
+✔ land migration enforces area, ownership, money and workspace relationships (3.154ms)
+✔ Property migration isolates workspaces and enforces one property per asset (3.209333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45.35225

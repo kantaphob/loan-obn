@@ -77,11 +77,23 @@ server.listen(port, hostname, () => {
 
 let shuttingDown = false
 function shutdown() {
-  if (shuttingDown) return
+  // Allow a second Ctrl+C to force-stop if graceful shutdown gets stuck.
+  if (shuttingDown) process.exit(130)
   shuttingDown = true
   clearInterval(heartbeat)
+
+  // WebSocketServer.close() waits for existing clients; terminate them so the
+  // HTTP server can finish closing instead of leaving Ctrl+C hanging forever.
+  for (const socket of sockets.clients) socket.terminate()
   sockets.close()
-  server.close(() => process.exit(0))
+
+  const forceExit = setTimeout(() => process.exit(130), 5_000)
+  forceExit.unref()
+  server.close(() => {
+    clearTimeout(forceExit)
+    process.exit(0)
+  })
+  server.closeAllConnections?.()
 }
 
 process.on('SIGINT', shutdown)

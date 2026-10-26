@@ -150,15 +150,17 @@ export async function saveLedger(input: LedgerInput, file?: File | null) {
       }
       await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: input.kind, contractId, direction, categoryCode, categoryName, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: input.note.trim(), createdBy: user.id, settlementWaivedSatang, settlementWaiverReason, penaltyAssessed: input.kind === 'REPAYMENT', penaltyWaivedSatang, penaltyWaiverReason, ...(slip ? { slip: { create: slip } } : {}) } })
     })
+    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true } })
     if (saved) {
-      await syncGoogleLedger(saved.id)
-      if (saved.contractId) {
-        await syncGoogleContract(saved.contractId)
-        publishCreditBureauChanged()
-      }
+      try {
+        await syncGoogleLedger(saved.id)
+        if (saved.contractId) {
+          await syncGoogleContract(saved.contractId)
+          publishCreditBureauChanged()
+        }
+      } catch (syncError) { console.error('Ledger saved; Google sync enqueue failed', syncError) }
     }
-    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     return { success: true }
   } catch (error) {
     return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง' }

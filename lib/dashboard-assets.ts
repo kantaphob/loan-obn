@@ -1,9 +1,12 @@
 import { prisma } from '@/lib/prisma'
-import { assetCosts, migrateAssetData, outstanding, propertyAssetIds, roundMoney, type AssetData } from '@/app/thing/_shared/model'
+import { isHomeDisposed, assetCosts, migrateAssetData, outstanding, propertyAssetIds, roundMoney, type AssetData } from '@/app/thing/_shared/model'
 
 /** Values in this workspace are baht, unlike the lending ledger's satang. */
 export function summarizeDashboardAssets(data: AssetData, asOf: string) {
-  const active = data.homes.filter(asset => !asset.archivedOn)
+  const soldByProperty = new Set((data.properties ?? []).filter(property => property.status === 'DISPOSED').flatMap(propertyAssetIds))
+  const active = data.homes.filter(asset => !asset.archivedOn && !isHomeDisposed(asset) && !soldByProperty.has(asset.id))
+  const sold = data.homes.filter(asset => !asset.archivedOn && (isHomeDisposed(asset) || soldByProperty.has(asset.id)))
+  const soldIds = new Set(sold.map(asset => asset.id))
   const activeIds = new Set(active.map(asset => asset.id))
   const properties = data.properties ?? []
   const costs = new Map(active.map(asset => [asset.id, assetCosts(asset).total]))
@@ -16,10 +19,11 @@ export function summarizeDashboardAssets(data: AssetData, asOf: string) {
   const linked = new Set(properties.flatMap(propertyAssetIds).filter(id => activeIds.has(id)))
   const rows = properties.map(property => {
     const ids = propertyAssetIds(property).filter(id => activeIds.has(id))
-    return { id: property.id, code: property.code, name: property.name, status: property.status ?? 'ACTIVE', count: ids.length, cost: roundMoney(ids.reduce((sum,id) => sum + (costs.get(id) ?? 0),0)) }
+    const sold = property.status === 'DISPOSED' || propertyAssetIds(property).some(id => soldIds.has(id))
+    return { id: property.id, code: property.code, name: property.name, status: sold ? 'DISPOSED' : property.status ?? 'ACTIVE', count: ids.length, cost: roundMoney(ids.reduce((sum,id) => sum + (costs.get(id) ?? 0),0)) }
   })
   const debt = roundMoney(data.loans.reduce((sum,loan) => sum + outstanding(loan,asOf),0))
-  return { count: active.length, archived: data.homes.length-active.length,
+  return { count: active.length, sold: sold.length, archived: data.homes.filter(asset => Boolean(asset.archivedOn)).length,
     cost: roundMoney([...costs.values()].reduce((sum,value) => sum+value,0)), debt,
     propertyCount: properties.length, linkedCount: linked.size,
     propertyCost: roundMoney([...linked].reduce((sum,id) => sum + (costs.get(id) ?? 0),0)),

@@ -1,4 +1,4 @@
-import { balance, priceContractStages, roundMoney, today, propertyAssetIds, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData } from './model'
+import { balance, contractPrice, contractPaymentStages, priceContractStages, roundMoney, today, propertyAssetIds, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData } from './model'
 
 export function validateAssetData(data: AssetData) {
   const fail = (message: string): never => { throw new Error(message) }
@@ -11,6 +11,26 @@ export function validateAssetData(data: AssetData) {
   for (const home of data.homes) {
     id(home.id); text(home.name); text(home.address); text(home.categoryCode)
     if (home.archivedOn !== undefined) { date(home.archivedOn); if (home.archivedOn > today()) fail('วันที่ลบต้องไม่เป็นอนาคต') }
+    if (home.saleDeclaration !== undefined) {
+      const sale = home.saleDeclaration
+      if (!sale || home.kind !== 'house' || Object.keys(sale).some(key => !['id','reportedOn','salePrice','bankPayoff','designRefund','mortgageRate','transferRate','stampRate'].includes(key))) fail('ข้อมูลแจ้งขายไม่ถูกต้อง')
+      id(sale.id); date(sale.reportedOn); amount(sale.salePrice, true)
+      if (sale.reportedOn > today()) fail('วันที่แจ้งขายต้องไม่เป็นอนาคต')
+      for (const value of [sale.bankPayoff, sale.designRefund, sale.mortgageRate, sale.transferRate, sale.stampRate]) amount(value)
+      if ([sale.mortgageRate, sale.transferRate, sale.stampRate].some(value => value > 100)) fail('อัตราค่าธรรมเนียมต้องไม่เกิน 100%')
+    }
+    if (home.disposedOn !== undefined) { date(home.disposedOn); if (home.sale ? home.disposedOn !== home.sale.date : !home.disposalSaleId || !data.homes.some(row => row.sale?.id === home.disposalSaleId && row.sale?.includedAssetIds.includes(home.id))) fail('สถานะขายสินทรัพย์ไม่สัมพันธ์กับใบขาย') }
+    if (home.disposalSaleId !== undefined) text(home.disposalSaleId)
+    if (home.sale !== undefined) {
+      const sale = home.sale
+      if (home.kind !== 'house' || home.disposedOn !== sale.date) fail('ใบขายต้องผูกกับบ้านที่ขายแล้ว')
+      id(sale.id); date(sale.date); amount(sale.salePrice, true); amount(sale.sellingCosts); text(sale.buyer); text(sale.reference); text(sale.notes)
+      if (sale.date > today() || !Array.isArray(sale.includedAssetIds) || !sale.includedAssetIds.includes(home.id) || new Set(sale.includedAssetIds).size !== sale.includedAssetIds.length || sale.includedAssetIds.some(assetId => !data.homes.some(row => row.id === assetId))) fail('รายการสินทรัพย์ในใบขายไม่ถูกต้อง')
+      if (!Array.isArray(sale.payments) || sale.payments.length > 10000) fail('ประวัติรับเงินจากการขายไม่ถูกต้อง')
+      let received = 0
+      for (const payment of sale.payments) { id(payment.id); date(payment.date); amount(payment.amount, true); text(payment.reference); text(payment.note); if (!Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1 || payment.date > today() || payment.date < sale.date) fail('รายการรับเงินขายบ้านไม่ถูกต้อง'); received += payment.amount }
+      if (received > sale.salePrice + .009) fail('ยอดรับเงินจริงจากการขายเกินราคาขาย')
+    }
     if (!home.name.trim()) fail('กรุณาระบุชื่อบ้าน')
     if (!['house', 'vehicle', 'other'].includes(home.kind) || !['cash', 'loan'].includes(home.financing)) fail('ประเภทสินทรัพย์หรือการชำระไม่ถูกต้อง')
     if (home.vehicleType !== undefined && (home.kind !== 'vehicle' || !['car', 'pickup', 'sedan', 'other'].includes(home.vehicleType))) fail('ประเภทรถไม่ถูกต้อง')
@@ -156,6 +176,24 @@ export function validateAssetData(data: AssetData) {
       }
       if (home.boqVersions.some(version => version.version === (home.boqVersion ?? 1))) fail('เลขเวอร์ชัน BOQ ปัจจุบันซ้ำกับประวัติ')
     }
+    if (home.buildingChangeOrders !== undefined) {
+      if (home.kind !== 'house' || !Array.isArray(home.buildingChangeOrders) || home.buildingChangeOrders.length > 1000) fail('ใบงานเพิ่ม-ลดงานไม่ถูกต้อง')
+      const orderIds = new Set<string>(); const orderNumbers = new Set<number>()
+      for (const order of home.buildingChangeOrders) {
+        id(order.id); text(order.title); text(order.reference); text(order.notes); date(order.date)
+        if (orderIds.has(order.id) || !Number.isSafeInteger(order.number) || order.number < 1 || orderNumbers.has(order.number) || !Number.isSafeInteger(order.baseVersion) || order.baseVersion < 1 || !order.title.trim() || order.date > today() || !['draft', 'approved'].includes(order.status)) fail('รายละเอียดใบงานเพิ่ม-ลดงานไม่ถูกต้อง')
+        orderIds.add(order.id); orderNumbers.add(order.number)
+        if (!Array.isArray(order.lines) || order.lines.length < 1 || order.lines.length > 1000) fail('ใบงานต้องมีรายการอย่างน้อย 1 รายการ')
+        const lineIds = new Set<string>()
+        for (const line of order.lines) { id(line.id); text(line.description); amount(line.amount, true); if (lineIds.has(line.id) || !line.description.trim() || !['add', 'deduct'].includes(line.kind)) fail('รายการเพิ่ม-ลดงานไม่ถูกต้อง'); lineIds.add(line.id) }
+        if (order.payments !== undefined) {
+          if (!Array.isArray(order.payments) || order.payments.length > 10000) fail('ประวัติรับ–จ่ายใบงานไม่ถูกต้อง')
+          let paidOut = 0; let refunded = 0
+          for (const payment of order.payments) { id(payment.id); date(payment.date); amount(payment.amount, true); text(payment.reference); text(payment.note); if (!Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1 || payment.date > today() || !['IN', 'OUT'].includes(payment.direction) || !['deposit', 'progress', 'final', 'refund'].includes(payment.type) || payment.direction === 'IN' && payment.type !== 'refund' || payment.direction === 'OUT' && payment.type === 'refund') fail('รายการรับ–จ่ายใบงานไม่ถูกต้อง'); if (payment.direction === 'OUT') paidOut += payment.amount; else refunded += payment.amount }
+          if (refunded > paidOut) fail('ยอดรับคืนใบงานต้องไม่เกินยอดจ่าย')
+        }
+      }
+    }
     if (home.buildingDetails !== undefined) {
       const details = home.buildingDetails
       if (home.kind !== 'house') fail('ข้อมูลอาคารใช้กับสินทรัพย์บ้านเท่านั้น')
@@ -238,6 +276,7 @@ export function validateAssetData(data: AssetData) {
     if (home.contractorContracts !== undefined && (!Array.isArray(home.contractorContracts) || home.contractorContracts.length > 100)) fail('รายการสัญญาจ้างเหมาไม่ถูกต้อง')
     if (home.contractorPayments !== undefined && (!Array.isArray(home.contractorPayments) || home.contractorPayments.length > 10000)) fail('รายการจ่ายผู้รับเหมาไม่ถูกต้อง')
     const contractCodes = new Set<string>()
+    const variationCodes = new Set<string>()
     for (const contract of home.contractorContracts ?? []) {
       id(contract.id); text(contract.code); text(contract.name); text(contract.contractor); text(contract.description); date(contract.signedOn, true); amount(contract.amount, true)
       if (contract.kind !== undefined && !['construction', 'land_purchase'].includes(contract.kind)) fail('ประเภทสัญญาจ่ายไม่ถูกต้อง')
@@ -259,17 +298,28 @@ export function validateAssetData(data: AssetData) {
         stageNumbers.add(stage.number); agreed = roundMoney(agreed + stage.amount)
       }
       if (agreed > contract.amount) fail('ยอดงวดงานรวมเกินมูลค่าสัญญาจ้างเหมา')
+      if (contract.variations !== undefined && (!Array.isArray(contract.variations) || contract.variations.length > 1000 || contract.kind === 'land_purchase')) fail('รายการงานเพิ่ม–งานลดใช้กับสัญญาจ้างเหมาเท่านั้น')
+      for (const variation of contract.variations ?? []) {
+        id(variation.id); text(variation.code); text(variation.name); text(variation.unit); text(variation.reference); text(variation.notes); date(variation.date)
+        amount(variation.quantity, true); amount(variation.unitPrice, true); amount(variation.amount, true)
+        if (!variation.code.trim() || variationCodes.has(variation.code.toUpperCase()) || !variation.name.trim() || !variation.unit.trim() || !['add', 'deduct'].includes(variation.kind) || !['draft', 'approved', 'cancelled'].includes(variation.status) || Math.abs(roundMoney(variation.quantity * variation.unitPrice) - variation.amount) > .009) fail('ข้อมูลหรือราคางานเพิ่ม–งานลดไม่ถูกต้อง รหัสต้องไม่ซ้ำ')
+        variationCodes.add(variation.code.toUpperCase())
+        if (variation.stageId !== undefined && !contract.stages.some(stage => stage.id === variation.stageId) || variation.kind === 'deduct' && !variation.stageId) fail('กรุณาเลือกงวดงานเดิมที่ปรับลดหรือปรับเพิ่ม')
+        if (variation.status === 'approved' && (variation.date > today() || contract.signedOn && variation.date < contract.signedOn)) fail('วันที่ตกลงงานเพิ่ม–งานลดต้องไม่ก่อนสัญญาหรือเป็นอนาคต')
+      }
+      if (contractPrice(contract).net < 0 || contractPaymentStages(contract).some(stage => stage.amount < 0)) fail('ลดงานเกินราคาสัญญาหรือยอดงวดงาน')
+      amount(contractPrice(contract).net)
     }
     for (const payment of home.contractorPayments ?? []) {
       id(payment.id); date(payment.date); amount(payment.amount, true); text(payment.reference); text(payment.notes)
       const contract = home.contractorContracts?.find(row => row.id === payment.contractId)
-      const stage = contract?.stages.find(row => row.id === payment.stageId)
+      const stage = contract && contractPaymentStages(contract, payment.date).find(row => row.id === payment.stageId)
       if (!contract || !stage || payment.date > today() || contract.signedOn && payment.date < contract.signedOn || !Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1) fail('สัญญา งวดงาน หรือวันที่จ่ายผู้รับเหมาไม่ถูกต้อง')
     }
     for (const contract of home.contractorContracts ?? []) {
       const payments = (home.contractorPayments ?? []).filter(p => p.contractId === contract.id)
-      if (roundMoney(payments.reduce((sum, p) => sum + p.amount, 0)) > contract.amount) fail('จ่ายผู้รับเหมาเกินมูลค่าสัญญา')
-      for (const stage of contract.stages) if (roundMoney(payments.filter(p => p.stageId === stage.id).reduce((sum, p) => sum + p.amount, 0)) > stage.amount) fail('ยอดจ่ายเกินงวดงานที่ตกลง')
+      if (roundMoney(payments.reduce((sum, p) => sum + p.amount, 0)) > contractPrice(contract).net) fail('จ่ายผู้รับเหมาเกินมูลค่าสัญญา')
+      for (const stage of contractPaymentStages(contract)) if (roundMoney(payments.filter(p => p.stageId === stage.id).reduce((sum, p) => sum + p.amount, 0)) > stage.amount) fail('ยอดจ่ายเกินงวดงานที่ตกลง')
     }
     if (!home.bank.trim() || !home.name.trim()) fail('กรุณาระบุธนาคารและชื่อเงินกู้')
     if (home.assetId !== null && !data.homes.some(asset => asset.id === home.assetId)) fail('ไม่พบสินทรัพย์ที่เชื่อมกับเงินกู้')

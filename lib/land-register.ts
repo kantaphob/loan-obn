@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { Prisma } from '@/generated/prisma/client'
 import { assignAssetCodes, categoryChain, type AssetCategory } from '@/app/thing/property/categories'
-import { propertyAssetIds, type AssetData } from '@/app/thing/_shared/model'
+import { isHomeDisposed, propertyAssetIds, type AssetData } from '@/app/thing/_shared/model'
 
 const asDate = (value: string) => value ? new Date(`${value}T00:00:00.000Z`) : null
 const satang = (value: number) => BigInt(Math.round(value * 100))
@@ -13,7 +13,7 @@ export async function syncLandRegister(tx: Prisma.TransactionClient, operatorId:
   const homes = assignAssetCodes(data.homes, data.homes, categories)
   const categoryCodes = new Set(categories.map(row => row.code))
   for (const home of homes) {
-    const fields = { code: home.assetCode!, name: home.name, kind: home.kind, categoryCode: categoryCodes.has(home.categoryCode) ? home.categoryCode : null, status: home.archivedOn ? 'ARCHIVED' : 'ACTIVE', archivedOn: asDate(home.archivedOn ?? '') }
+    const fields = { code: home.assetCode!, name: home.name, kind: home.kind, categoryCode: categoryCodes.has(home.categoryCode) ? home.categoryCode : null, status: home.archivedOn ? 'ARCHIVED' : isHomeDisposed(home) ? 'SOLD' : 'ACTIVE', archivedOn: asDate(home.archivedOn ?? '') }
     await tx.asset.upsert({ where: { operatorId_id: { operatorId, id: home.id } }, create: { operatorId, id: home.id, ...fields }, update: fields })
     if (!categoryChain(home.categoryCode, categories).some(row => row.code === 'LAND')) continue
     const area = Math.round((home.landDetails?.areaSquareWa ?? 0) * 100)

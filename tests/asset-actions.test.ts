@@ -242,6 +242,29 @@ test('assets, independent debt, immutable terms, audit snapshots and ledger reco
   assert.deepEqual(percentageReloaded, percentageSaved.data)
   assert.deepEqual(percentageReloaded.loans.at(-1)!.contractorContracts!.at(-1)!.stages.map(stage => [stage.percent, stage.amount]), [[20, 520000], [20, 520000], [15, 390000], [15, 390000], [15, 390000], [10, 260000], [5, 130000]])
   assert.equal(await prisma.ledgerEntry.count(), 7, 'defining stage percentages is an agreement and does not move money')
+  const variationWorkspace = structuredClone(percentageSaved.data)
+  const variedContract = variationWorkspace.loans.at(-1)!.contractorContracts!.find(c => c.id === 'contractor-agreement')!
+  variedContract.variations = [
+    { id: 'action-vo-add', code: 'VO-001', kind: 'add', name: 'งานนอก BOQ', quantity: 2, unit: 'งาน', unitPrice: 5000, amount: 10000, date: '2020-03-01', status: 'approved', reference: 'QUOTE-1', notes: '' },
+    { id: 'action-vo-deduct', code: 'VO-002', kind: 'deduct', name: 'ลดขอบเขตฐานราก', quantity: 1, unit: 'งาน', unitPrice: 2000, amount: 2000, date: '2020-03-01', status: 'approved', stageId: 'construction-stage-1', reference: '', notes: '' },
+  ]
+  const varied = await saveAssetWorkspace(variationWorkspace, 'ตกลงงานเพิ่ม–งานลด'); assert.ok(varied.data, varied.error)
+  assert.equal(await prisma.ledgerEntry.count(), 7, 'agreeing a variation never records money paid')
+  assert.equal(varied.data.loans.at(-1)!.contractorContracts!.find(c => c.id === variedContract.id)!.amount, 20000)
+  const extraWorkInput: BankLoanCashInput = { ...constructionInput, requestKey: crypto.randomUUID(), revision: varied.data.revision, amount: '5000.00', date: '2020-04-02', reference: 'EXTRA-WORK-1', notes: 'จ่ายงานเพิ่ม', contractorPayment: { contractId: variedContract.id, stageId: 'action-vo-add' } }
+  const extraPaid = await recordBankLoanCash(extraWorkInput); assert.ok('data' in extraPaid, 'error' in extraPaid ? extraPaid.error : '')
+  assert.equal(outstanding(extraPaid.data.loans.at(-1)!), outstanding(varied.data.loans.at(-1)!))
+  assert.match((await prisma.ledgerEntry.findUniqueOrThrow({ where: { id: extraPaid.entryId } })).note, /VO-001.*งานนอก BOQ/)
+  const extraReplay = await recordBankLoanCash(extraWorkInput); assert.ok('data' in extraReplay); assert.equal(extraReplay.entryId, extraPaid.entryId)
+  const overExtra = await recordBankLoanCash({ ...extraWorkInput, requestKey: crypto.randomUUID(), revision: extraPaid.data.revision, amount: '6000.00', reference: 'OVER-EXTRA' }); assert.ok('error' in overExtra)
+  assert.equal(await prisma.ledgerEntry.count(), 8)
+  const cancelledPaidWork = structuredClone(extraPaid.data); cancelledPaidWork.loans.at(-1)!.contractorContracts!.find(c => c.id === variedContract.id)!.variations![0].status = 'cancelled'
+  assert.ok((await saveAssetWorkspace(cancelledPaidWork)).error, 'paid additional work cannot disappear from payment stages')
+  const belowPaidWork = structuredClone(extraPaid.data); const reduction = belowPaidWork.loans.at(-1)!.contractorContracts!.find(c => c.id === variedContract.id)!.variations![1]; reduction.unitPrice = 9000; reduction.amount = 9000
+  assert.match((await saveAssetWorkspace(belowPaidWork)).error ?? '', /ยอดจ่ายเกินงวดงาน/)
+  const variationReload = (await getAssetWorkspace()).data
+  assert.deepEqual(variationReload, extraPaid.data)
+  assert.equal(JSON.parse(await getAssetRevision(variationReload.revision)).loans.at(-1).contractorPayments.at(-1).stageId, 'action-vo-add')
   await prisma.user.update({ where: { id: user.id }, data: { role: 'REVIEWER' } })
   assert.match((await saveBankLoanContractSettings('draw-loan', amended.data.revision, contractSettings)).error ?? '', /ไม่มีสิทธิ์/)
   assert.match((await recordBankLoanCash({ ...receipt, requestKey: crypto.randomUUID(), revision: beforeFailure.revision })).error ?? '', /ไม่มีสิทธิ์/)
