@@ -1,5 +1,6 @@
 export const ledgerKinds = { GENERAL: 'รับ–จ่ายทั่วไป', DISBURSEMENT: 'จ่ายเงินกู้', REPAYMENT: 'รับชำระคืน' } as const
 export type LedgerInput = {
+  accountScope?: 'GENERAL' | 'LENDING';
   contractReviewToken?: string;
   requestKey: string; kind: keyof typeof ledgerKinds; contractId: number | null;
   direction: string; categoryCode: string; amount: string; occurredOn: string;

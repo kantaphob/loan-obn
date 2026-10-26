@@ -52,3 +52,31 @@ export function capitalCash(entries: CashEntry[], asOf = bangkokToday()) {
   const opening = active.filter(e => e.direction === 'IN' && e.categoryCode === 'OPENING_CAPITAL').reduce((n, e) => n + e.amountSatang, 0)
   return { incoming, outgoing, balance: incoming - outgoing, opening, hasOpening: active.some(e => e.direction === 'IN' && e.categoryCode === 'OPENING_CAPITAL') }
 }
+
+/** Collect linked property, building and liability cash entries, including nested payments. */
+export function assetCashEntryIds(payloads: unknown[]) {
+  const ids = new Set<number>()
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== 'object') return
+    for (const [key, child] of Object.entries(value)) {
+      if (key === 'ledgerEntryId' && typeof child === 'number') ids.add(child)
+      else visit(child)
+    }
+  }
+  payloads.forEach(visit)
+  return ids
+}
+
+export const LENDING_FUND_CATEGORIES = ['OPENING_CAPITAL', 'CAPITAL_INCREASE', 'CAPITAL_INJECTION', 'CAPITAL_WITHDRAWAL'] as const
+export type LendingCashEntry = CashEntry & { id?: number; note?: string; accountScope?: string; kind?: string; contractId?: number | null }
+/** Provenance is assigned by the lending write path, never inferred from a category. */
+export function isLendingCashEntry(entry: LendingCashEntry) {
+  if (entry.accountScope !== 'LENDING') return false
+  if (entry.kind === 'DISBURSEMENT') return Boolean(entry.contractId) && entry.direction === 'OUT'
+  if (entry.kind === 'REPAYMENT') return Boolean(entry.contractId) && entry.direction === 'IN'
+  return entry.kind === 'GENERAL' && LENDING_FUND_CATEGORIES.some(code => code === entry.categoryCode)
+    && entry.direction === (entry.categoryCode === 'CAPITAL_WITHDRAWAL' ? 'OUT' : 'IN')
+}
+export function lendingCapitalCash(entries: LendingCashEntry[], _assetIds: ReadonlySet<number> = new Set(), asOf = bangkokToday()) {
+  return capitalCash(entries.filter(entry => isLendingCashEntry(entry) && !_assetIds.has(entry.id ?? -1)), asOf)
+}

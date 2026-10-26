@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { bangkokToday, contractLedgerBalance } from '@/lib/ledger'
-import { capitalPosition } from '@/lib/capital'
+import { capitalPosition, isLendingCashEntry } from '@/lib/capital'
 import { cashCarryforward, readCashMovements } from '@/lib/cash-carryforward'
 
 const thaiMonthAbbreviations = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
@@ -70,7 +70,7 @@ export async function getDashboardSummary() {
     if (contract.repaymentDueDate && contract.repaymentDueDate < today) { overdueCount++; overdueAmount += balance.remaining }
     if (contract.repaymentDueDate && contract.repaymentDueDate >= today && contract.repaymentDueDate <= weekEnd.toISOString().slice(0, 10)) dueSoon.push({ id: contract.id, due: contract.repaymentDueDate, remaining: balance.remaining })
   }
-  const capitalAmount = (code: string, direction: string) => cashEntries.filter(e => e.source === 'LEDGER' && e.categoryCode === code && e.direction === direction).reduce((sum,e) => sum + e.amountSatang,0)
+  const capitalAmount = (code: string, direction: string) => cashEntries.filter(e => e.source === 'LEDGER' && isLendingCashEntry({ ...e, categoryCode: e.categoryCode ?? '' }) && e.categoryCode === code && e.direction === direction).reduce((sum,e) => sum + e.amountSatang,0)
   const funding = {
     opening: capitalAmount('OPENING_CAPITAL','IN'),
     added: capitalAmount('CAPITAL_INCREASE','IN') + capitalAmount('CAPITAL_INJECTION','IN'),
@@ -80,8 +80,7 @@ export async function getDashboardSummary() {
     interestPaid: capitalAmount('FUNDING_INTEREST_PAID','OUT'),
     profitDistributed: capitalAmount('PROFIT_DISTRIBUTION','OUT'),
   }
-  const lendingCashCategories = new Set(['OPENING_CAPITAL','CAPITAL_INCREASE','CAPITAL_INJECTION','CAPITAL_WITHDRAWAL','BORROWED_CAPITAL_RECEIVED','BORROWED_CAPITAL_REPAID','FUNDING_INTEREST_PAID','PROFIT_DISTRIBUTION','LOAN_DISBURSEMENT','CONTRACT_REPAYMENT','PRINCIPAL_REPAYMENT','INTEREST_RECEIVED'])
-  const lendingCashEntries = cashEntries.filter(e => e.source === 'LEDGER' && lendingCashCategories.has(e.categoryCode ?? ''))
+  const lendingCashEntries = cashEntries.filter(e => e.source === 'LEDGER' && isLendingCashEntry({ ...e, categoryCode: e.categoryCode ?? '' }))
   const lendingCashIn = lendingCashEntries.filter(e => e.direction === 'IN').reduce((sum,e) => sum+e.amountSatang,0)
   const lendingCashOut = lendingCashEntries.filter(e => e.direction === 'OUT').reduce((sum,e) => sum+e.amountSatang,0)
   const lendingCashAvailable = lendingCashIn-lendingCashOut

@@ -1,7 +1,6 @@
 import {
   House,
   Landmark,
-  LayoutDashboard,
   DatabaseBackup,
   ScrollText,
   type LucideIcon,
@@ -66,12 +65,21 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Receivables",
     items: [
-      { label: "ลูกหนี้ค้างรับ", href: "/dashboard/receivables", icon: BanknoteArrowUp },
+      {
+        label: "ลูกหนี้ค้างรับ",
+        href: "/dashboard/receivables",
+        icon: BanknoteArrowUp,
+      },
     ],
   },
   {
     title: "Accounting",
     items: [
+      {
+        label: "รายงานบัญชี",
+        href: "/dashboard/accounting",
+        icon: WalletCards,
+      },
       { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: Banknote },
       {
         label: "จ่ายเงินตามสัญญา",
@@ -83,12 +91,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/dashboard/repayments",
         icon: BanknoteArrowUp,
       },
-      {
-        label: "รายงานบัญชี",
-        href: "/dashboard/accounting",
-        icon: WalletCards,
-      },
-      { label: "บัญชีทุน", href: "/dashboard/capital", icon: BanknoteCheck },
+      { label: "บัญชีทุนสินเชื่อ", href: "/dashboard/capital", icon: BanknoteCheck },
       { label: "ปิดดุลบัญชี", href: "/dashboard/ac", icon: BanknoteX },
     ],
   },
@@ -99,7 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Asset", href: "/thing/asset", icon: Landmark },
       { label: "Liabilities", href: "/thing/liabilities", icon: Landmark },
       { label: "รายการที่ลบ", href: "/thing/deleted", icon: Trash2 },
- ],
+    ],
   },
   {
     title: "Backups",

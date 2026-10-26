@@ -422,6 +422,7 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  accountScope String @default("GENERAL")
   principalReceivedSatang Float?
   interestReceivedSatang Float?
   penaltyReceivedSatang Float?

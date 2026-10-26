@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ArrowDownLeft, ArrowUpRight, Wallet, Search, BookOpen, PencilLine, History, Ban, CheckCircle2 } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Wallet, Search, BookOpen, PencilLine, History, Ban, CheckCircle2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SlipPreview } from '@/components/ui/slip-preview'
@@ -20,24 +20,24 @@ import { getLedger, saveLedger, voidLedger } from './actions'
 type Data = Awaited<ReturnType<typeof getLedger>>
 const field = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500'
 const code = (id: number) => `TX-${String(id).padStart(6, '0')}`
-export function LedgerWorkspace({ data }: { data: Data }) {
+export function LedgerWorkspace({ data, initialCreate = false, initialDirection = 'IN' }: { data: Data; initialCreate?: boolean; initialDirection?: 'IN' | 'OUT' }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [query, setQuery] = useState(''), [direction, setDirection] = useState(''), [from, setFrom] = useState(''), [to, setTo] = useState(''), [showVoids, setShowVoids] = useState(false)
-  const [creating, setCreating] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
+  const [creating, setCreating] = useState(initialCreate && data.canWrite), [error, setError] = useState(''), [notice, setNotice] = useState('')
   useFeedbackToast({ error, success: notice })
   const [voiding, setVoiding] = useState<Data['entries'][number] | null>(null), [reason, setReason] = useState('')
   const [page, setPage] = useState(1)
   const [editing, setEditing] = useState<Data['entries'][number] | null>(null)
-  const [draft, setDraft] = useState<LedgerInput | null>(null)
+  const [draft, setDraft] = useState<LedgerInput | null>(() => initialCreate && data.canWrite ? { requestKey: crypto.randomUUID(), kind: 'GENERAL', contractId: null, direction: initialDirection, categoryCode: '', amount: '', occurredOn: bangkokToday(), channelCode: '', reference: '', note: '' } : null)
   const active = data.entries.filter(e => !e.voidedAt)
   const incoming = active.filter(e => e.direction === 'IN').reduce((s, e) => s + e.amountSatang, 0)
   const outgoing = active.filter(e => e.direction === 'OUT').reduce((s, e) => s + e.amountSatang, 0)
   const outstanding = data.contracts.filter(c => c.disbursed).reduce((s, c) => s + c.remaining, 0)
   const filtered = data.entries.filter(e => (showVoids || !e.voidedAt) && (!direction || e.direction === direction) && (!from || e.occurredOn >= from) && (!to || e.occurredOn <= to) && [code(e.id), e.contractId ? contractCode(e.contractId) : '', e.contract?.borrowerName, e.categoryName, e.reference, e.note].some(v => v?.toLowerCase().includes(query.toLowerCase())))
   const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 25)))
-  function open() {
-    setDraft({ requestKey: crypto.randomUUID(), kind: 'GENERAL', contractId: null, direction: 'IN', categoryCode: '', amount: '', occurredOn: bangkokToday(), channelCode: '', reference: '', note: '' })
+  function open(direction: 'IN' | 'OUT') {
+    setDraft({ requestKey: crypto.randomUUID(), kind: 'GENERAL', contractId: null, direction, categoryCode: '', amount: '', occurredOn: bangkokToday(), channelCode: '', reference: '', note: '' })
     setError(''); setCreating(true)
   }
   function submit(event: FormEvent) {
@@ -72,7 +72,7 @@ export function LedgerWorkspace({ data }: { data: Data }) {
       })}
     </div>
     <Card className="ledger-directory-card overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{filtered.length} รายการ</span></h2>{data.canWrite && <Button variant="primary" onClick={() => open()}><Plus size={16} /> รับ–จ่ายทั่วไป</Button>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{filtered.length} รายการ</span></h2>{data.canWrite && <div className="flex flex-wrap gap-2"><button type="button" className="ledger-create-action ledger-create-income" onClick={() => open('IN')}><ArrowDownLeft size={16} aria-hidden="true" />บันทึกรายรับ</button><button type="button" className="ledger-create-action ledger-create-expense" onClick={() => open('OUT')}><ArrowUpRight size={16} aria-hidden="true" />บันทึกรายจ่าย</button></div>}</div>
       <div className="flex flex-wrap items-end gap-3 border-y border-slate-200/70 p-4">
         <label className="min-w-48 flex-1 text-xs text-slate-500">ค้นหารายการ<div className="relative mt-1"><Search className="absolute right-3 top-3" size={17} /><input className={`${field} pr-10`} value={query} onChange={e => { setQuery(e.target.value); setPage(1) }} placeholder="เลขรายการ สัญญา ชื่อผู้กู้ อ้างอิง" /></div></label>
         <label className="text-xs text-slate-500">ประเภท<select className={`${field} mt-1`} value={direction} onChange={e => { setDirection(e.target.value); setPage(1) }}><option value="">ทั้งหมด</option><option value="IN">รับเงิน</option><option value="OUT">จ่ายเงิน</option></select></label>
@@ -82,7 +82,7 @@ export function LedgerWorkspace({ data }: { data: Data }) {
       <div className="ledger-directory-caption"><span>เรียงจากรายการล่าสุด · {filtered.length} รายการ</span><span>หน่วย: บาท</span></div>
       <div className="overflow-x-auto"><table className="ledger-directory-table"><thead><tr>{['วันรับ–จ่ายจริง / เลขรายการ', 'รายการ / บุคคล', 'ช่องทาง', 'รับเงิน', 'จ่ายเงิน', 'จัดการ'].map((v, i) => <th scope="col" key={v} className={i === 3 || i === 4 ? 'ledger-cash-cell' : ''}>{v}</th>)}</tr></thead><tbody>{filtered.slice((current - 1) * 25, current * 25).map(e => <tr key={e.id} className={e.voidedAt ? 'ledger-row-void' : ''}>
         <td className="ledger-date-cell"><p>{new Date(`${e.occurredOn}T00:00:00+07:00`).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium' })}</p><small>{code(e.id)}</small></td>
-        <td className="ledger-description-cell"><div className="ledger-row-title"><span className={`ledger-row-dot ${e.direction === 'IN' ? 'is-in' : 'is-out'}`} /><strong>{e.categoryName}</strong>{e.voidedAt && <span className="ledger-void-label">ยกเลิกแล้ว</span>}</div>{e.landDevelopmentCosts.map(({ development }) => <p key={development.name} className="ledger-row-person">{e.direction === 'IN' ? 'รับคืนจากผู้รับเหมา' : 'ค่าใช้จ่ายของ'} · ที่ดิน {development.land.asset.code} {development.land.asset.name} <span>· {development.name} · {development.treatment === 'EXPENSE' ? 'ซ่อมบำรุง/ค่าใช้จ่าย' : 'งานพัฒนาสินทรัพย์'}</span></p>)}{e.contractId && <p className="ledger-row-person">{e.contract?.borrowerName} <span>· {contractCode(e.contractId)}</span></p>}
+        <td className="ledger-description-cell"><div className="ledger-row-title"><span className={`ledger-row-dot ${e.direction === 'IN' ? 'is-in' : 'is-out'}`} /><strong>{e.categoryName}</strong><span className="ml-2 text-xs text-slate-500">{e.accountScope === 'LENDING' ? 'สินเชื่อ' : 'ทั่วไป'}</span>{e.voidedAt && <span className="ledger-void-label">ยกเลิกแล้ว</span>}</div>{e.landDevelopmentCosts.map(({ development }) => <p key={development.name} className="ledger-row-person">{e.direction === 'IN' ? 'รับคืนจากผู้รับเหมา' : 'ค่าใช้จ่ายของ'} · ที่ดิน {development.land.asset.code} {development.land.asset.name} <span>· {development.name} · {development.treatment === 'EXPENSE' ? 'ซ่อมบำรุง/ค่าใช้จ่าย' : 'งานพัฒนาสินทรัพย์'}</span></p>)}{e.contractId && <p className="ledger-row-person">{e.contract?.borrowerName} <span>· {contractCode(e.contractId)}</span></p>}
           {e.kind === 'DISBURSEMENT' && e.contract?.interestMethod === 'INTEREST_UPFRONT' && <div className="ledger-upfront-breakdown" aria-label={`ยอดจ่ายตามสัญญา ${contractCode(e.contractId!)}`}><span className="ledger-upfront-label">หักดอกเบี้ยล่วงหน้าตามสัญญา</span><dl><div><dt>เงินต้น</dt><dd>{money(e.contract.principalSatang)} บาท</dd></div><div><dt>หักดอกล่วงหน้า</dt><dd>−{money(e.contract.interestSatang)} บาท</dd></div><div><dt>จ่ายเงินจริง</dt><dd>{money(e.amountSatang)} บาท</dd></div><div><dt>ยอดต้องคืนตามสัญญา</dt><dd>{money(e.contract.repaymentSatang)} บาท</dd></div></dl></div>}
           {(e.note || e.reference || e.voidedAt || e.settlementWaivedSatang > 0) && <details className="ledger-row-details"><summary>รายละเอียด{e.settlementWaivedSatang > 0 ? ' · มียกเว้นส่วนต่าง' : ''}</summary><div>{e.reference && <p><span>เลขอ้างอิง</span> {e.reference}</p>}{e.note && <p className="whitespace-pre-wrap">{e.note}</p>}{e.settlementWaivedSatang > 0 && <p className="text-amber-700">ยกเว้นส่วนต่าง {money(e.settlementWaivedSatang)} บาท · {e.settlementWaiverReason}</p>}{e.voidedAt && <p>เหตุผลยกเลิก: {e.voidReason}</p>}</div></details>}
         </td>
@@ -92,15 +92,16 @@ export function LedgerWorkspace({ data }: { data: Data }) {
       </tr>)}</tbody></table>{!filtered.length && <div className="py-14 text-center"><Search size={24} aria-hidden="true" className="mx-auto mb-3 text-slate-300" /><p className="text-sm text-slate-500">ไม่พบรายการตามเงื่อนไข</p><button className="mt-3 text-xs text-blue-700 underline" onClick={() => { setQuery(''); setDirection(''); setFrom(''); setTo(''); setPage(1) }}>ล้างตัวกรอง</button></div>}</div>
       <div className="flex items-center justify-between border-t border-slate-200/70 p-4 text-sm"><span>หน้า {current} / {Math.max(1, Math.ceil(filtered.length / 25))}</span><div className="flex gap-2"><Button disabled={current <= 1} onClick={() => setPage(current - 1)}>ก่อนหน้า</Button><Button disabled={current * 25 >= filtered.length} onClick={() => setPage(current + 1)}>ถัดไป</Button></div></div>
     </Card>
-    <Modal open={creating && Boolean(draft)} title="บันทึกรับ–จ่ายทั่วไป" description="สำหรับเงินทุนและค่าใช้จ่ายทั่วไป รายการตามสัญญาให้เริ่มจากหน้าจ่ายเงินหรือลูกหนี้" onClose={() => { if (!pending) setCreating(false) }} className="ledger-entry-dialog">
+    <Modal open={creating && Boolean(draft)} title={draft?.direction === 'OUT' ? 'บันทึกรายจ่ายทั่วไป' : 'บันทึกรายรับทั่วไป'} description="สำหรับเงินทุนและค่าใช้จ่ายทั่วไป รายการตามสัญญาให้เริ่มจากหน้าจ่ายเงินหรือลูกหนี้" onClose={() => { if (!pending) setCreating(false) }} className="ledger-entry-dialog">
       {draft && <form onSubmit={submit}><fieldset disabled={pending} className="ledger-entry-form" data-direction={draft.direction}>
         <div className="ledger-entry-grid">
           <div className="ledger-entry-main">
             <div className="ledger-direction" role="group" aria-label="ประเภทเงิน">{[{ value: 'IN', label: 'รับเงิน', detail: 'เงินเข้าบัญชี', Icon: ArrowDownLeft }, { value: 'OUT', label: 'จ่ายเงิน', detail: 'เงินออกจากบัญชี', Icon: ArrowUpRight }].map(({ value, label, detail, Icon }) => <button key={value} type="button" aria-pressed={draft.direction === value} onClick={() => { if (draft.direction === value) return; setDraft({ ...draft, direction: value, kind: 'GENERAL', categoryCode: '', contractId: null, amount: '' }); setError('') }}><span className="ledger-direction-icon"><Icon size={21} aria-hidden="true" /></span><span><strong>{label}</strong><small>{detail}</small></span><span className="ledger-direction-check">{draft.direction === value && <CheckCircle2 size={18} aria-hidden="true" />}</span></button>)}</div>
             <div className="ledger-amount-box"><label htmlFor="ledger-entry-amount">{draft.direction === 'IN' ? 'ยอดเงินที่รับ' : 'ยอดเงินที่จ่าย'}</label><div className="ledger-amount-input"><input id="ledger-entry-amount" autoFocus required aria-describedby="ledger-amount-help" type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="0.00" max={2000000000} value={draft.amount} onChange={e => setDraft({ ...draft, amount: e.target.value })} /><span>บาท</span></div><p id="ledger-amount-help">ระบุจำนวนเงินที่รับหรือจ่ายจริง</p></div>
+        <label className="block text-sm font-medium">บัญชีเงิน<select className={`${field} mt-1.5`} value={draft.accountScope ?? 'GENERAL'} onChange={e => setDraft({ ...draft, accountScope: e.target.value as 'GENERAL' | 'LENDING', categoryCode: '' })}><option value="GENERAL">รับ–จ่ายทั่วไป (รวม ASSET)</option><option value="LENDING">เงินทุนสินเชื่อ</option></select></label>
         <label className="block text-sm font-medium">หมวดหมู่<select required className={`${field} mt-1.5`} value={draft.categoryCode} onChange={e => {
           setDraft({ ...draft, categoryCode: e.target.value }); setError('')
-        }}><option value="">เลือกหมวดหมู่{draft.direction === 'IN' ? 'รับเงิน' : 'จ่ายเงิน'}</option>{data.categories.filter(c => c.direction === draft.direction && c.group !== 'LOAN' && !['INTEREST_RECEIVED', 'TRADE_PAYABLE'].includes(c.code)).map(c => <option key={c.code} value={c.code}>{c.nameTh}</option>)}</select></label>
+        }}><option value="">เลือกหมวดหมู่{draft.direction === 'IN' ? 'รับเงิน' : 'จ่ายเงิน'}</option>{data.categories.filter(c => c.direction === draft.direction && ((draft.accountScope ?? 'GENERAL') !== 'LENDING' || ['OPENING_CAPITAL', 'CAPITAL_INCREASE', 'CAPITAL_INJECTION', 'CAPITAL_WITHDRAWAL'].includes(c.code)) && c.group !== 'LOAN' && !['INTEREST_RECEIVED', 'TRADE_PAYABLE'].includes(c.code)).map(c => <option key={c.code} value={c.code}>{c.nameTh}</option>)}</select></label>
         <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-medium">วันที่<input required type="date" max={bangkokToday()} className={`${field} mt-1.5`} value={draft.occurredOn} onChange={e => setDraft({ ...draft, occurredOn: e.target.value })} /></label><label className="text-sm font-medium">ช่องทาง<select required className={`${field} mt-1.5`} value={draft.channelCode} onChange={e => setDraft({ ...draft, channelCode: e.target.value })}><option value="">เลือกช่องทาง</option>{data.channels.map(c => <option key={c.code} value={c.code}>{c.nameTh}</option>)}</select></label></div>
 
             {draft.direction === 'IN' && <p className="ledger-repayment-link">รับเงินคืนจากผู้กู้? <Link href="/dashboard/repayments">ไปลูกหนี้และรับชำระ ↗</Link></p>}

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '../lib/prisma'
-import { saveLedger, voidLedger, getLedger, editLedger } from '../app/dashboard/ledger/actions'
+import { saveLedger, addLendingCapital, voidLedger, getLedger, editLedger } from '../app/dashboard/ledger/actions'
 import { getReceivables, getRepaymentHistory } from '../app/dashboard/repayments/actions'
 import { ledgerAmount, validLedgerDate, bangkokToday, contractLedgerBalance, type LedgerInput } from '../lib/ledger'
 if (!process.env.DATABASE_URL?.includes('loan-ledger-test-')) throw new Error('Isolated database required')
@@ -189,4 +189,21 @@ test('receivables sort oldest overdue first and classify all four aging ranges',
   const result = await getReceivables({ q: 'Aging fixture', view: 'OVERDUE' })
   assert.deepEqual(result.contracts.map(c => c.overdueDays), [95, 75, 45, 10])
   assert.deepEqual(result.summary.aging.map((bucket, i) => bucket.count - baseline.summary.aging[i].count), [1, 1, 1, 1])
+})
+
+
+test('only the credit funding route assigns lending scope to new capital', async () => {
+  await prisma.user.updateMany({ data: { status: 'ACTIVE', role: 'ADMIN' } })
+  await prisma.financialCategory.upsert({ where: { code: 'CAPITAL_INCREASE' }, create: { code: 'CAPITAL_INCREASE', nameTh: 'เพิ่มทุน', group: 'CAPITAL', direction: 'IN' }, update: { isActive: true } })
+  await prisma.paymentChannel.upsert({ where: { code: 'CASH' }, create: { code: 'CASH', nameTh: 'เงินสด' }, update: { isActive: true } })
+  const input: LedgerInput = { requestKey: randomUUID(), kind: 'GENERAL', contractId: null, direction: 'IN', categoryCode: 'CAPITAL_INCREASE', amount: '100', occurredOn: bangkokToday(), channelCode: 'CASH', reference: '', note: '' }
+  assert.equal((await saveLedger(input)).success, true)
+  const general = await prisma.ledgerEntry.findUniqueOrThrow({ where: { requestKey: input.requestKey } })
+  assert.equal(general.accountScope, 'GENERAL')
+  const funding = { ...input, requestKey: randomUUID() }
+  assert.equal((await addLendingCapital(funding)).success, true)
+  assert.equal((await addLendingCapital(funding)).success, true)
+  assert.equal(await prisma.ledgerEntry.count({ where: { requestKey: funding.requestKey, accountScope: 'LENDING' } }), 1)
+  assert.ok((await addLendingCapital({ ...input, categoryCode: 'OTHER_INCOME' })).error)
+  assert.ok((await saveLedger({ ...funding })).error, 'cannot replay a lending request through the general route')
 })

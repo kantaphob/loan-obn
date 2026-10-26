@@ -7,17 +7,15 @@ import { PageContainer } from '@/components/ui/page-container'
 import { Card } from '@/components/ui/card'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth/current-user'
-import { capitalCash, capitalPercent, capitalPosition } from '@/lib/capital'
-import { cashCarryforward, readCashMovements } from '@/lib/cash-carryforward'
-import { CashBalance } from '../ac/cash-balance'
+import { lendingCapitalCash, capitalPercent, capitalPosition } from '@/lib/capital'
 import { bangkokToday } from '@/lib/ledger'
+import { CapitalForm } from './capital-form'
 
 const money = (value: number) => (value / 100).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const percent = (value: number, total: number) => `${capitalPercent(value, total).toLocaleString('th-TH', { maximumFractionDigits: 1 })}%`
 
 export default function CapitalPage() {
   return <PageContainer>
-    <Header title="ภาพรวมเงินทุน" eyebrow="Capital" description="ดูเงินสะสมรวมยอดยกมา เงินรับคืน และเงินต้นที่ยังค้างกับผู้กู้" icon={<Landmark size={21} aria-hidden="true" />} />
     <Suspense fallback={<p role="status" className="p-8 text-sm text-slate-500">กำลังโหลดภาพรวมเงินทุน…</p>}><CapitalContent /></Suspense>
   </PageContainer>
 }
@@ -26,22 +24,27 @@ async function CapitalContent() {
   await connection()
   const user = await getCurrentUser()
   if (!user || user.status !== 'ACTIVE') return <p role="alert">ไม่มีสิทธิ์ดูข้อมูลนี้</p>
+  const canWrite = user.role !== 'REVIEWER'
+  const channels = canWrite ? await prisma.paymentChannel.findMany({ where: { isActive: true }, select: { code: true, nameTh: true }, orderBy: { code: 'asc' } }) : []
   const asOf = bangkokToday()
   const contracts = await prisma.loanContract.findMany({
     select: { id: true, borrowerCode: true, borrowerName: true, principalSatang: true, interestSatang: true, netSatang: true, repaymentSatang: true, interestMethod: true, status: true, paidAt: true, legacyReceivedSatang: true, repaymentDueDate: true, penaltyMaxDays: true, ledgerEntries: { where: { voidedAt: null }, orderBy: [{ occurredOn: 'asc' }, { id: 'asc' }], select: { id: true, kind: true, amountSatang: true, occurredOn: true, penaltyAssessed: true, penaltyWaivedSatang: true, settlementWaivedSatang: true } } },
     orderBy: { id: 'desc' },
   })
-  const cashEntries = await prisma.$transaction(tx => readCashMovements(tx, asOf))
-  // DAILY26_ categories belong to the separately imported personal cashbook.
-  const lendingCash = capitalCash(cashEntries.filter(row => row.source === 'LEDGER' && !row.categoryCode?.startsWith('DAILY26_')).map(row => ({ ...row, categoryCode: row.categoryCode ?? '' })), asOf)
-  const yearCash = cashCarryforward(cashEntries, `${asOf.slice(0, 4)}-01-01`, asOf)
+  const cashEntries = await prisma.ledgerEntry.findMany({
+    where: { accountScope: 'LENDING', voidedAt: null, occurredOn: { lte: asOf } },
+    select: { id: true, accountScope: true, kind: true, contractId: true, direction: true, categoryCode: true, amountSatang: true, occurredOn: true },
+  })
+  const lendingCash = lendingCapitalCash(cashEntries, new Set(), asOf)
   const rows = contracts.flatMap(c => {
     const position = capitalPosition(c, c.ledgerEntries, asOf)
     return position ? [{ ...position, id: c.id, borrowerName: c.borrowerName, borrowerCode: c.borrowerCode }] : []
   })
   const sum = (key: keyof (typeof rows)[number]) => rows.reduce((total, row) => total + (typeof row[key] === 'number' ? row[key] as number : 0), 0)
   const principal = sum('principal'), returned = sum('principalReceived'), remaining = sum('principalRemaining'), interestRemaining = sum('interestRemaining'), waived = sum('principalWaived'), cashOut = sum('cashOut'), cashReceived = sum('cashReceived')
-  return <div className="space-y-5">
+  return <>
+    <Header title="ภาพรวมเงินทุน" eyebrow="Capital" description="เงินสดสำหรับปล่อยกู้ เงินรับคืน และเงินต้นที่ยังค้างกับผู้กู้" icon={<Landmark size={21} aria-hidden="true" />} actions={canWrite ? <CapitalForm channels={channels} /> : undefined} />
+    <div className="space-y-5">
     <p className="text-xs text-slate-500">ข้อมูลสะสมถึง {new Date(`${asOf}T00:00:00+07:00`).toLocaleDateString('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' })} · จ่ายเงินแล้ว {rows.length.toLocaleString('th-TH')} สัญญา · หน่วย: บาท</p>
     <Card as="section" className="p-5">
       <div className="grid items-center gap-5 sm:grid-cols-[1.2fr_1fr_1fr]">
@@ -53,7 +56,6 @@ async function CapitalContent() {
         <div className="sm:border-l sm:border-slate-200/70 sm:pl-5"><p className="text-xs text-slate-500">จ่ายเงินสะสม</p><p className="mt-2 text-lg font-medium tabular-nums text-slate-700">{money(lendingCash.outgoing)} <span className="text-xs font-normal">บาท</span></p></div>
       </div>
     </Card>
-    <CashBalance cash={yearCash} period="year" />
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       {[
         { label: 'เงินจ่ายปล่อยกู้จริง', value: cashOut, note: 'ยอดโอนสุทธิสะสม หลังหักดอกเบี้ยล่วงหน้า', color: 'text-slate-900' },
@@ -86,5 +88,6 @@ async function CapitalContent() {
       <p>รวมยอดรับคืนยกมา {money(sum('legacyReceived'))} บาท ตามข้อมูลนำเข้า ไม่นับรายการยกเลิกหรือรายการในอนาคต สัญญาที่ไม่มีรายการจ่ายใช้ยอดสุทธิตามสัญญา</p>
       <p>ยอดปล่อยกู้เป็นยอดสะสม หากนำเงินรับคืนไปปล่อยต่อจะนับเป็นการปล่อยกู้อีกครั้ง เงินเติมและถอนทุนอ้างอิงรายการในบัญชีรับ–จ่าย ยอดเงินสดคงเหลือจึงต่างจากเงินต้นคงค้างและกำไรสุทธิ</p>
     </div>
-  </div>
+    </div>
+  </>
 }

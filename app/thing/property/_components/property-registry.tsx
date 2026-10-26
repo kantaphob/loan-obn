@@ -8,7 +8,7 @@ import { Header } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { getAssetWorkspace, saveAssetWorkspace } from '../../_shared/actions'
-import { assetCosts, isHomeDisposed, saleDeclarationAmounts, money, propertyAssetIds, propertyTotalCost, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData, type Home, type Property } from '../../_shared/model'
+import { assetAcquisitionCost, assetCosts, isHomeDisposed, saleDeclarationAmounts, money, propertyAssetIds, propertyTotalCost, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData, type Home, type Property } from '../../_shared/model'
 import { categoryPath, isPropertyComponent, type AssetCategory } from '../categories'
 
 import { assetFinancials, latestAssetAppraisal } from '../financials'
@@ -101,12 +101,15 @@ function PropertySaleSummary({ members }: { members: Home[] }) {
   const source = members.find(home => home.saleDeclaration)
   if (!source?.saleDeclaration) return <p className="asset-notice">ขายแล้ว · เก็บต้นทุนเดิมไว้ในประวัติ รายละเอียดการขายดูได้จากทะเบียน Asset</p>
   const sale = source.saleDeclaration
-  const amounts = saleDeclarationAmounts(sale, source.landValue)
-  const landBase = `จากที่ดิน ${money(source.landValue)} บาท`
+  const landCost = sale.landCost ?? source.landValue
+  const amounts = saleDeclarationAmounts(sale, landCost)
+  const landBase = `จากที่ดิน ${money(landCost)} บาท`
   const rows = [['ขายบ้าน', sale.salePrice, 'รับ'], ['รับคืนค่าแบบ', sale.designRefund, 'รับ'], ['ปิดธนาคาร', sale.bankPayoff, 'จ่าย'], [`จดจำนอง ${sale.mortgageRate}% ${landBase}`, amounts.mortgage, 'จ่าย'], [`ค่าโอน ${sale.transferRate}% ${landBase}`, amounts.transfer, 'จ่าย'], [`อากรสแตมป์ ${sale.stampRate}% ${landBase}`, amounts.stamp, 'จ่าย']] as const
   const actualSale = source.sale
   const actualReceived = actualSale?.payments.reduce((sum, payment) => sum + payment.amount, 0) ?? 0
-  return <section className="property-sale-summary" aria-label="สรุปรายการขาย"><div className="property-sale-totals"><div><span>เงินรับตามข้อมูลแจ้งขาย</span><strong>{money(amounts.income)} บาท</strong></div><div><span>ปิดธนาคารและค่าธรรมเนียม</span><strong>{money(amounts.outflow)} บาท</strong></div><div><span>เงินคงเหลือตามรายการ</span><strong>{money(amounts.remaining)} บาท</strong></div></div><div className="asset-table-scroll"><table><thead><tr><th>รายการ</th><th>ประเภท</th><th>จำนวนเงิน (บาท)</th></tr></thead><tbody>{rows.map(([label, amount, direction]) => <tr key={label}><td>{label}</td><td>{direction}</td><td>{money(amount)}</td></tr>)}</tbody></table></div>{actualSale ? <p className="asset-hint">รับเงินจริง {money(actualReceived)} บาท · วันที่ขาย {actualSale.date} · เชื่อมรายการบัญชีรับแล้ว · ยอดปิดธนาคารและค่าธรรมเนียมข้างต้นเป็นยอดคำนวณ ยังไม่พบรายการจ่ายจริงที่เชื่อม</p> : <p className="asset-hint">เป็นข้อมูลแจ้งขาย ยังไม่มีรายการรับเงินจริงที่เชื่อมในบัญชี</p>}<p className="asset-hint">ค่าธรรมเนียมคำนวณจากมูลค่าที่ดิน {money(source.landValue)} บาท · ต้นทุนอ้างอิงก่อนขาย {money(members.reduce((sum, home) => sum + assetCosts(home).total, 0))} บาท · เงินคงเหลือข้างต้นไม่ใช่กำไร</p></section>
+  const acquisitionCost = members.reduce((sum, home) => sum + assetAcquisitionCost(home), 0)
+  const costDetail = sale.houseCost !== undefined ? `บ้าน ${money(sale.houseCost)} + ที่ดิน ${money(sale.landCost ?? 0)}` : ''
+  return <section className="property-sale-summary" aria-label="สรุปรายการขาย"><div className="property-sale-totals"><div><span>เงินรับตามข้อมูลแจ้งขาย</span><strong>{money(amounts.income)} บาท</strong></div><div><span>ปิดธนาคารและค่าธรรมเนียม</span><strong>{money(amounts.outflow)} บาท</strong></div><div><span>เงินคงเหลือตามรายการ</span><strong>{money(amounts.remaining)} บาท</strong></div></div><div className="asset-table-scroll"><table><thead><tr><th>รายการ</th><th>ประเภท</th><th>จำนวนเงิน (บาท)</th></tr></thead><tbody>{rows.map(([label, amount, direction]) => <tr key={label}><td>{label}</td><td>{direction}</td><td>{money(amount)}</td></tr>)}</tbody></table></div>{actualSale ? <p className="asset-hint">รับเงินจริง {money(actualReceived)} บาท · วันที่ขาย {actualSale.date} · เชื่อมรายการบัญชีรับแล้ว · ยอดปิดธนาคารและค่าธรรมเนียมข้างต้นเป็นยอดคำนวณ ยังไม่พบรายการจ่ายจริงที่เชื่อม</p> : <p className="asset-hint">เป็นข้อมูลแจ้งขาย ยังไม่มีรายการรับเงินจริงที่เชื่อมในบัญชี</p>}<p className="asset-hint">ค่าธรรมเนียมคำนวณจากที่ดิน {money(landCost)} บาท · ต้นทุนอ้างอิงก่อนขาย {costDetail ? `${costDetail} = ` : ''}{money(acquisitionCost)} บาท · เงินคงเหลือข้างต้นไม่ใช่กำไร</p></section>
 }
 
 function PropertyMoney({ members }: { members: Home[] }) {

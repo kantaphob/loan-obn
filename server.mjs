@@ -74,6 +74,14 @@ server.listen(port, hostname, () => {
   console.log(`> Ready on http://localhost:${port} (${dev ? 'development' : 'production'})`)
   console.log('> WebSocket endpoint: /api/realtime')
 })
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use. Stop the other server or run with a different PORT.`)
+  } else {
+    console.error('HTTP server failed to start:', error)
+  }
+  process.exit(1)
+})
 
 let shuttingDown = false
 function shutdown() {

@@ -45,7 +45,7 @@ export type BuildingProjectLine = { id: string; name: string; quantity: number; 
 export type BuildingProjectPayment = { id: string; ledgerEntryId: number; date: string; amount: number; direction: 'IN' | 'OUT'; type: 'deposit' | 'progress' | 'final' | 'refund'; reference: string; note: string }
 export type BuildingProject = { id: string; name: string; type: 'extension' | 'renovation'; roomNames: string[]; pricingMode: 'lump_sum' | 'boq'; lumpSum: number; boqLines: BuildingProjectLine[]; status: 'planned' | 'in_progress' | 'completed'; startedOn: string; completedOn: string; vendor: string; reference: string; notes: string; warrantyUntil: string; actualCost: number; payments: BuildingProjectPayment[]; outcome?: { type: 'none' | 'add_room' | 'component' | 'update_existing'; roomName: string; newRoomName: string; areaAddedSqm: number; componentName: string; replacesItemId: string } }
 /** Owner-reported sale facts; no accounting dates or ledger entries are implied. */
-export type HomeSaleDeclaration = { id: string; reportedOn: string; salePrice: number; bankPayoff: number; designRefund: number; mortgageRate: number; transferRate: number; stampRate: number }
+export type HomeSaleDeclaration = { id: string; reportedOn: string; salePrice: number; bankPayoff: number; designRefund: number; mortgageRate: number; transferRate: number; stampRate: number; houseCost?: number; landCost?: number }
 export function isHomeDisposed(home: Pick<Home, 'disposedOn' | 'saleDeclaration'>) { return Boolean(home.disposedOn || home.saleDeclaration) }
 export function saleDeclarationAmounts(sale: HomeSaleDeclaration, landValue = sale.salePrice) {
   const mortgage = roundMoney(landValue * sale.mortgageRate / 100)
@@ -174,6 +174,12 @@ export function assetCosts(home: Home) {
   const additions = roundMoney(inventory + capitalWork + completedProjects)
   const main = home.costSource === 'boq' ? (home.boqAgreedTotal ?? roundMoney(boq + (home.boqManagementFee ?? 0))) : home.purchasePrice
   return { main, boq, additions, total: roundMoney(main + additions) }
+}
+export function assetAcquisitionCost(home: Home) {
+  const cost = assetCosts(home).total
+  return home.saleDeclaration
+    ? roundMoney((home.saleDeclaration.houseCost ?? cost) + (home.saleDeclaration.landCost ?? 0))
+    : cost
 }
 /** A property is a grouping only. Its cost always comes from its source assets. */
 export function propertyCosts(property: Property, homes: Home[]) {

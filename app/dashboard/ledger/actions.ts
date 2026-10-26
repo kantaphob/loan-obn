@@ -70,9 +70,20 @@ export async function getHistoricalLedger() {
   })
 }
 export async function saveLedger(input: LedgerInput, file?: File | null) {
+  if (input.accountScope && !['GENERAL', 'LENDING'].includes(input.accountScope)) return { success: undefined, error: 'กรุณาเลือกบัญชีเงินให้ถูกต้อง' }
+  return saveLedgerForAccount(input, file, input.accountScope ?? 'GENERAL')
+}
+
+export async function addLendingCapital(input: LedgerInput) {
+  if (input.kind !== 'GENERAL' || input.contractId !== null || !((input.direction === 'IN' && input.categoryCode === 'CAPITAL_INCREASE') || (input.direction === 'OUT' && input.categoryCode === 'CAPITAL_WITHDRAWAL'))) return { error: 'กรุณาเลือกเพิ่มทุนหรือถอนทุนสินเชื่อให้ถูกต้อง' }
+  return saveLedgerForAccount(input, undefined, 'LENDING')
+}
+
+async function saveLedgerForAccount(input: LedgerInput, file: File | null | undefined, source: 'GENERAL' | 'LENDING') {
   try {
     const user = await operator(true)
     if (!input || !/^[a-f0-9-]{36}$/i.test(input.requestKey) || !['GENERAL', 'DISBURSEMENT', 'REPAYMENT'].includes(input.kind)) throw new Error('ข้อมูลรายการไม่ถูกต้อง')
+    const accountScope = input.kind === 'GENERAL' ? source : 'LENDING'
     const amountSatang = ledgerAmount(input.amount)
     if (!validLedgerDate(input.occurredOn)) throw new Error('วันที่ทำรายการไม่ถูกต้อง หรือเป็นวันที่ในอนาคต')
     if (typeof input.reference !== 'string' || input.reference.length > 150 || typeof input.note !== 'string' || input.note.length > 1000) throw new Error('เลขอ้างอิงหรือหมายเหตุยาวเกินกำหนด')
@@ -82,7 +93,7 @@ export async function saveLedger(input: LedgerInput, file?: File | null) {
       const previous = await tx.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, include: { slip: true } })
       if (previous) {
         if (previous.createdBy !== user.id) throw new Error('คำขอนี้ถูกใช้แล้ว')
-        const same = !previous.voidedAt && previous.kind === input.kind && previous.contractId === input.contractId
+        const same = previous.accountScope === accountScope && !previous.voidedAt && previous.kind === input.kind && previous.contractId === input.contractId
           && previous.amountSatang === amountSatang && previous.occurredOn === input.occurredOn
           && previous.channelCode === input.channelCode && previous.reference === input.reference.trim() && previous.note === input.note.trim()
           && (input.kind !== 'GENERAL' || previous.direction === input.direction && previous.categoryCode === input.categoryCode)
@@ -100,6 +111,7 @@ export async function saveLedger(input: LedgerInput, file?: File | null) {
       let direction = input.direction, categoryCode = input.categoryCode, categoryName = '', contractId: number | null = null
       if (input.kind === 'GENERAL') {
         if (input.contractId !== null) throw new Error('รายการทั่วไปไม่สามารถผูกสัญญาได้')
+        if (accountScope === 'LENDING' && !['OPENING_CAPITAL', 'CAPITAL_INCREASE', 'CAPITAL_INJECTION', 'CAPITAL_WITHDRAWAL'].includes(categoryCode)) throw new Error('บัญชีสินเชื่อบันทึกทั่วไปได้เฉพาะเพิ่มทุนหรือถอนทุน รายการกู้ให้บันทึกผ่านสัญญา')
         const category = await tx.financialCategory.findUnique({ where: { code: categoryCode } })
         if (!category?.isActive || !['IN', 'OUT'].includes(direction) || category.direction !== direction || category.group === 'LOAN' || ['INTEREST_RECEIVED', 'TRADE_RECEIVABLE_PAYMENT'].includes(category.code)) throw new Error('กรุณาเลือกหมวดรับ–จ่ายทั่วไปให้ตรงประเภทรายการ')
         categoryName = category.nameTh
@@ -148,9 +160,9 @@ export async function saveLedger(input: LedgerInput, file?: File | null) {
         if (!category?.isActive || category.direction !== direction || category.group !== 'LOAN') throw new Error('หมวดบัญชีตามสัญญาไม่พร้อมใช้งาน กรุณาตรวจสอบ Masterdata')
         categoryName = category.nameTh
       }
-      await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: input.kind, contractId, direction, categoryCode, categoryName, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: input.note.trim(), createdBy: user.id, settlementWaivedSatang, settlementWaiverReason, penaltyAssessed: input.kind === 'REPAYMENT', penaltyWaivedSatang, penaltyWaiverReason, ...(slip ? { slip: { create: slip } } : {}) } })
+      await tx.ledgerEntry.create({ data: { accountScope, requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: input.kind, contractId, direction, categoryCode, categoryName, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: input.note.trim(), createdBy: user.id, settlementWaivedSatang, settlementWaiverReason, penaltyAssessed: input.kind === 'REPAYMENT', penaltyWaivedSatang, penaltyWaiverReason, ...(slip ? { slip: { create: slip } } : {}) } })
     })
-    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
+    revalidatePath('/dashboard/capital'); revalidatePath('/dashboard'); revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true } })
     if (saved) {
       try {

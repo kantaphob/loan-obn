@@ -26,9 +26,10 @@ async function AccountingContent({ searchParams }: {
   const read = (key: string) => typeof params[key] === 'string' ? params[key] as string : ''
   const from = validLedgerDate(read('from')) ? read('from') : ''
   const to = validLedgerDate(read('to')) ? read('to') : ''
+  const direction = ['IN', 'OUT'].includes(read('direction')) ? read('direction') : ''
   const invalidRange = Boolean(from && to && from > to)
   const data = await getLedger()
-  const entries = data.entries.filter(e => !e.voidedAt && !invalidRange && (!from || e.occurredOn >= from) && (!to || e.occurredOn <= to))
+  const entries = data.entries.filter(e => !e.voidedAt && (!direction || e.direction === direction) && !invalidRange && (!from || e.occurredOn >= from) && (!to || e.occurredOn <= to))
   const sum = (direction: string) => entries.filter(e => e.direction === direction).reduce((total, e) => total + e.amountSatang, 0)
   const incoming = sum('IN'), outgoing = sum('OUT')
   const categories = new Map<string, { name: string; direction: string; count: number; amount: number }>()
@@ -65,15 +66,16 @@ async function AccountingContent({ searchParams }: {
   receivedInterest += entries.filter(e => e.occurredOn <= endOn && !e.contractId && e.direction === 'IN' && e.categoryCode === 'INTEREST_RECEIVED').reduce((sum, e) => sum + e.amountSatang, 0)
 
   return <PageContainer>
-    <Header title="รายงานบัญชี" eyebrow="Accounting" description="สรุปข้อมูลจริงจากรายการรับ–จ่าย โดยไม่นับรายการที่ยกเลิก" icon={<ScrollText size={21} aria-hidden="true" />} />
+    <Header title="รายงานบัญชี" eyebrow="Accounting" description="รวมบัญชีทั่วไปและสินเชื่อ · ไม่นับรายการที่ยกเลิก" icon={<ScrollText size={21} aria-hidden="true" />} />
     <div className="space-y-5">
       <Card as="section" className="p-5">
         <form action="/dashboard/accounting" className="flex flex-wrap items-end gap-3">
           <label className="min-w-40 flex-1 text-xs text-slate-600">ตั้งแต่วันที่<input className={field} type="date" name="from" defaultValue={from} max={bangkokToday()} /></label>
           <label className="min-w-40 flex-1 text-xs text-slate-600">ถึงวันที่<input className={field} type="date" name="to" defaultValue={to} max={bangkokToday()} /></label>
+          <label className="text-xs text-slate-600">ประเภท<select name="direction" defaultValue={direction} className={field}><option value="">รายรับและรายจ่ายทั้งหมด</option><option value="IN">รายรับ</option><option value="OUT">รายจ่าย</option></select></label>
           <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white" type="submit">แสดงรายงาน</button>
           <Link href="/dashboard/accounting" className="px-3 py-2 text-sm text-slate-600 underline">ดูทั้งหมด</Link>
-          <Link href="/dashboard/ledger" className="px-3 py-2 text-sm text-blue-700 underline">ดูรายการรับ–จ่าย ↗</Link>
+          <Link href="/dashboard/ledger" className="px-3 py-2 text-sm text-blue-700 underline">ไปหน้าบัญชีรับ–จ่าย ↗</Link>
         </form>
         {invalidRange && <p role="alert" className="mt-3 text-sm text-rose-700">วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด กรุณาเลือกช่วงเวลาใหม่</p>}
         <p className="mt-3 text-xs text-slate-500">{from || to ? `${from || 'เริ่มต้น'} ถึง ${to || 'ปัจจุบัน'}` : 'ข้อมูลทุกช่วงเวลา'} · {entries.length.toLocaleString('th-TH')} รายการ · หน่วย: บาท</p>

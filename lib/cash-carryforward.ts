@@ -1,7 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client'
 
 export type CashMovement = {
-  source: 'LEDGER' | 'HISTORICAL'; accountCode?: string; occurredOn: string;
+  source: 'LEDGER' | 'HISTORICAL'; accountScope?: string; kind?: string; contractId?: number | null; accountCode?: string; occurredOn: string;
   direction: string; amountSatang: number; categoryCode?: string; voidedAt?: unknown
 }
 /** Opening money is a balance, never a synthetic receipt or current-year income. */
@@ -33,7 +33,7 @@ export function cashCarryforward(rows: CashMovement[], startOn: string, asOf: st
 }
 export async function readCashMovements(tx: Prisma.TransactionClient, asOf: string): Promise<CashMovement[]> {
   const [ledger, historical] = await Promise.all([
-    tx.ledgerEntry.findMany({ where: { voidedAt: null, occurredOn: { lte: asOf } }, select: { occurredOn: true, direction: true, amountSatang: true, categoryCode: true } }),
+    tx.ledgerEntry.findMany({ where: { voidedAt: null, occurredOn: { lte: asOf } }, select: { accountScope: true, kind: true, contractId: true, occurredOn: true, direction: true, amountSatang: true, categoryCode: true } }),
     tx.historicalCashEntry.findMany({ where: { occurredOn: { lte: asOf } }, select: { occurredOn: true, direction: true, amountSatang: true, accountCode: true } }),
   ])
   return [...ledger.map(row => ({ ...row, source: 'LEDGER' as const })), ...historical.map(row => ({ ...row, source: 'HISTORICAL' as const }))]

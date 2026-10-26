@@ -13,10 +13,11 @@ export function validateAssetData(data: AssetData) {
     if (home.archivedOn !== undefined) { date(home.archivedOn); if (home.archivedOn > today()) fail('วันที่ลบต้องไม่เป็นอนาคต') }
     if (home.saleDeclaration !== undefined) {
       const sale = home.saleDeclaration
-      if (!sale || home.kind !== 'house' || Object.keys(sale).some(key => !['id','reportedOn','salePrice','bankPayoff','designRefund','mortgageRate','transferRate','stampRate'].includes(key))) fail('ข้อมูลแจ้งขายไม่ถูกต้อง')
+      if (!sale || home.kind !== 'house' || Object.keys(sale).some(key => !['id','reportedOn','salePrice','bankPayoff','designRefund','mortgageRate','transferRate','stampRate','houseCost','landCost'].includes(key))) fail('ข้อมูลแจ้งขายไม่ถูกต้อง')
       id(sale.id); date(sale.reportedOn); amount(sale.salePrice, true)
       if (sale.reportedOn > today()) fail('วันที่แจ้งขายต้องไม่เป็นอนาคต')
       for (const value of [sale.bankPayoff, sale.designRefund, sale.mortgageRate, sale.transferRate, sale.stampRate]) amount(value)
+      for (const value of [sale.houseCost, sale.landCost]) if (value !== undefined) amount(value)
       if ([sale.mortgageRate, sale.transferRate, sale.stampRate].some(value => value > 100)) fail('อัตราค่าธรรมเนียมต้องไม่เกิน 100%')
     }
     if (home.disposedOn !== undefined) { date(home.disposedOn); if (home.sale ? home.disposedOn !== home.sale.date : !home.disposalSaleId || !data.homes.some(row => row.sale?.id === home.disposalSaleId && row.sale?.includedAssetIds.includes(home.id))) fail('สถานะขายสินทรัพย์ไม่สัมพันธ์กับใบขาย') }

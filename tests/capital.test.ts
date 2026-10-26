@@ -56,3 +56,21 @@ test('cash balance counts funding and all cash flows once, excluding voids and f
   assert.equal(result.hasOpening, true)
   assert.equal(capitalCash([], '2026-10-24').hasOpening, false)
 })
+
+test('lending account accepts contract cash and explicitly sourced funds only', async () => {
+  const { lendingCapitalCash } = await import('../lib/capital')
+  const base = { id: 1, direction: 'IN', categoryCode: 'CAPITAL_INCREASE', amountSatang: 100000, occurredOn: '2026-10-24', kind: 'GENERAL', accountScope: 'LENDING' }
+  const cash = lendingCapitalCash([base,
+    { ...base, id: 2, accountScope: 'GENERAL', amountSatang: 430000000 },
+    { ...base, id: 3, accountScope: undefined, categoryCode: 'OPENING_CAPITAL', amountSatang: 430000000 },
+    { ...base, id: 4, categoryCode: 'OTHER_INCOME', amountSatang: 430000000 },
+    { ...base, id: 5, categoryCode: 'CONTRACT_EXPENSE', direction: 'OUT', amountSatang: 2000000 },
+    { ...base, id: 6, kind: 'DISBURSEMENT', contractId: 1, direction: 'OUT', categoryCode: 'LOAN_DISBURSEMENT', amountSatang: 50000 },
+    { ...base, id: 7, kind: 'REPAYMENT', contractId: 1, categoryCode: 'CONTRACT_REPAYMENT', amountSatang: 25000 },
+    { ...base, id: 8, kind: 'REPAYMENT', contractId: null, categoryCode: 'CONTRACT_REPAYMENT', amountSatang: 999999 },
+    { ...base, id: 9, direction: 'OUT', amountSatang: 999999 },
+  ], new Set(), '2026-10-26')
+  assert.equal(cash.incoming, 125000)
+  assert.equal(cash.outgoing, 50000)
+  assert.equal(cash.balance, 75000)
+})
