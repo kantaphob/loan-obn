@@ -1,10 +1,17 @@
+import { Suspense } from 'react'
+import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
 import { PageContainer } from '@/components/ui/page-container'
 import { SubpageHeader } from '@/components/ui/subpage-header'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { BackupManager } from './backup-manager'
 
-export default async function BackupsPage() {
+export default function BackupsPage() {
+  return <Suspense fallback={<p role="status" className="p-6 text-sm">กำลังโหลดข้อมูลสำรอง…</p>}><BackupsContent /></Suspense>
+}
+
+async function BackupsContent() {
+  await connection()
   const user = await getCurrentUser()
   if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) redirect('/dashboard')
 
@@ -14,7 +21,7 @@ export default async function BackupsPage() {
         <SubpageHeader
           eyebrow="Administration"
           title="สำรองข้อมูล"
-          description="สร้างและดาวน์โหลดสำเนาฐานข้อมูล SQLite"
+          description="สำรองฐานข้อมูล PostgreSQL พร้อมไฟล์แนบ และดาวน์โหลดข้อมูลสำรองเดิม"
         />
         <BackupManager />
       </PageContainer>

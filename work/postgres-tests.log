@@ -1,0 +1,170 @@
+
+> loan-obn@0.1.0 test:postgres
+> node tests/run-postgres.mjs
+
+✔ interest timing and rounding (1.075ms)
+✔ annualized interest accounts for loan duration and upfront deductions (0.084084ms)
+✔ collateral signers cover selected annex roles and deduplicate people (0.256917ms)
+Save contract failed: Error: กรุณาเลือกวิธีลงนามและชุดเอกสาร
+    at saveContract (/Users/ohmz/Documents/loan-obn/app/dashboard/contracts/actions.ts:95:203)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async TestContext.<anonymous> (/Users/ohmz/Documents/loan-obn/tests/contracts.test.ts:63:14)
+    at async Test.run (node:internal/test_runner/test:1409:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+✔ save, retry, validation and persisted listing (201.8425ms)
+✔ filled contract document endpoint returns a private PDF and rejects invalid documents (315.135417ms)
+Contract e-signature capture failed: ผู้ลงนามรายนี้ลงนามแล้ว
+✔ on-screen signatures are persisted and embedded in the downloadable PDF (314.822792ms)
+Save contract failed: Error: จำนวนพยานไม่ถูกต้อง
+    at saveContract (/Users/ohmz/Documents/loan-obn/app/dashboard/contracts/actions.ts:96:92)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async TestContext.<anonymous> (/Users/ohmz/Documents/loan-obn/tests/contracts.test.ts:168:14)
+    at async Test.run (node:internal/test_runner/test:1409:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+Save contract failed: Error: จำนวนพยานในสัญญาค้ำประกันไม่ถูกต้อง
+    at saveContract (/Users/ohmz/Documents/loan-obn/app/dashboard/contracts/actions.ts:97:110)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async TestContext.<anonymous> (/Users/ohmz/Documents/loan-obn/tests/contracts.test.ts:169:14)
+    at async Test.run (node:internal/test_runner/test:1409:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+✔ witness choices persist for each document package and invalid counts are rejected (43.685792ms)
+Contract e-signature capture failed: กรุณาระบุชื่อ-นามสกุลพยานไม่เกิน 150 ตัวอักษร
+Contract e-signature capture failed: พยานคนนี้ลงนามแล้ว
+Contract e-signature capture failed: สัญญานี้ไม่มีพยานตำแหน่งนี้
+✔ witnesses sign by name and are required before signed PDF download (125.334ms)
+Save contract failed: Error: กรุณาระบุวันที่จ่ายเงินและวันครบกำหนด โดยวันครบกำหนดต้องไม่ก่อนวันที่จ่ายเงิน
+    at saveContract (/Users/ohmz/Documents/loan-obn/app/dashboard/contracts/actions.ts:100:96)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async TestContext.<anonymous> (/Users/ohmz/Documents/loan-obn/tests/contracts.test.ts:226:14)
+    at async Test.run (node:internal/test_runner/test:1409:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+✔ payment schedules reject invalid dates and persist without recording payment (6.738042ms)
+Save contract failed: Error: รายละเอียดหลักประกันต้องไม่เกิน 2,000 ตัวอักษร
+    at saveContract (/Users/ohmz/Documents/loan-obn/app/dashboard/contracts/actions.ts:101:156)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async TestContext.<anonymous> (/Users/ohmz/Documents/loan-obn/tests/contracts.test.ts:236:14)
+    at async Test.run (node:internal/test_runner/test:1409:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+✔ optional collateral text persists and empty text stays blank (10.027417ms)
+✔ structured collateral agreement details persist with the contract (404.754125ms)
+✔ collateral agreement rate fields stay blank and do not affect principal-only balances (6.856ms)
+✔ collateral agreement has a separate e-signature set based on its selected parties (653.667083ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2422.35225
+✔ amount and date validation (9.072375ms)
+✔ daily penalty starts after due date, allocates fees first, and stops after settlement (1.208584ms)
+(node:8972) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ contract cash lifecycle, retries, overpayment, voids and permissions (350.542041ms)
+✔ historical balances exclude disbursements after the reporting date (0.32075ms)
+✔ receivables paginate on the server, preserve global totals and load history separately (35.004042ms)
+✔ receivables sort oldest overdue first and classify all four aging ranges (11.217125ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 662.817833
+✔ balances exclude future disbursements and penalties before funding (9.459666ms)
+✔ post-commit effects cover standalone, callback and array transactions and exclude rollback (111.404875ms)
+(node:8990) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ credit reservation, duplicate references and slip hashes, edits, void and retry (157.690625ms)
+Google sync ledger:1 failed: offline
+Google sync contract:3 failed: offline
+Google sync ledger:2 failed: offline
+Google sync contract:1 failed: offline
+Google sync ledger:3 failed: offline
+Google sync ledger:4 failed: offline
+Google sync contract:2 failed: offline
+Google sync borrower:1 failed: offline
+✔ Google sync failures persist, retry succeeds, and newer jobs are not overwritten (65.904083ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 595.077667
+(node:8996) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ review shows prior debts and reservations, then approves, edits safely and pays once with optional proof (280.921667ms)
+✔ rejection requires an admin, current review and reason; releases reservation and retains audit without paying (75.771791ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 636.826584
+(node:9003) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ monthly reviews, allocation, carryforward and annual closing stay separate and immutable (675.851792ms)
+✔ balanced closing journal 100.25/40.10 (0.614042ms)
+✔ balanced closing journal 40/100 (0.066417ms)
+✔ balanced closing journal 100/100 (0.090833ms)
+✔ all temporary accounts close to zero; dividends do not reduce profit (0.115875ms)
+✔ loss and drawings close to capital independently (0.140208ms)
+✔ distribution-only period has zero profit and no income summary movement (0.075666ms)
+✔ invalid, duplicate and reserved balances rejected (0.126833ms)
+✔ closed dates cannot be inserted, changed, moved out or deleted; journals immutable (6.651125ms)
+✔ month boundaries include leap days and roll over years (1.337333ms)
+✔ reviewed year with no temporary balances creates no fictitious closing lines (0.120125ms)
+✔ adjusted trial balance, income, position and owner movement reconcile independently (0.786875ms)
+✔ reject unbalanced adjustments, unknown codes, duplicate trial accounts and two-sided balances (0.159708ms)
+✔ negative opening equity and debit revenue balances remain valid accounting balances (0.089417ms)
+✔ N/A items require explanations and incomplete checklists cannot close (0.139959ms)
+✔ downloaded ZIP is readable by the independent standard ZIP reader and preserves UTF-8 evidence (42.6735ms)
+✔ prior year closing becomes new year opening without being counted as income again (1.167542ms)
+✔ December to January and later month openings remain continuous (0.188125ms)
+✔ negative closing balances, empty history, voids and future transactions are handled without resets (0.100875ms)
+✔ overlapping source years do not silently double-count bank archive and live ledger (0.451667ms)
+✔ multiple historical accounts in a year require source reconciliation (0.211584ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 986.610167
+✔ assets, independent debt, immutable terms, audit snapshots and ledger reconciliation persist atomically (367.60125ms)
+✔ PROPERTY derives land plus BOQ costs and rejects duplicate or missing sources and copied costs (12.050416ms)
+✔ land growth compounds the supplied rate and supports zero and negative assumptions (0.187792ms)
+✔ masterdata categories support hierarchy and inherited asset detail forms (0.096459ms)
+✔ category writes reject inactive or unknown selections but preserve legacy assignments (0.221041ms)
+✔ contract reference has correct loan, period rates and payments (0.451875ms)
+✔ actual bank interest is preserved and retention carries remaining principal (0.368542ms)
+✔ invalid payment splits, duplicate payments, rate gaps and historic cutoff are rejected (0.749333ms)
+✔ cash vehicle supports nested decorations without a loan (0.096333ms)
+✔ GHB import only reads paid rows, preserves blank dates and handles quoted money (0.208167ms)
+✔ extra principal reduces interest and payoff time; negative amortization is surfaced (0.279417ms)
+✔ construction BOQ is the main house cost once, replacement excludes cancelled budget and preserves actual spend (0.103792ms)
+✔ legacy JSON separates the debt without changing prices or payment amounts (0.169916ms)
+✔ real payments cannot be future-dated and never change house cost (0.3635ms)
+✔ the server integrity guard freezes contract terms once payments exist (0.178833ms)
+✔ ledger links reconcile amount and date and cannot be counted twice (0.242875ms)
+✔ manual land prices retain dated history without growth settings (0.405583ms)
+✔ asset codes follow category families and reserve archived and existing numbers (0.195541ms)
+✔ Property supports land-only and multiple parcels/buildings without copying costs (0.829917ms)
+✔ property presentation separates capital, expenses, project spending and refunds (5.314667ms)
+✔ completed project costs appear once in additions while payments stay separate (0.133667ms)
+✔ appraisals exclude asking and sale prices, preserve coverage and require dated evidence (5.27875ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 617.036583

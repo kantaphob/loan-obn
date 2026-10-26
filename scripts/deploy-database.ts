@@ -5,7 +5,12 @@ import { spawnSync } from 'node:child_process'
 import { getDatabaseUrl } from '../lib/database-config'
 import { bootstrapEmptyDatabase } from '../lib/migration-bootstrap.mjs'
 
-const filename = getDatabaseUrl().slice(5)
+const databaseUrl = getDatabaseUrl()
+if (!databaseUrl.startsWith('file:')) {
+  const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy', '--config', 'prisma7.config.ts'], { stdio: 'inherit' })
+  process.exit(result.status ?? 1)
+}
+const filename = databaseUrl.slice(5)
 const dev = process.argv.includes('--dev')
 function prisma(args: string[], database = filename) {
   const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', ...args, '--config', 'prisma7.config.ts'], { env: { ...process.env, DATABASE_URL: `file:${database}` }, encoding: 'utf8', ...(args[0] === 'migrate' && args[1] === 'dev' ? { stdio: 'inherit' as const } : {}) })

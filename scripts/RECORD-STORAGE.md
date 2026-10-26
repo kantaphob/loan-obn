@@ -1,6 +1,6 @@
 # Record storage
 
-SQLite is the source of truth at `private/database/ProgressSQL.db` (or `DATABASE_URL`).
+PostgreSQL configured by `DATABASE_URL` is the source of truth. Legacy SQLite files have been retired.
 The custom server exports current records at startup and after mutation requests.
 Each generated file follows `private/<category>/<code>/<code>-profile.json`.
 Numeric IDs use at least four digits: `LN-0001`, `BR-0001`. Existing database IDs
@@ -23,9 +23,9 @@ an interrupted export. Synchronization failures are logged; the committed databa
 remains authoritative and startup/manual synchronization repairs the snapshots.
 Database backups remain in `private/backups`; JSON exports do not replace backups.
 
-Successful API mutations create an automatic SQLite snapshot at
-`private/backups/automatic/ProgressSQL-latest.db` and refresh one dated snapshot
-per day. Borrower card and QR images stored outside SQLite are embedded in the
+Successful API mutations create an automatic PostgreSQL archive at
+`private/backups/automatic/ProgressSQL-latest.tar` and refresh one dated snapshot
+per day. Borrower card and QR images stored outside PostgreSQL are embedded in the
 snapshot so it can be restored on its own. Snapshots use owner-only filesystem
 permissions. If `LOAN_DRIVE_BACKUP_DIR` points to an existing, writable folder in
 Google Drive for desktop's local My Drive, the latest and dated snapshots are

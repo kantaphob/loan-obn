@@ -8,7 +8,7 @@ const directory = mkdtempSync(path.join(tmpdir(), 'loan-review-test-'))
 const filename = path.join(directory, 'test.db')
 const db = new Database(filename)
 // Build fixtures from the current schema, including migrations authored out of order.
-const schema = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'diff', '--from-empty', '--to-schema', 'prisma/schema.prisma', '--script', '--config', 'prisma7.config.ts'], { encoding: 'utf8' })
+const schema = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'diff', '--from-empty', '--to-schema', 'prisma/schema.sqlite.prisma', '--script', '--config', 'prisma7.config.ts'], { encoding: 'utf8' })
 if (schema.status !== 0) throw new Error(schema.stderr || 'Cannot prepare fixture schema')
 db.exec(schema.stdout)
 db.close()

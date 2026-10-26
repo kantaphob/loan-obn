@@ -8,6 +8,7 @@
 .ledger-year-current small { font-size: 10px; color: #6e8db5; }
 .ledger-year-history { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border: 1px solid #dce6f0; border-radius: 10px; color: #547195; background: #ffffffc9; text-decoration: none; font-size: 11px; transition: background .15s, border-color .15s; }
 .ledger-year-history:hover { border-color: #bfd3eb; background: #edf5ff; }
+.ledger-year-tag { margin-left: 4px; padding: 2px 6px; border-radius: 999px; color: #71839b; background: #edf2f7; font-size: 9px; font-weight: 500; }
 .ledger-directory-caption { display: flex; justify-content: space-between; padding: 12px 20px; font-size: 10px; color: #94a0b0; background: #f9fbfd; }
 .ledger-directory-table { width: 100%; min-width: 900px; text-align: left; border-collapse: collapse; font-size: 12px; color: #42546b; }
 .ledger-directory-table thead { background: #eff4f9; }

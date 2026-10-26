@@ -17,7 +17,7 @@ export async function GET(_request: Request, { params }: RouteContext<'/api/admi
   const stream = Readable.toWeb(createReadStream(backup.fullPath)) as ReadableStream<Uint8Array>
   return new Response(stream, {
     headers: {
-      'Content-Type': 'application/vnd.sqlite3',
+      'Content-Type': filename.endsWith('.tar') ? 'application/x-tar' : 'application/vnd.sqlite3',
       'Content-Length': String(backup.sizeBytes),
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'private, no-store',

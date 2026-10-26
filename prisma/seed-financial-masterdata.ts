@@ -8,6 +8,12 @@ const adapter = new PrismaBetterSqlite3({
 const prisma = new PrismaClient({ adapter })
 
 const financialCategories = [
+  { code: 'BANK_LOAN_LAND_RECEIVED', nameTh: 'รับเงินกู้ธนาคาร - ที่ดิน', nameEn: 'Bank land loan received', group: 'LIABILITY', direction: 'IN', sortOrder: 331 },
+  { code: 'BANK_LOAN_HOUSE_RECEIVED', nameTh: 'รับเงินกู้ธนาคาร - บ้าน', nameEn: 'Bank house loan received', group: 'LIABILITY', direction: 'IN', sortOrder: 332 },
+  { code: 'LAND_PURCHASE_PAYMENT', nameTh: 'จ่ายค่าซื้อที่ดิน', nameEn: 'Land purchase payment', group: 'ASSET', direction: 'OUT', sortOrder: 360 },
+  { code: 'CONTRACTOR_PROGRESS_PAYMENT', nameTh: 'จ่ายค่างวดงานผู้รับเหมา', nameEn: 'Contractor progress payment', group: 'ASSET', direction: 'OUT', sortOrder: 350 },
+  { code: 'BANK_LOAN_RECEIVED', nameTh: 'รับเงินกู้ธนาคาร', nameEn: 'Bank loan received', group: 'LIABILITY', direction: 'IN', sortOrder: 330 },
+  { code: 'BANK_LOAN_PAYMENT', nameTh: 'จ่ายชำระหนี้ธนาคาร', nameEn: 'Bank loan payment', group: 'LIABILITY', direction: 'OUT', sortOrder: 340 },
   { code: 'OPENING_CAPITAL', nameTh: 'เงินทุนเริ่มต้น', nameEn: 'Opening capital', group: 'CAPITAL', direction: 'IN', sortOrder: 10 },
   { code: 'CAPITAL_INCREASE', nameTh: 'เงินทุนเพิ่ม', nameEn: 'Additional capital', group: 'CAPITAL', direction: 'IN', sortOrder: 20 },
   { code: 'CAPITAL_WITHDRAWAL', nameTh: 'ถอนทุน', nameEn: 'Capital withdrawal', group: 'CAPITAL', direction: 'OUT', sortOrder: 30 },
@@ -16,6 +22,7 @@ const financialCategories = [
   { code: 'PRINCIPAL_REPAYMENT', nameTh: 'รับชำระเงินต้น', nameEn: 'Principal repayment', group: 'LOAN', direction: 'IN', sortOrder: 50 },
   { code: 'INTEREST_RECEIVED', nameTh: 'รับดอกเบี้ย', nameEn: 'Interest received', group: 'INCOME', direction: 'IN', sortOrder: 60 },
   { code: 'FEE_RECEIVED', nameTh: 'รับค่าธรรมเนียม', nameEn: 'Fee received', group: 'INCOME', direction: 'IN', sortOrder: 70 },
+  { code: 'TRADE_RECEIVABLE_PAYMENT', nameTh: 'รับชำระลูกหนี้ค้างรับ', nameEn: 'Trade receivable payment', group: 'INCOME', direction: 'IN', sortOrder: 74 },
   { code: 'OTHER_INCOME', nameTh: 'รับคืนเงิน / รายรับอื่น', nameEn: 'Refunds and other income', group: 'INCOME', direction: 'IN', sortOrder: 75 },
   { code: 'LATE_FEE_RECEIVED', nameTh: 'รับค่าปรับล่าช้า', nameEn: 'Late fee received', group: 'INCOME', direction: 'IN', sortOrder: 80 },
   { code: 'OPERATING_EXPENSE', nameTh: 'ค่าใช้จ่ายดำเนินงาน', nameEn: 'Operating expense', group: 'EXPENSE', direction: 'OUT', sortOrder: 90 },

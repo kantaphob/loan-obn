@@ -6,6 +6,7 @@ import { PageContainer } from '@/components/ui/page-container'
 import { Header } from '@/components/ui/header'
 import { Card } from '@/components/ui/card'
 import { getLedger } from '../ledger/actions'
+import { capitalPosition } from '@/lib/capital'
 import { validLedgerDate, bangkokToday } from '@/lib/ledger'
 
 const money = (satang: number) => (satang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -46,6 +47,23 @@ async function AccountingContent({ searchParams }: {
   const disbursed = entries.filter(e => e.kind === 'DISBURSEMENT').reduce((total, e) => total + e.amountSatang, 0)
   const repaid = entries.filter(e => e.kind === 'REPAYMENT').reduce((total, e) => total + e.amountSatang, 0)
 
+  const endOn = to || bangkokToday()
+  const beforeOn = from ? new Date(Date.parse(`${from}T00:00:00Z`) - 86400000).toISOString().slice(0, 10) : null
+  let upfrontInterest = 0, receivedInterest = 0
+  const activeEntries = data.entries.filter(e => !e.voidedAt)
+  for (const contract of data.contracts) {
+    if (invalidRange || contract.status === 'CANCELLED') continue
+    const history = activeEntries.filter(e => e.contractId === contract.id)
+    const fundedOn = history.find(e => e.kind === 'DISBURSEMENT')?.occurredOn ?? (contract.paidAt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(contract.paidAt)) : null)
+    if (!fundedOn || fundedOn > endOn) continue
+    if (contract.interestMethod === 'INTEREST_UPFRONT' && (!from || fundedOn >= from)) upfrontInterest += contract.interestSatang
+    const position = capitalPosition(contract, history, endOn)
+    const before = beforeOn && fundedOn <= beforeOn ? capitalPosition(contract, history, beforeOn) : null
+    receivedInterest += Math.max(0, (position?.interestReceived ?? 0) - (before?.interestReceived ?? 0))
+  }
+  // Unlinked interest receipts are outside the per-contract allocation above.
+  receivedInterest += entries.filter(e => e.occurredOn <= endOn && !e.contractId && e.direction === 'IN' && e.categoryCode === 'INTEREST_RECEIVED').reduce((sum, e) => sum + e.amountSatang, 0)
+
   return <PageContainer>
     <Header title="รายงานบัญชี" eyebrow="Accounting" description="สรุปข้อมูลจริงจากรายการรับ–จ่าย โดยไม่นับรายการที่ยกเลิก" icon={<ScrollText size={21} aria-hidden="true" />} />
     <div className="space-y-5">
@@ -69,6 +87,13 @@ async function AccountingContent({ searchParams }: {
         ].map(item => <Card key={item.label} className="p-5"><p className="text-xs text-slate-600">{item.label}</p><p className={`mt-3 break-words text-2xl font-semibold tabular-nums ${item.color}`}>{money(item.amount)}</p></Card>)}
       </div>
       <p className="text-xs leading-5 text-slate-500">กระแสเงินสดสุทธิคือเงินรับหักเงินจ่าย รวมเงินปล่อยกู้และรับชำระ จึงไม่ใช่กำไรสุทธิ ส่วนยอดค้างชำระเป็นยอดปัจจุบันทุกสัญญาที่จ่ายเงินแล้ว รวมยอดยกมาและค่าปรับตามระบบ ไม่เปลี่ยนตามตัวกรองวันที่</p>
+      <Card as="section" className="min-w-0 p-5">
+        <h2 className="text-base font-semibold">ดอกเบี้ยได้รับสะสม{from || to ? 'ในช่วงที่เลือก' : ''}</h2>
+        <div className="mt-4 grid gap-5 sm:grid-cols-3">
+          {[{ label: 'รับดอกเบี้ยจากการชำระแล้ว', amount: receivedInterest }, { label: 'รับดอกเบี้ยล่วงหน้าแล้ว', amount: upfrontInterest }, { label: 'ดอกเบี้ยได้รับรวม', amount: receivedInterest + upfrontInterest }].map(item => <div key={item.label} className="min-w-0"><p className="text-xs text-slate-600">{item.label}</p><p className="mt-2 break-words text-xl font-semibold tabular-nums text-emerald-700">{money(item.amount)} บาท</p></div>)}
+        </div>
+        <p className="mt-4 text-xs leading-5 text-slate-500">ดอกล่วงหน้าคิดจากสัญญาที่จ่ายแล้ว ตามวันที่จ่ายเงิน ส่วนดอกที่รับชำระคำนวณตามลำดับตัดค่าปรับ → ดอกเบี้ย → เงินต้น รวมยอดชำระยกมาในยอดสะสม ดอกล่วงหน้าแสดงเพื่อสรุปเท่านั้น ไม่บวกซ้ำในเงินรับหรือเงินสดคงเหลือ</p>
+      </Card>
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="p-5"><h2 className="text-sm font-semibold">จ่ายเงินกู้ในช่วงที่เลือก</h2><p className="mt-2 text-xl font-semibold tabular-nums">{money(disbursed)} บาท</p></Card>
         <Card className="p-5"><h2 className="text-sm font-semibold">รับชำระตามสัญญาในช่วงที่เลือก</h2><p className="mt-2 text-xl font-semibold tabular-nums">{money(repaid)} บาท</p><p className="mt-2 text-xs text-slate-500">ยอดรับเงินจริงตาม Ledger ไม่รวมยอดยกมาที่ไม่มีรายการรับเงิน</p></Card>

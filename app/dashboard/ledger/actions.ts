@@ -1,6 +1,7 @@
 'use server'
 
 import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
+import { assertBankLoanLedgerUnlinked } from '@/lib/bank-loan-ledger'
 
 import { loadPendingContractReview, assertReviewToken } from '@/lib/pending-contract-review'
 
@@ -25,7 +26,7 @@ export async function getLedger() {
   const user = await operator()
   const [entryCount, contracts, categories, channels] = await Promise.all([
     prisma.ledgerEntry.count(),
-    prisma.loanContract.findMany({ select: { id: true, borrowerName: true, lenderName: true, netSatang: true, repaymentSatang: true, interestMethod: true, status: true, paidAt: true, repaymentDueDate: true, legacyReceivedSatang: true, legacySourceCode: true, penaltyMaxDays: true }, orderBy: { id: 'desc' } }),
+    prisma.loanContract.findMany({ select: { id: true, borrowerName: true, lenderName: true, principalSatang: true, interestSatang: true, netSatang: true, repaymentSatang: true, interestMethod: true, status: true, paidAt: true, repaymentDueDate: true, legacyReceivedSatang: true, legacySourceCode: true, penaltyMaxDays: true }, orderBy: { id: 'desc' } }),
     prisma.financialCategory.findMany({ where: { isActive: true, NOT: { code: { startsWith: 'Y2025_' } } }, orderBy: { sortOrder: 'asc' } }),
     prisma.paymentChannel.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } }),
   ])
@@ -60,6 +61,14 @@ export async function getLedger() {
     contracts: contracts.map(c => ({ ...c, paidAt: c.paidAt?.toISOString() ?? null, ...contractLedgerBalance(c, entries.filter(e => e.contractId === c.id && !e.voidedAt)) })),
   }
 }
+export async function getHistoricalLedger() {
+  await operator()
+  return prisma.historicalCashEntry.findMany({
+    where: { accountCode: 'DAILY_2025' },
+    include: { category: { select: { nameTh: true } }, channel: { select: { nameTh: true } } },
+    orderBy: [{ occurredOn: 'desc' }, { sourceRow: 'desc' }],
+  })
+}
 export async function saveLedger(input: LedgerInput, file?: File | null) {
   try {
     const user = await operator(true)
@@ -92,7 +101,7 @@ export async function saveLedger(input: LedgerInput, file?: File | null) {
       if (input.kind === 'GENERAL') {
         if (input.contractId !== null) throw new Error('รายการทั่วไปไม่สามารถผูกสัญญาได้')
         const category = await tx.financialCategory.findUnique({ where: { code: categoryCode } })
-        if (!category?.isActive || !['IN', 'OUT'].includes(direction) || category.direction !== direction || category.group === 'LOAN' || ['INTEREST_RECEIVED'].includes(category.code)) throw new Error('กรุณาเลือกหมวดรับ–จ่ายทั่วไปให้ตรงประเภทรายการ')
+        if (!category?.isActive || !['IN', 'OUT'].includes(direction) || category.direction !== direction || category.group === 'LOAN' || ['INTEREST_RECEIVED', 'TRADE_RECEIVABLE_PAYMENT'].includes(category.code)) throw new Error('กรุณาเลือกหมวดรับ–จ่ายทั่วไปให้ตรงประเภทรายการ')
         categoryName = category.nameTh
       } else {
         if (!Number.isSafeInteger(input.contractId) || !input.contractId || input.contractId < 1) throw new Error('กรุณาเลือกสัญญา')
@@ -149,7 +158,7 @@ export async function saveLedger(input: LedgerInput, file?: File | null) {
         publishCreditBureauChanged()
       }
     }
-    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
+    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     return { success: true }
   } catch (error) {
     return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง' }
@@ -162,6 +171,7 @@ export async function voidLedger(id: number, reason: string) {
     await prisma.$transaction(async tx => {
       const entry = await tx.ledgerEntry.findUnique({ where: { id } })
       if (!entry || entry.voidedAt) throw new Error('ไม่พบรายการ หรือรายการถูกยกเลิกแล้ว')
+      await assertBankLoanLedgerUnlinked(tx, entry.id)
       await assertAccountingDateOpen(tx, entry.occurredOn)
       if (entry.contractId) {
         const others = await tx.ledgerEntry.findMany({ where: { contractId: entry.contractId, voidedAt: null, id: { not: id } } })
@@ -178,7 +188,7 @@ export async function voidLedger(id: number, reason: string) {
       await syncGoogleContract(saved.contractId)
       publishCreditBureauChanged()
     }
-    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
+    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     return { success: true }
   } catch (error) { return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'ยกเลิกไม่สำเร็จ กรุณาลองใหม่' } }
 }
@@ -197,16 +207,24 @@ export async function editLedger(input: {
     await prisma.$transaction(async tx => {
       const entry = await tx.ledgerEntry.findUnique({ where: { id: input.id }, include: { _count: { select: { revisions: true } } } })
       if (!entry || entry.voidedAt) throw new Error('ไม่พบรายการ หรือรายการถูกยกเลิกแล้ว')
+      await assertBankLoanLedgerUnlinked(tx, entry.id)
       await assertAccountingDateOpen(tx, entry.occurredOn, input.occurredOn)
       if (entry._count.revisions !== input.expectedRevision) throw new Error('รายการถูกแก้ไขโดยคำขออื่นแล้ว กรุณาโหลดข้อมูลใหม่')
       await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: input.channelCode, excludeId: input.id })
       const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
       if (!channel?.isActive) throw new Error('กรุณาเลือกช่องทางที่เปิดใช้งาน')
       let direction = entry.direction, categoryCode = entry.categoryCode, categoryName = entry.categoryName
-      if (!entry.contractId && !entry.payableId) {
+      if (entry.receivableId) {
+        const receivable = await tx.tradeReceivable.findUniqueOrThrow({ where: { id: entry.receivableId }, include: { payments: { where: { voidedAt: null, id: { not: entry.id } } } } })
+        const remaining = receivable.amountSatang - receivable.payments.reduce((sum, payment) => sum + payment.amountSatang, 0)
+        if (input.direction !== 'IN' || input.categoryCode !== 'TRADE_RECEIVABLE_PAYMENT' || input.occurredOn < receivable.occurredOn || amountSatang > remaining) throw new Error('รายการนี้ผูกกับลูกหนี้ค้างรับ ต้องเป็นเงินรับและไม่เกินยอดค้าง หากข้อมูลผิดให้ยกเลิกรายการแล้วบันทึกใหม่')
+        const category = await tx.financialCategory.findUnique({ where: { code: 'TRADE_RECEIVABLE_PAYMENT' } })
+        if (!category?.isActive) throw new Error('หมวดรับชำระลูกหนี้ค้างรับยังไม่พร้อมใช้งาน')
+        direction = 'IN'; categoryCode = category.code; categoryName = category.nameTh
+      } else if (!entry.contractId && !entry.payableId) {
         if (entry.kind !== 'GENERAL') throw new Error('รายการประเภทนี้ยังไม่รองรับการแก้ไข')
         const category = await tx.financialCategory.findUnique({ where: { code: input.categoryCode } })
-        if (!category?.isActive || !['IN', 'OUT'].includes(input.direction) || category.direction !== input.direction || category.group === 'LOAN' || category.code === 'INTEREST_RECEIVED') throw new Error('กรุณาเลือกหมวดรับ–จ่ายทั่วไปให้ถูกต้อง')
+        if (!category?.isActive || !['IN', 'OUT'].includes(input.direction) || category.direction !== input.direction || category.group === 'LOAN' || ['INTEREST_RECEIVED', 'TRADE_RECEIVABLE_PAYMENT'].includes(category.code)) throw new Error('กรุณาเลือกหมวดรับ–จ่ายทั่วไปให้ถูกต้อง')
         direction = input.direction; categoryCode = category.code; categoryName = category.nameTh
       } else if (input.direction !== entry.direction || input.categoryCode !== entry.categoryCode) throw new Error('รายการผูกสัญญาหรือบิลต้องใช้ประเภทและหมวดเดิม หากผูกผิดให้ยกเลิกแล้วบันทึกใหม่')
       if (entry.payableId) {
@@ -241,7 +259,7 @@ export async function editLedger(input: {
       await syncGoogleContract(saved.contractId)
       publishCreditBureauChanged()
     }
-    for (const path of ['/dashboard/ledger', '/dashboard/repayments', '/dashboard/contracts', '/dashboard/ap']) revalidatePath(path)
+    for (const path of ['/dashboard/ledger', '/dashboard/repayments', '/dashboard/receivables', '/dashboard/contracts', '/dashboard/ap']) revalidatePath(path)
     return { success: true }
   } catch (error) { return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'แก้ไขไม่สำเร็จ กรุณาลองใหม่' } }
 }

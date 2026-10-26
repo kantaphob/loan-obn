@@ -1,5 +1,7 @@
 'use client'
 
+import { loanAssetIds } from '@/app/thing/_shared/model'
+
 import { useState } from 'react'
 import { BadgeDollarSign, Boxes, Pencil, Plus, Trash2, RotateCcw, History, Search } from 'lucide-react'
 import { PageContainer } from '@/components/ui/page-container'
@@ -7,14 +9,14 @@ import { Header } from '@/components/ui/header'
 import { Card } from '@/components/ui/card'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { createLandDevelopmentPayment, saveAssetWorkspace } from '@/app/thing/_shared/actions'
+import { createBuildingProjectPayment, createLandDevelopmentPayment, saveAssetWorkspace } from '@/app/thing/_shared/actions'
 import { categoryChain, categoryKind, categoryPath, type AssetCategory } from '../categories'
 import { money, newHome, today, type AssetData, type Home } from '@/app/thing/_shared/model'
 import { AssetForm, type AssetFormValues } from '@/app/thing/asset/_components/asset-form'
 import { LandDevelopmentManager, type DevelopmentPaymentDraft } from '@/app/thing/asset/_components/land-improvement-manager'
 import { VehicleManager } from '@/app/thing/asset/_components/vehicle-manager'
-import { BuildingManager } from '@/app/thing/asset/_components/building-manager'
-import type { LandDevelopment, LedgerOption } from '@/app/thing/_shared/model'
+import { BuildingManager, type BuildingProjectPaymentDraft } from '@/app/thing/asset/_components/building-manager'
+import type { BuildingProject, LandDevelopment, LedgerOption } from '@/app/thing/_shared/model'
 
 type Props = { initial: AssetData; categories: AssetCategory[]; canWrite: boolean; ledger: LedgerOption[]; financialCategories: { code: string; nameTh: string; direction: string }[]; channels: { code: string; nameTh: string }[]; mode?: 'masterdata' | 'basic'; view?: 'active' | 'archived' }
 
@@ -67,7 +69,7 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
   const [assetFilter, setAssetFilter] = useState<'all' | 'land' | 'building' | 'vehicle' | 'other'>('all')
   const [selectedAssetId, setSelectedAssetId] = useState(initial.homes[0]?.id ?? '')
   const showArchived = view === 'archived'
-  const usedLedgerIds = [...data.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(payment => payment.ledgerEntryId))]), ...data.loans.flatMap(loan => loan.payments.map(payment => payment.ledgerEntryId))].filter((id): id is number => Boolean(id))
+  const usedLedgerIds = [...data.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(payment => payment.ledgerEntryId)), ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(payment => payment.ledgerEntryId))]), ...data.loans.flatMap(loan => loan.payments.map(payment => payment.ledgerEntryId))].filter((id): id is number => Boolean(id))
   const activeAssets = data.homes.filter(item => showArchived ? Boolean(item.archivedOn) : !item.archivedOn)
   const visible = activeAssets.filter(item => {
     const isLand = categoryChain(item.categoryCode, categories).some(category => category.code === 'LAND')
@@ -166,6 +168,17 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
     } catch (caught) { const message = caught instanceof Error ? caught.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ'; setError(message); throw new Error(message) }
     finally { setBusy(false) }
   }
+  async function createProjectPayment(buildingId: string, project: BuildingProject, payment: BuildingProjectPaymentDraft) {
+    if (busy || !canWrite) throw new Error('ไม่สามารถบันทึกรายการนี้ได้')
+    setBusy(true); setError('')
+    try {
+      const result = await createBuildingProjectPayment({ requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID(), buildingId, projectId: project.id, direction: payment.direction, categoryCode: payment.categoryCode, amount: payment.amount, occurredOn: payment.occurredOn, channelCode: payment.channelCode, reference: payment.reference, note: payment.note, paymentType: payment.paymentType }, payment.slip)
+      if ('error' in result) throw new Error(result.error || 'บันทึกรายการรับ–จ่ายไม่สำเร็จ')
+      setData(result.data)
+      setNotice(`บันทึก${payment.direction === 'IN' ? 'รายรับคืน' : 'รายจ่าย'} ${money(Number(payment.amount))} บาทในรับ–จ่ายแล้ว · TX-${String(result.entryId).padStart(6, '0')} · ผูกกับ ${project.name}`)
+    } catch (caught) { const message = caught instanceof Error ? caught.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ'; setError(message); throw new Error(message) }
+    finally { setBusy(false) }
+  }
   return <PageContainer>
     <Header title={showArchived ? 'รายการที่ลบ' : mode === 'basic' ? 'Asset' : 'สินทรัพย์'} icon={showArchived ? <Trash2 size={21} /> : <Boxes size={21} />} description={showArchived ? 'สินทรัพย์ที่ลบไว้และสามารถกู้คืนได้' : 'แสดงประเภทและหมวดหมู่ตาม Masterdata'} actions={canWrite && !showArchived ? <Button variant="primary" disabled={busy} onClick={() => show()}><Plus size={15} />เพิ่มสินทรัพย์</Button> : undefined} />
     <p role="status" className="mb-3 text-xs text-slate-500">{notice || `${visible.length}${visible.length !== activeAssets.length ? ` จาก ${activeAssets.length}` : ''} รายการ${showArchived ? 'ที่ลบ' : ''}`}</p>
@@ -186,7 +199,7 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
         const categoryLabel = chain.at(-1)?.nameTh ?? 'ไม่ระบุหมวดหมู่'
         const assetActions = <div className="flex flex-wrap gap-2">{isLand && !showArchived ? <Button disabled={busy} onClick={() => setPriceHistoryAsset(item)} aria-label={`ประวัติราคา ${item.name}`}><History size={14} />ประวัติราคา</Button> : null}{canWrite && <>{showArchived ? <Button disabled={busy} onClick={() => archive(item, false)} aria-label={`กู้คืน ${item.name}`}><RotateCcw size={14} />กู้คืน</Button> : <>{isLand ? <Button disabled={busy} onClick={() => show(item, true)} aria-label={`อัปเดตราคา ${item.name}`}><BadgeDollarSign size={14} />อัปเดตราคา</Button> : null}<Button disabled={busy} onClick={() => show(item)} aria-label={`แก้ไขหมวดหมู่ ${item.name}`}><Pencil size={14} />แก้ไข</Button><Button variant="danger" disabled={busy} onClick={() => { setError(''); setDeleting(item) }} aria-label={`ลบ ${item.name}`}><Trash2 size={14} />ลบ</Button></>}</>}</div>
         const assetSummary = <div className="min-w-0 flex-1"><h2 className="m-0 text-base font-semibold text-slate-900">{item.name}</h2><div className="mt-1.5 flex flex-wrap items-center gap-1.5"><span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">{item.assetCode ?? 'รอสร้างรหัส'}</span><span title={categoryPath(item.categoryCode, categories)} className="max-w-full truncate rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{categoryLabel}</span></div>{isLand ? <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600"><div className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><span className="text-xs text-slate-500">มูลค่าประเมิน</span><strong className="text-base text-slate-900">{latestLandPrice(item) ? `${money(latestLandPrice(item)!)} บาท` : 'ยังไม่ระบุ'}</strong>{(() => { const growth = landPriceGrowth(item); return typeof growth.difference === 'number' && typeof growth.percent === 'number' ? <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${growth.difference > 0 ? 'bg-emerald-50 text-emerald-700' : growth.difference < 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-200 text-slate-600'}`}>{growth.difference > 0 ? '+' : ''}{growth.percent.toLocaleString('th-TH', { maximumFractionDigits: 2 })}%</span> : <span className="text-xs text-slate-500">{growth.message}</span> })()}</div><p className="mb-0 mt-1 text-xs text-slate-500">ต้นทุนรวม {money(landAssetCostTotal(item).total)} · ราคาซื้อ {money(item.purchasePrice)} + ปรับปรุง {money(landAssetCostTotal(item).improvements)} บาท</p></div> : null}{item.archivedOn ? <p className="mb-0 mt-2 text-xs text-slate-500">ลบเมื่อ {item.archivedOn}</p> : null}</div>
-        return <section className="min-w-0 p-4 sm:p-5" aria-label={`รายละเอียด ${item.name}`}>{isLand && !showArchived ? <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.72fr)_minmax(0,1.5fr)]"><div className="flex flex-col items-start gap-3">{assetSummary}{assetActions}</div><LandDevelopmentManager compact landId={item.id} landName={item.name} rows={item.landDevelopments ?? []} busy={busy} canWrite={canWrite} error={error} ledger={ledger} usedLedgerIds={usedLedgerIds} assets={data.homes} financialCategories={financialCategories} channels={channels} onSave={improvement => saveLandDevelopment(item.id, improvement)} onCreatePayment={(work, payment) => createDevelopmentPayment(item.id, work, payment)} onRecordActualCost={(workId, record) => recordDevelopmentCost(item.id, workId, record)} /></div> : <><div className="flex flex-wrap items-start justify-between gap-3">{assetSummary}{assetActions}</div>{item.kind === 'house' && !showArchived ? <BuildingManager asset={item} canWrite={canWrite} busy={busy} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} /> : null}{item.kind === 'vehicle' && !showArchived ? <VehicleManager asset={item} canWrite={canWrite} busy={busy} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} /> : null}</>}</section>
+        return <section className="min-w-0 p-4 sm:p-5" aria-label={`รายละเอียด ${item.name}`}>{isLand && !showArchived ? <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.72fr)_minmax(0,1.5fr)]"><div className="flex flex-col items-start gap-3">{assetSummary}{assetActions}</div><LandDevelopmentManager compact landId={item.id} landName={item.name} rows={item.landDevelopments ?? []} busy={busy} canWrite={canWrite} error={error} ledger={ledger} usedLedgerIds={usedLedgerIds} assets={data.homes} financialCategories={financialCategories} channels={channels} onSave={improvement => saveLandDevelopment(item.id, improvement)} onCreatePayment={(work, payment) => createDevelopmentPayment(item.id, work, payment)} onRecordActualCost={(workId, record) => recordDevelopmentCost(item.id, workId, record)} /></div> : <><div className="flex flex-wrap items-start justify-between gap-3">{assetSummary}{assetActions}</div>{item.kind === 'house' && !showArchived ? <BuildingManager asset={item} canWrite={canWrite} busy={busy} ledger={ledger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} onCreateProjectPayment={(project, payment) => createProjectPayment(item.id, project, payment)} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} /> : null}{item.kind === 'vehicle' && !showArchived ? <VehicleManager asset={item} canWrite={canWrite} busy={busy} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} /> : null}</>}</section>
       })() : <section className="grid min-h-48 place-items-center p-6 text-sm text-slate-500">เลือกสินทรัพย์จากรายการทางซ้าย</section>}
     </div> : null}
     <Modal open={open} title={priceOnly ? `อัปเดตราคา · ${editing?.name ?? ''}` : editing ? 'แก้ไขสินทรัพย์' : 'เพิ่มสินทรัพย์'} onClose={() => { if (!busy) setOpen(false) }}>
@@ -197,7 +210,7 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
     </Modal>
     <Modal open={Boolean(deleting)} title="ยืนยันลบสินทรัพย์" onClose={() => { if (!busy) setDeleting(null) }}>
       <p className="text-sm leading-7">ต้องการลบ “{deleting?.name}” ออกจากรายการสินทรัพย์หรือไม่? สามารถกู้คืนได้จาก “รายการที่ลบ”</p>
-      {deleting && data.loans.some(loan => loan.assetId === deleting.id) ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-800">สินทรัพย์นี้เชื่อมกับเงินกู้ธนาคาร ยอดหนี้และประวัติชำระจะยังคงอยู่</p> : null}
+      {deleting && data.loans.some(loan => loanAssetIds(loan).includes(deleting.id)) ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-800">สินทรัพย์นี้เชื่อมกับเงินกู้ธนาคาร ยอดหนี้และประวัติชำระจะยังคงอยู่</p> : null}
       {error ? <p role="alert" className="mt-3 text-xs text-rose-600">{error}</p> : null}
       <div className="mt-5 flex justify-end gap-2"><Button disabled={busy} onClick={() => setDeleting(null)}>ยกเลิก</Button><Button variant="danger" disabled={busy} onClick={() => deleting && archive(deleting, true)}>{busy ? 'กำลังลบ…' : 'ยืนยันลบ'}</Button></div>
     </Modal>

@@ -16,7 +16,7 @@ await app.prepare()
 const handleUpgrade = app.getUpgradeHandler()
 
 const recordDatabaseUrl = process.env.DATABASE_URL ?? 'file:./private/database/ProgressSQL.db'
-syncRecordFiles(recordDatabaseUrl)
+await syncRecordFiles(recordDatabaseUrl)
 const server = createServer((request, response) => {
   return handle(request, response)
 })

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { initialData, balance, forecast, ghbPayments, newHome, assetCosts, propertyCosts, propertyTotalCost, propertyAssetIds, outstanding, migrateAssetData } from '../app/thing/_shared/model'
+import { loanAssetIds } from '../app/thing/_shared/model'
 import { validateHistory, validateLedgerLinks } from '../app/thing/_shared/integrity'
 import { projectLandValue } from '../app/thing/asset/land-value'
 import { validateAssetData } from '../app/thing/_shared/validation'
@@ -123,11 +124,11 @@ test('extra principal reduces interest and payoff time; negative amortization is
   assert.equal(result.rows.length, 1); assert.ok(result.remaining > r.opening)
 })
 
-test('BOQ is the main house cost once, replacement excludes cancelled budget and preserves actual spend', () => {
+test('construction BOQ is the main house cost once, replacement excludes cancelled budget and preserves actual spend', () => {
   const home = initialData().homes[0]; home.costSource = 'boq'; home.purchasePrice = 999999
   home.boq = [
     { id: 'old', category: 'ครัว', name: 'เคาน์เตอร์เดิม', quantity: 1, price: 20000, labor: 0, paid: 20000, spec: '', unit: 'งาน', vendor: '', reference: '', cancelled: true },
-    { id: 'built', category: 'ครัว', name: 'บิวท์อินใหม่', quantity: 1, price: 95000, labor: 0, paid: 0, spec: '', unit: 'งาน', vendor: '', reference: '', replacesId: 'old', scope: 'builtin' },
+    { id: 'built', category: 'ครัว', name: 'บิวท์อินใหม่', quantity: 1, price: 95000, labor: 0, paid: 0, spec: '', unit: 'งาน', vendor: '', reference: '', replacesId: 'old', scope: 'construction' },
   ]
   home.items = [{ id: 'counter', room: home.rooms[0], name: 'เคาน์เตอร์', quantity: 1, price: 95000, size: '', shop: '', purchasedOn: '', warrantyStart: '', warrantyMonths: 0, warrantyUntil: '', notes: '', boqId: 'built' }]
   assert.deepEqual(assetCosts(home), { main: 95000, boq: 95000, additions: 0, total: 95000 })
@@ -226,4 +227,143 @@ test('Property supports land-only and multiple parcels/buildings without copying
   delete data.properties[0].postalCode
   data.properties[0].landId = a.id
   assert.throws(() => validateAssetData(data), /รูปแบบเดียว/)
+})
+
+test('loan drawdowns determine actual balance and payments separate fees and extra principal', () => {
+  const data = initialData(); const loan = data.loans[0]; const r = loan.rounds[0]
+  r.effectiveOn = '2020-01-01'
+  loan.disbursements = [{ id: 'draw-test', date: '2020-01-02', amount: 100000, reference: 'DRAW-1', notes: '' }]
+  loan.payments = [{ id: 'payment-test', roundId: r.id, date: '2020-02-01', amount: 12500, principal: 11000, interest: 1000, fee: 300, penalty: 200, extraPrincipal: 10000, reference: 'SLIP-1' }]
+  validateAssetData(data)
+  assert.equal(outstanding(loan, '2020-01-01'), 0)
+  assert.equal(outstanding(loan, '2020-01-02'), 100000)
+  assert.equal(outstanding(loan, '2020-02-01'), 89000)
+  assert.equal(balance(loan, r), 89000)
+  const bad = structuredClone(data); bad.loans[0].payments[0].amount = 12000
+  assert.throws(() => validateAssetData(bad), /ค่าธรรมเนียม/)
+  const beforeDraw = structuredClone(data); beforeDraw.loans[0].payments[0].date = '2020-01-01'
+  assert.throws(() => validateAssetData(beforeDraw), /ยอดเบิก/)
+  const overLimit = structuredClone(data); overLimit.loans[0].disbursements![0].amount = r.opening + 1
+  assert.throws(() => validateAssetData(overLimit), /วงเงิน/)
+  const overExtra = structuredClone(data); overExtra.loans[0].payments[0].extraPrincipal = 12000
+  assert.throws(() => validateAssetData(overExtra), /ยอดโปะ/)
+})
+
+test('retention carries only drawn principal less actual principal and locks original drawdowns', () => {
+  const data = initialData(); const loan = data.loans[0]; const r = loan.rounds[0]
+  r.effectiveOn = '2020-01-01'
+  loan.disbursements = [{ id: 'retention-draw', date: '2020-01-01', amount: 100000, reference: '', notes: '' }]
+  loan.payments = [{ id: 'retention-payment', roundId: r.id, date: '2020-02-01', amount: 11000, principal: 10000, interest: 1000, reference: '' }]
+  loan.rounds.push({ ...structuredClone(r), id: 'retention-round', effectiveOn: '2021-01-01', opening: 90000 })
+  validateAssetData(data)
+  assert.equal(outstanding(loan, '2021-01-01'), 90000)
+  const bad = structuredClone(data); bad.loans[0].disbursements![0].reference = 'changed'
+  assert.throws(() => validateHistory(bad, data), /ยอดเบิก/)
+  const legacy = initialData(); legacy.loans[0].rounds[0].effectiveOn = '2020-01-01'; legacy.loans[0].payments = [{ id: 'legacy-pay', roundId: legacy.loans[0].rounds[0].id, date: '2020-02-01', amount: 11000, principal: 10000, interest: 1000, reference: '' }]
+  const converted = structuredClone(legacy); converted.loans[0].disbursements = []
+  assert.throws(() => validateHistory(converted, legacy), /ยอดยกมาเดิม/)
+})
+
+test('loan document links and uploaded file types are validated', () => {
+  const data = initialData(); const loan = data.loans[0]
+  loan.documents = [{ id: 'loan-contract-doc', name: 'Contract', kind: 'contract', reference: 'CABINET-1' }]
+  validateAssetData(data)
+  loan.documents[0].paymentId = 'missing-payment'
+  assert.throws(() => validateAssetData(data), /เอกสาร/)
+  delete loan.documents[0].paymentId
+  loan.documents[0].file = { mimeType: 'application/pdf', dataUrl: 'data:text/html;base64,SGVsbG8=' }
+  assert.throws(() => validateAssetData(data), /PDF/)
+})
+
+test('one bank loan can link land and house without duplicating its debt', () => {
+  const data = initialData(); const loan = data.loans[0]
+  assert.deepEqual(loanAssetIds(loan), [loan.assetId])
+  const land = newHome('ที่ดิน'); data.homes.push(land)
+  loan.assetIds = [data.homes[0].id, land.id]; loan.assetId = loan.assetIds[0]
+  validateAssetData(data)
+  assert.deepEqual(loanAssetIds(loan), [data.homes[0].id, land.id])
+  assert.equal(data.loans.length, 1)
+  assert.equal(outstanding(loan), 2600000)
+  loan.assetIds.push(land.id)
+  assert.throws(() => validateAssetData(data), /ซ้ำกัน/)
+  loan.assetIds = [data.homes[0].id, 'missing-land']
+  assert.throws(() => validateAssetData(data), /ไม่พบสินทรัพย์/)
+  loan.assetIds = []; loan.assetId = null
+  validateAssetData(data)
+  assert.deepEqual(loanAssetIds(loan), [])
+})
+
+test('initial loan settings preserve stepped interest while applying annual bank installments', async () => {
+  const { configureInitialLoan } = await import('../app/thing/liabilities/initial-settings')
+  const data = initialData(); const loan = data.loans[0]
+  const configured = configureInitialLoan(loan, { opening: 2600000, months: 480, mrr: 6.145, effectiveOn: '', referenceInterest: 5413070, rate: 0, annualInstallments: Array.from({ length: 40 }, (_, i) => i === 0 ? 7100 : i === 1 ? 8300 : 12600) })
+  data.loans[0] = configured
+  validateAssetData(data)
+  const at = (month: number) => configured.rounds[0].periods.find(p => p.from <= month && p.to >= month)!
+  assert.equal(at(4).rate, 1.73)
+  assert.equal(at(4).installment, 7100)
+  assert.equal(at(13).installment, 8300)
+  assert.equal(at(25).installment, 12600)
+  assert.equal(at(480).installment, 12600)
+  assert.equal(configured.payments.length, 0)
+  assert.equal(outstanding(configured), 2600000)
+  const dateOnly = configureInitialLoan(loan, { opening: 2600000, months: 480, mrr: 6.145, effectiveOn: '2020-01-01', referenceInterest: 5413070, rate: 0, annualInstallments: [7100], applyAnnualInstallments: false })
+  assert.deepEqual(dateOnly.rounds[0].periods, loan.rounds[0].periods, 'setting a date must not rewrite existing within-year installments')
+  loan.payments.push({ id: 'lock-initial', date: '2020-01-01', roundId: 'original', amount: 100, interest: 0, principal: 100, reference: '' })
+  assert.deepEqual(configureInitialLoan(loan, { opening: 2600000, months: 480, mrr: 6.145, effectiveOn: '', referenceInterest: 0, rate: 0, annualInstallments: [7100] }).payments, loan.payments)
+})
+
+test('GHB supplied insurance and customer terms remain floating MRR formulas', async () => {
+  const { ghbRatePeriods, configureInitialLoan } = await import('../app/thing/liabilities/initial-settings')
+  const periods = ghbRatePeriods(480, 'qualifying', 'welfare')
+  assert.deepEqual(periods.map(p => [p.from, p.to, p.rate, p.floating, p.discount]), [[1, 3, .73, false, 0], [4, 9, 1.73, false, 0], [10, 24, 0, true, 3.415], [25, 72, 0, true, 2.415], [73, 480, 0, true, 1]])
+  const uninsured = ghbRatePeriods(480, 'not_qualifying', 'retail')
+  assert.equal(uninsured[0].rate, .98); assert.equal(uninsured[1].rate, 1.98)
+  assert.equal(uninsured[2].discount, 3.165); assert.equal(uninsured[3].discount, 2.165); assert.equal(uninsured[4].discount, .5)
+  assert.equal(ghbRatePeriods(480, 'qualifying', 'equipment').at(-1)!.discount, 0)
+  const data = initialData()
+  data.loans[0] = configureInitialLoan(data.loans[0], { opening: 2600000, creditLimit: 2600000, months: 480, mrr: 6.145, effectiveOn: '', referenceInterest: 5413070, annualInstallments: Array.from({ length: 40 }, (_, i) => i === 0 ? 7100 : i === 1 ? 8300 : 12600), rate: 0, ratePeriods: periods, insurance: 'qualifying', customerType: 'welfare' })
+  validateAssetData(data)
+  assert.equal(data.loans[0].rounds[0].periods.find(p => p.from === 10)!.floating, true)
+  assert.equal(outstanding(data.loans[0]), 2600000)
+  assert.equal(data.loans[0].payments.length, 0)
+  const atMrr = forecast(data.loans[0].rounds[0]).rows[9].rate
+  assert.ok(Math.abs(atMrr - 2.73) < .000001)
+  const changed = structuredClone(data.loans[0].rounds[0]); changed.mrr = 7
+  assert.ok(Math.abs(forecast(changed).rows[9].rate - 3.585) < .000001)
+})
+
+test('pre-existing bank debt is separate from full credit and does not become a new cash receipt', async () => {
+  const { configureInitialLoan } = await import('../app/thing/liabilities/initial-settings')
+  const data = initialData(); data.loans[0].disbursements = []
+  data.loans[0] = configureInitialLoan(data.loans[0], { opening: 100000, creditLimit: 200000, months: 120, mrr: 6, effectiveOn: '2020-01-01', referenceInterest: 0, annualInstallments: [5000], rate: 5 })
+  validateAssetData(data)
+  assert.equal(outstanding(data.loans[0]), 100000)
+  assert.equal(data.loans[0].disbursements!.length, 0)
+  data.loans[0].disbursements!.push({ id: 'new-bank-draw', date: '2020-01-02', amount: 50000, reference: '', notes: '' })
+  data.loans[0].payments.push({ id: 'initial-debt-paid', roundId: data.loans[0].rounds[0].id, date: '2020-02-01', amount: 6000, interest: 1000, principal: 5000, reference: '' })
+  validateAssetData(data)
+  assert.equal(outstanding(data.loans[0]), 145000)
+  const edited = structuredClone(data); edited.loans[0].openingBalance = 110000
+  assert.throws(() => validateHistory(edited, data), /ยอดหนี้ตั้งต้น/)
+  data.loans[0].disbursements![0].amount = 100001
+  assert.throws(() => validateAssetData(data), /เกินวงเงิน/)
+})
+
+test('contract percentage stages price land 70/30 and house seven installments exactly', async () => {
+  const { priceContractStages } = await import('../app/thing/_shared/model')
+  const stages = (prefix: string, percentages: number[]) => percentages.map((percent, i) => ({ id: `${prefix}-${i + 1}`, number: i + 1, name: `งวด ${i + 1}`, amount: 0, dueOn: '', percent }))
+  const land = priceContractStages(400000, stages('land-pct', [70, 30]))
+  const house = priceContractStages(2600000, stages('house-pct', [20, 20, 15, 15, 15, 10, 5]))
+  assert.deepEqual(land.map(row => row.amount), [280000, 120000])
+  assert.deepEqual(house.map(row => row.amount), [520000, 520000, 390000, 390000, 390000, 260000, 130000])
+  assert.equal(house.reduce((sum, row) => sum + row.amount, 0), 2600000)
+  const rounded = priceContractStages(1, stages('round-pct', [33.33, 33.33, 33.34]))
+  assert.deepEqual(rounded.map(row => row.amount), [.33, .33, .34])
+  const data = initialData(); data.loans[0].contractorContracts = [{ id: 'percent-contract', kind: 'land_purchase', code: 'LC-001', name: 'ที่ดิน', contractor: 'ผู้ขายทดสอบ', amount: 400000, signedOn: '', description: '', stages: land }]
+  validateAssetData(data)
+  const badAmount = structuredClone(data); badAmount.loans[0].contractorContracts![0].stages[0].amount = 270000
+  assert.throws(() => validateAssetData(badAmount), /ไม่ตรงกับเปอร์เซ็นต์/)
+  const badPercent = structuredClone(data); badPercent.loans[0].contractorContracts![0].stages[0].percent = 69
+  assert.throws(() => validateAssetData(badPercent), /100%/)
 })

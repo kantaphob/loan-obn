@@ -1,10 +1,12 @@
 import { getDatabaseUrl } from './lib/database-config'
 import { defineConfig } from 'prisma/config'
 
+const sqlite = getDatabaseUrl().startsWith('file:')
+
 export default defineConfig({
-  schema: 'prisma/schema.prisma',
+  schema: sqlite ? 'prisma/schema.sqlite.prisma' : 'prisma/schema.prisma',
   migrations: {
-    path: 'prisma/migrations',
+    path: sqlite ? 'prisma/migrations' : 'prisma/migrations-postgresql',
     seed: 'tsx prisma/seed.ts',
   },
   datasource: {

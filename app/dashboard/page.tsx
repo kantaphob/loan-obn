@@ -6,6 +6,9 @@ import { PageContainer } from '@/components/ui/page-container'
 import { Card } from '@/components/ui/card'
 import { Icon } from '@/components/dashboard/icon'
 import { getDashboardSummary } from '@/lib/dashboard-summary'
+import { getCurrentUser } from '@/lib/auth/current-user'
+import { getDashboardAssets } from '@/lib/dashboard-assets'
+import { propertyStatuses } from '@/app/thing/_shared/model'
 import './summary.css'
 
 const number = (n: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(n)
@@ -18,7 +21,8 @@ export default function DashboardPage() {
 
 async function DashboardContent() {
   await connection()
-  const s = await getDashboardSummary()
+  const [s, operator] = await Promise.all([getDashboardSummary(), getCurrentUser()])
+  const assets = operator?.status === 'ACTIVE' ? await getDashboardAssets(operator.id, s.today) : null
   const max = Math.max(1, ...s.months.flatMap(m => [m.incoming, m.outgoing]))
   const incomingPoints = s.months.map((m,i) => `${54+i*118},${220-m.incoming/max*180}`).join(' ')
   const outgoingPoints = s.months.map((m,i) => `${54+i*118},${220-m.outgoing/max*180}`).join(' ')
@@ -75,6 +79,19 @@ async function DashboardContent() {
       </Card>
       <Card as="section" className={'dash-panel dash-status-panel'}><div className={'dash-heading'}><h2>สถานะสัญญา</h2><span>{number(s.totalContracts)} สัญญา</span></div><div className={'dash-donut'} role="img" aria-label={`สัญญารวม ${s.totalContracts} รายการ`} style={{ background: segments.length ? `conic-gradient(${segments.join(',')})` : '#283b49' }}><div><strong>{number(s.totalContracts)}</strong><small>สัญญาทั้งหมด</small></div></div><ul className={'dash-statuses'}>{s.statuses.map((r,i) => <li key={r.code}><i style={{ background: colors[i % colors.length] }} /><span>{r.label}</span><strong>{number(r.count)}</strong><small>{(r.count / s.totalContracts * 100).toFixed(1)}%</small></li>)}</ul>{!s.totalContracts && <p className={'dash-muted'}>ยังไม่มีข้อมูลสัญญา</p>}</Card>
     </div>
+    {assets && <>
+      <div className="dash-section-label">ASSET &amp; PROPERTY <span>ทะเบียนของบัญชีปัจจุบัน</span></div>
+      <div className="dash-asset-metrics">{[
+        ['ASSET ที่ใช้งาน',`${number(assets.count)} รายการ`],
+        ['ต้นทุนสินทรัพย์รวม',money(Math.round(assets.cost*100))],
+        ['ภาระหนี้ตามทะเบียน',money(Math.round(assets.debt*100))],
+        ['PROPERTY',`${number(assets.propertyCount)} แห่ง`],
+      ].map(([label,value])=><Card key={label} className="dash-metric"><div className="dash-metric-value"><span className="dash-kicker">{label}</span><strong>{value}</strong></div></Card>)}</div>
+      <div className="dash-graphic-grid">
+        <Card as="section" className="dash-panel"><div className="dash-heading"><h2>ประเภทสินทรัพย์</h2><Link href="/thing/asset">ASSET ↗</Link></div><div className="dash-asset-groups">{assets.groups.map((group,i)=><div key={group.label}><div className="dash-heading"><span>{group.label} · {number(group.count)} รายการ</span><strong>{money(Math.round(group.cost*100))}</strong></div><div className="dash-asset-track"><span style={{width:`${assets.cost > 0 ? group.cost/assets.cost*100 : 0}%`,background:colors[i%colors.length]}} /></div></div>)}</div>{!assets.count && <p className="dash-empty">ยังไม่มีสินทรัพย์ที่ใช้งาน</p>}<p className="dash-muted">เก็บถาวร {number(assets.archived)} รายการ · แสดงมูลค่าต้นทุนตามทะเบียน</p></Card>
+        <Card as="section" className="dash-panel"><div className="dash-heading"><h2>Property</h2><Link href="/thing/property">ทะเบียน ↗</Link></div><p className="dash-pending-value">{money(Math.round(assets.propertyCost*100))}</p><p className="dash-muted">ต้นทุน ASSET ที่เชื่อมอยู่ {number(assets.linkedCount)} รายการ · เป็นส่วนหนึ่งของต้นทุนสินทรัพย์รวม</p>{assets.properties.length ? <div className="dash-tableWrap"><table><thead><tr><th>Property</th><th>สถานะ</th><th>ต้นทุน</th></tr></thead><tbody>{assets.properties.map(row=><tr key={row.id}><td>{row.code} · {row.name}</td><td>{propertyStatuses[row.status as keyof typeof propertyStatuses] ?? row.status}</td><td>{money(Math.round(row.cost*100))}</td></tr>)}</tbody></table></div> : <p className="dash-empty">ยังไม่มี Property</p>}</Card>
+      </div>
+    </>}
     <div className="dash-section-label">เงินทุน <span>ตามรายการบัญชีทุนที่บันทึก</span></div>
     <Card as="section" className="dash-panel dash-lending-cash"><div className="dash-heading"><h2>เงินสดคงเหลือพร้อมปล่อยกู้ต่อ</h2><span>เฉพาะบัญชีสินเชื่อ</span></div><p className="dash-pending-value">{money(s.lendingCashAvailable)}</p><div className="dash-heading"><span>รับสะสม {money(s.lendingCashIn)}</span><span>จ่ายสะสม {money(s.lendingCashOut)}</span></div><details className="dash-chart-details"><summary>ที่มาของยอดเงิน</summary><p className="dash-muted">รวมทุนเริ่มต้น เติมทุน รับคืน และดอกเบี้ยรับ หักเงินจ่ายกู้ ถอนทุน และรายการจ่ายผู้ให้ทุนที่บันทึกแล้ว ไม่รวมบัญชีรับ–จ่ายทั่วไป และยังไม่หักสัญญารอจ่าย</p></details></Card>
     <div className="dash-funding-grid">

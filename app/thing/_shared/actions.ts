@@ -8,10 +8,12 @@ import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
 import { syncLandRegister } from '@/lib/land-register'
 import { syncPropertyRegister } from '@/lib/property-register'
+import { syncBuildingBoqRegister } from '@/lib/building-boq-register'
 import { assignAssetCodes, validateCategories, validatePropertyCategories } from '../property/categories'
 import { initialData, migrateAssetData, type AssetData } from './model'
 import { validateAssetData } from './validation'
-import { validateHistory, validateLedgerLinks } from './integrity'
+import { assetLedgerIds, validateHistory, validateLedgerLinks } from './integrity'
+import { configureInitialLoan, type InitialLoanSettings } from '../liabilities/initial-settings'
 
 const requireFromProject = createRequire(path.join(process.cwd(), 'package.json'))
 import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
@@ -113,7 +115,7 @@ export async function createLandDevelopmentPayment(input: LandDevelopmentPayment
       const nextInput: AssetData = { ...current, homes: homes.map(home => home.id === input.landId ? updatedLand : home) }
       validateAssetData(nextInput)
       validateHistory(nextInput, current)
-      const linkedIds = [...nextInput.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(row => row.payments.map(item => item.ledgerEntryId))]), ...nextInput.loans.flatMap(loan => loan.payments.map(row => row.ledgerEntryId))].filter((id): id is number => Boolean(id))
+      const linkedIds = assetLedgerIds(nextInput)
       const linkedEntries = await tx.ledgerEntry.findMany({ where: { id: { in: linkedIds }, voidedAt: null }, select: ledgerSelect })
       validateLedgerLinks(nextInput, linkedEntries)
       const next: AssetData = { ...nextInput, revision: current.revision + 1 }
@@ -121,6 +123,7 @@ export async function createLandDevelopmentPayment(input: LandDevelopmentPayment
       validatePropertyCategories(next, categories)
       await syncLandRegister(tx, user.id, next, categories)
       await syncPropertyRegister(tx, user.id, next)
+      await syncBuildingBoqRegister(tx, user.id, next)
       const payload = JSON.stringify(next)
       const saved = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: current.revision }, data: { revision: next.revision, payload } })
       if (saved.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')
@@ -134,7 +137,87 @@ export async function createLandDevelopmentPayment(input: LandDevelopmentPayment
     return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'เลขอ้างอิงหรือสลิปซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ กรุณาลองอีกครั้ง' }
   }
 }
+
+export type BuildingProjectPaymentInput = {
+  requestKey: string; buildingId: string; projectId: string; paymentId: string
+  direction: 'IN' | 'OUT'; categoryCode: string; amount: string; occurredOn: string; channelCode: string
+  reference: string; note: string; paymentType: 'deposit' | 'progress' | 'final' | 'refund'
+}
+
+/** Create a ledger entry and link it to a house project in the same transaction. */
+export async function createBuildingProjectPayment(input: BuildingProjectPaymentInput, file?: File | null) {
+  try {
+    const user = await operator(true)
+    if (!input || !/^[a-f0-9-]{36}$/i.test(input.requestKey) || !/^[a-f0-9-]{36}$/i.test(input.paymentId) || typeof input.buildingId !== 'string' || typeof input.projectId !== 'string') throw new Error('ข้อมูลรายการไม่ถูกต้อง')
+    const amountSatang = ledgerAmount(input.amount)
+    if (!validLedgerDate(input.occurredOn)) throw new Error('วันที่รับหรือจ่ายไม่ถูกต้อง หรือเป็นวันที่ในอนาคต')
+    if (!['IN', 'OUT'].includes(input.direction) || !['deposit', 'progress', 'final', 'refund'].includes(input.paymentType) || input.direction === 'IN' && input.paymentType !== 'refund' || input.direction === 'OUT' && input.paymentType === 'refund') throw new Error('เลือกประเภทการรับ–จ่ายให้ถูกต้อง')
+    if (typeof input.reference !== 'string' || input.reference.length > 150 || typeof input.note !== 'string' || input.note.length > 1000) throw new Error('เลขอ้างอิงหรือหมายเหตุยาวเกินกำหนด')
+    const slip = await readRepaymentSlip(file)
+    const result = await prisma.$transaction(async tx => {
+      const state = await tx.assetWorkspaceState.findUniqueOrThrow({ where: { operatorId: user.id } })
+      const current = migrateAssetData(JSON.parse(state.payload))
+      const building = current.homes.find(home => home.id === input.buildingId)
+      const project = building?.buildingProjects?.find(row => row.id === input.projectId)
+      if (!building || building.kind !== 'house' || !project || building.archivedOn) throw new Error('ไม่พบบ้านหรือโครงการนี้ กรุณาโหลดหน้าใหม่')
+      if (input.direction === 'IN') {
+        const paidOut = project.payments.filter(payment => payment.direction === 'OUT').reduce((sum, payment) => sum + payment.amount, 0)
+        const returned = project.payments.filter(payment => payment.direction === 'IN').reduce((sum, payment) => sum + payment.amount, 0)
+        if (amountSatang / 100 > Math.round((paidOut - returned + Number.EPSILON) * 100) / 100) throw new Error('ยอดรับคืนเกินยอดที่จ่ายให้ผู้รับเหมาสำหรับโครงการนี้')
+      }
+      const category = await tx.financialCategory.findUnique({ where: { code: input.categoryCode } })
+      if (!category?.isActive || category.direction !== input.direction || category.direction === 'OUT' && category.group === 'LOAN' || input.direction === 'IN' && category.group !== 'INCOME' || ['INTEREST_RECEIVED', 'TRADE_PAYABLE'].includes(category.code)) throw new Error('เลือกหมวดรับ–จ่ายที่ตรงกับประเภทและใช้งานได้')
+      const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
+      if (!channel?.isActive) throw new Error('เลือกช่องทางจ่ายเงินที่ใช้งานได้')
+      await assertAccountingDateOpen(tx, input.occurredOn)
+      await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: channel.code, slipHash: slip ? slipDigest(slip.fileData) : null })
+      const categories = await tx.assetCategory.findMany({ select: { code: true, nameTh: true, parentCode: true, isActive: true } })
+      const homes = assignAssetCodes(current.homes, current.homes, categories)
+      const savedBuilding = homes.find(home => home.id === input.buildingId)!
+      const label = `${savedBuilding.assetCode ?? 'BLD'} · ${savedBuilding.name}`
+      const paymentNote = [`${label} / ${project.name} / ${input.direction === 'IN' ? 'รับเงินคืนจากผู้รับเหมา' : 'จ่ายค่าโครงการบ้าน'}`, input.note.trim()].filter(Boolean).join(' · ')
+      const entry = await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: 'GENERAL', contractId: null, direction: input.direction, categoryCode: category.code, categoryName: category.nameTh, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: paymentNote, createdBy: user.id, ...(slip ? { slip: { create: slip } } : {}) } })
+      const payment = { id: input.paymentId, ledgerEntryId: entry.id, date: input.occurredOn, amount: amountSatang / 100, direction: input.direction, type: input.paymentType, reference: input.reference.trim(), note: input.note.trim() } as const
+      const updated = { ...savedBuilding, buildingProjects: (savedBuilding.buildingProjects ?? []).map(row => row.id === input.projectId ? { ...row, payments: [...row.payments, payment] } : row) }
+      const nextInput: AssetData = { ...current, homes: homes.map(home => home.id === input.buildingId ? updated : home) }
+      validateAssetData(nextInput); validateHistory(nextInput, current)
+      const linkedIds = assetLedgerIds(nextInput)
+      const linkedEntries = await tx.ledgerEntry.findMany({ where: { id: { in: linkedIds }, voidedAt: null }, select: ledgerSelect })
+      validateLedgerLinks(nextInput, linkedEntries)
+      const next: AssetData = { ...nextInput, revision: current.revision + 1 }
+      validateCategories(next.homes, current.homes, categories); validatePropertyCategories(next, categories)
+      await syncLandRegister(tx, user.id, next, categories); await syncPropertyRegister(tx, user.id, next)
+      await syncBuildingBoqRegister(tx, user.id, next)
+      const payload = JSON.stringify(next)
+      const saved = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: current.revision }, data: { revision: next.revision, payload } })
+      if (saved.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')
+      await tx.assetWorkspaceRevision.create({ data: { operatorId: user.id, revision: next.revision, payload, reason: `${input.direction === 'IN' ? 'รับคืน' : 'จ่าย'}โครงการบ้าน: ${project.name}` } })
+      return { entryId: entry.id, data: next }
+    }, { timeout: 30000 })
+    await syncGoogleLedger(result.entryId)
+    revalidatePath('/dashboard/ledger'); revalidatePath('/thing/asset'); revalidatePath('/thing/property')
+    return { success: true as const, ...result }
+  } catch (error) {
+    return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'เลขอ้างอิงหรือสลิปซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ กรุณาลองอีกครั้ง' }
+  }
+}
 export async function saveAssetWorkspace(input: AssetData, reason = 'บันทึกรายการ'): Promise<{ data?: AssetData; error?: string }> {
+  return persistAssetWorkspace(input, reason)
+}
+
+export async function saveBankLoanContractSettings(loanId: string, revision: number, settings: InitialLoanSettings): Promise<{ data?: AssetData; error?: string }> {
+  try {
+    const user = await operator(true)
+    const current = await load(user.id)
+    if (current.revision !== revision) throw new Error('ข้อมูลเปลี่ยนจากอีกหน้าต่าง กรุณาโหลดหน้าใหม่')
+    const loan = current.loans.find(row => row.id === loanId)
+    if (!loan) throw new Error('ไม่พบสัญญาเงินกู้')
+    const updated = configureInitialLoan(loan, settings)
+    return await persistAssetWorkspace({ ...current, loans: current.loans.map(row => row.id === loanId ? updated : row) }, `แก้ไขข้อมูลสัญญาธนาคาร: ${loan.name}`, true)
+  } catch (error) { return { error: error instanceof Error ? error.message : 'บันทึกสัญญาไม่สำเร็จ' } }
+}
+
+async function persistAssetWorkspace(input: AssetData, reason: string, allowContractEdits = false): Promise<{ data?: AssetData; error?: string }> {
   try {
     const user = await operator(true)
     if (JSON.stringify(input).length > 4_000_000) throw new Error('ข้อมูลมีขนาดใหญ่เกินไป')
@@ -144,16 +227,17 @@ export async function saveAssetWorkspace(input: AssetData, reason = 'บัน�
       const state = await tx.assetWorkspaceState.findUniqueOrThrow({ where: { operatorId: user.id } })
       if (state.revision !== input.revision) throw new Error('ข้อมูลเปลี่ยนจากอีกหน้าต่าง กรุณาสำรองแบบร่างและโหลดหน้าใหม่')
       const current = migrateAssetData(JSON.parse(state.payload))
-      validateHistory(input, current)
+      validateHistory(input, current, { allowContractEdits })
       const categories = await tx.assetCategory.findMany({ select: { code: true, nameTh: true, parentCode: true, isActive: true } })
       validateCategories(input.homes, current.homes, categories)
       validatePropertyCategories(input, categories)
-      const ids = [...input.homes.flatMap(h => [...h.boq.map(b => b.ledgerEntryId), ...(h.landDevelopments ?? []).flatMap(work => work.payments.map(payment => payment.ledgerEntryId))]), ...input.loans.flatMap(l => l.payments.map(p => p.ledgerEntryId))].filter((id): id is number => Boolean(id))
+      const ids = assetLedgerIds(input)
       const entries = ids.length ? await tx.ledgerEntry.findMany({ where: { id: { in: ids }, voidedAt: null }, select: ledgerSelect }) : []
       validateLedgerLinks(input, entries)
       const next: AssetData = { ...input, homes: assignAssetCodes(input.homes, current.homes, categories), revision: input.revision + 1 }
       await syncLandRegister(tx, user.id, next, categories)
       await syncPropertyRegister(tx, user.id, next)
+      await syncBuildingBoqRegister(tx, user.id, next)
       const payload = JSON.stringify(next)
       const result = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: input.revision }, data: { revision: next.revision, payload } })
       if (result.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')

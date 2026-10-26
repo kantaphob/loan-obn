@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ArrowDownLeft, ArrowUpRight, Wallet, Search, BookOpen, PencilLine, History, Ban, CheckCircle2, CalendarDays, ArrowUpRight as ExternalLink } from 'lucide-react'
+import { Plus, ArrowDownLeft, ArrowUpRight, Wallet, Search, BookOpen, PencilLine, History, Ban, CheckCircle2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SlipPreview } from '@/components/ui/slip-preview'
@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/modal'
 import { contractCode, formatContractMoney as money } from '@/lib/contracts'
 import { bangkokToday, type LedgerInput } from '@/lib/ledger'
 import { EditTransactionModal } from './edit-transaction-modal'
+import { LedgerYearNavigation } from './ledger-year-navigation'
 import { getLedger, saveLedger, voidLedger } from './actions'
 
 type Data = Awaited<ReturnType<typeof getLedger>>
@@ -63,11 +64,7 @@ export function LedgerWorkspace({ data }: { data: Data }) {
   return <div className="borrower-workspace ledger-directory space-y-5">
     {editing && <EditTransactionModal key={editing.id} entry={editing} data={data} onClose={() => setEditing(null)} />}
     {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
-    <nav className="ledger-year-nav" aria-label="เลือกปีบัญชี">
-      <div className="ledger-year-title"><CalendarDays size={18} aria-hidden="true" /><span>ปีบัญชี</span></div>
-      <span className="ledger-year-current" aria-current="page"><strong>2026</strong><small>ปีปัจจุบัน</small></span>
-      <Link href="/dashboard/cashbook-2025" className="ledger-year-history"><span>ดูประวัติปี 2025</span><ExternalLink size={14} aria-hidden="true" /></Link>
-    </nav>
+    <LedgerYearNavigation year={2026} />
     <div className="ledger-directory-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {[[ 'รับเงินสะสม', incoming, ArrowDownLeft, 'text-emerald-700'], ['จ่ายเงินสะสม', outgoing, ArrowUpRight, 'text-rose-700'], ['เงินรับสุทธิหลังหักจ่าย', incoming - outgoing, Wallet, 'text-blue-700'], ['ยอดรอรับคืนตามสัญญา', outstanding, BookOpen, 'text-amber-700']].map(([title, amount, Icon, color]) => {
         const MetricIcon = Icon as typeof Wallet

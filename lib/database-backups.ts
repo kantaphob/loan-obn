@@ -4,10 +4,11 @@ import { randomBytes } from 'node:crypto'
 import { chmod, mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 import Database from 'better-sqlite3'
+import { createPostgresArchive } from './postgres-backup.mjs'
 import { isBorrowerFile, readBorrowerImage } from '@/lib/borrower-files'
 import { getDatabaseUrl } from '@/lib/database-config'
 
-const BACKUP_NAME = /^ProgressSQL-\d{8}T\d{6}Z-[a-f0-9]{8}\.db$/
+const BACKUP_NAME = /^ProgressSQL-\d{8}T\d{6}Z-[a-f0-9]{8}\.(?:db|tar)$/
 const backupDirectory = path.join(process.cwd(), 'private', 'backups')
 let currentBackup: Promise<DatabaseBackup> | null = null
 
@@ -25,10 +26,21 @@ function databasePath() {
 function backupFilename() {
   const now = new Date()
   const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
-  return `ProgressSQL-${stamp}-${randomBytes(4).toString('hex')}.db`
+  return `ProgressSQL-${stamp}-${randomBytes(4).toString('hex')}.${getDatabaseUrl().startsWith('file:') ? 'db' : 'tar'}`
 }
 
 async function makeBackup(): Promise<DatabaseBackup> {
+  if (!getDatabaseUrl().startsWith('file:')) {
+    await mkdir(backupDirectory, { recursive: true, mode: 0o700 })
+    const filename = backupFilename()
+    const temporary = path.join(backupDirectory, `.backup-${randomBytes(8).toString('hex')}.tmp`)
+    try {
+      await createPostgresArchive(temporary, getDatabaseUrl())
+      await rename(temporary, path.join(backupDirectory, filename))
+      const details = await stat(path.join(backupDirectory, filename))
+      return { filename, sizeBytes: details.size, createdAt: details.mtime.toISOString() }
+    } catch (error) { await rm(temporary, { force: true }); throw error }
+  }
   const source = databasePath()
   await mkdir(backupDirectory, { recursive: true, mode: 0o700 })
   await chmod(backupDirectory, 0o700)

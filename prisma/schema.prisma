@@ -20,7 +20,7 @@ model AssetCategory {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model AssetWorkspaceState {
@@ -199,6 +199,7 @@ model LoanStatus {
 
 model Borrower {
   contracts LoanContract[]
+  tradeReceivables TradeReceivable[]
   titleTh            String @default("")
   middleNameTh       String @default("")
   titleEn            String @default("")
@@ -433,8 +434,12 @@ model LedgerEntry {
   penaltyWaiverReason String @default("")
   revisions LedgerRevision[]
   landDevelopmentCosts LandDevelopmentCost[]
+  projectPayment ProjectPayment?
+  buildingService BuildingService?
   payableId Int?
   payable TradePayable? @relation(fields: [payableId], references: [id], onDelete: Restrict)
+  receivableId Int?
+  receivable TradeReceivable? @relation(fields: [receivableId], references: [id], onDelete: Restrict)
   id Int @id @default(autoincrement())
   requestKey String @unique
   contractId Int?
@@ -476,6 +481,29 @@ model TradePayable {
   @@unique([supplier, invoiceNumber])
   @@index([dueDate])
   @@map("trade_payable")
+}
+
+// Non-loan customer receivables. Payments are actual incoming cash ledger entries.
+model TradeReceivable {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  borrowerId Int?
+  borrower Borrower? @relation(fields: [borrowerId], references: [id], onDelete: Restrict)
+  customerName String
+  customerPhone String @default("")
+  description String
+  reference String @default("")
+  amountSatang Float
+  occurredOn String
+  dueDate String
+  createdBy String
+  createdAt DateTime @default(now())
+  payments LedgerEntry[]
+
+  @@index([dueDate])
+  @@index([borrowerId])
+  @@index([customerName, occurredOn])
+  @@map("trade_receivable")
 }
 
 model LedgerRevision {
@@ -675,6 +703,12 @@ model Asset {
   documents AssetDocument[]
   buildingLands BuildingLand[]
   propertyLink PropertyAsset?
+  boqItems BuildingBoqItem[]
+  rooms BuildingRoom[]
+  projects BuildingProject[]
+  works BuildingWork[]
+  components BuildingComponent[]
+  services BuildingService[]
 
   @@id([operatorId, id])
   @@unique([operatorId, code])
@@ -769,6 +803,286 @@ model LandDevelopmentCost {
   @@id([operatorId, id])
   @@index([operatorId, developmentId, paidOn])
   @@map("land_development_cost")
+}
+
+// Searchable relational projection of construction and built-in BOQ rows.
+// The versioned AssetWorkspace payload remains the audited editing snapshot.
+model BuildingBoqItem {
+  operatorId String
+  assetId String
+  id String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Cascade)
+  projectId String?
+  project BuildingProject? @relation(fields: [operatorId, assetId, projectId], references: [operatorId, assetId, id], onDelete: Restrict)
+  category String
+  subcategory String?
+  scope String @default("construction")
+  name String
+  spec String @default("")
+  quantity Float
+  unit String
+  materialRateSatang BigInt @default(0)
+  materialTotalSatang BigInt?
+  laborRateSatang BigInt?
+  laborSatang BigInt @default(0)
+  boqTotalSatang BigInt?
+  paidSatang BigInt @default(0)
+  vendor String @default("")
+  reference String @default("")
+  note String?
+  ledgerEntryId Int?
+  room String?
+  replacesId String?
+  cancelled Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, assetId, id])
+  @@index([operatorId, assetId, scope, cancelled])
+  @@index([operatorId, ledgerEntryId])
+  @@map("building_boq_item")
+}
+
+// Normalized project register. Workspace JSON remains the current editing snapshot.
+model BuildingRoom {
+  operatorId String
+  assetId String
+  id String @default(uuid())
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Cascade)
+  name String
+  floorLabel String @default("")
+  areaSqm Decimal?
+  notes String @default("")
+  isActive Boolean @default(true)
+  projectLinks BuildingProjectRoom[]
+  workLinks BuildingWorkRoom[]
+  components BuildingComponent[]
+  componentMovesFrom ComponentHistory[] @relation("ComponentFromRoom")
+  componentMovesTo ComponentHistory[] @relation("ComponentToRoom")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, assetId, id])
+  @@unique([operatorId, assetId, name])
+  @@index([operatorId, assetId, isActive])
+  @@map("building_room")
+}
+
+model BuildingProject {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  name String
+  status String @default("planned")
+  pricingMode String @default("lump_sum")
+  lumpSumSatang BigInt @default(0)
+  actualCostSatang BigInt @default(0)
+  startedOn String?
+  completedOn String?
+  vendor String @default("")
+  reference String @default("")
+  notes String @default("")
+  warrantyUntil String?
+  outcomeType String @default("none")
+  outcomeRoomName String @default("")
+  outcomeNewRoomName String @default("")
+  areaAddedSqm Decimal @default(0)
+  outcomeComponentName String @default("")
+  outcomeReplacesItemId String @default("")
+  rooms BuildingProjectRoom[]
+  works BuildingWork[]
+  boqItems BuildingBoqItem[]
+  changeOrders ChangeOrder[]
+  components BuildingComponent[]
+  payments ProjectPayment[]
+  documents AssetDocument[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, id])
+  @@unique([operatorId, assetId, id])
+  @@index([operatorId, assetId, status, startedOn])
+  @@map("building_project")
+}
+
+model BuildingProjectRoom {
+  operatorId String
+  assetId String
+  projectId String
+  roomId String
+  project BuildingProject @relation(fields: [operatorId, assetId, projectId], references: [operatorId, assetId, id], onDelete: Cascade)
+  room BuildingRoom @relation(fields: [operatorId, assetId, roomId], references: [operatorId, assetId, id], onDelete: Restrict)
+
+  @@id([operatorId, assetId, projectId, roomId])
+  @@map("building_project_room")
+}
+
+model BuildingWork {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  projectId String?
+  project BuildingProject? @relation(fields: [operatorId, assetId, projectId], references: [operatorId, assetId, id], onDelete: Restrict)
+  type String
+  name String
+  occurredOn String
+  amountSatang BigInt @default(0)
+  treatment String @default("expense")
+  vendor String @default("")
+  warrantyUntil String?
+  reference String @default("")
+  notes String @default("")
+  rooms BuildingWorkRoom[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, id])
+  @@unique([operatorId, assetId, id])
+  @@index([operatorId, assetId, occurredOn, type])
+  @@index([operatorId, assetId, projectId])
+  @@map("building_work")
+}
+
+model BuildingWorkRoom {
+  operatorId String
+  assetId String
+  workId String
+  roomId String
+  work BuildingWork @relation(fields: [operatorId, assetId, workId], references: [operatorId, assetId, id], onDelete: Cascade)
+  room BuildingRoom @relation(fields: [operatorId, assetId, roomId], references: [operatorId, assetId, id], onDelete: Restrict)
+
+  @@id([operatorId, assetId, workId, roomId])
+  @@map("building_work_room")
+}
+
+model ChangeOrder {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  projectId String
+  project BuildingProject @relation(fields: [operatorId, assetId, projectId], references: [operatorId, assetId, id], onDelete: Restrict)
+  changeType String
+  status String @default("proposed")
+  description String
+  reason String @default("")
+  requestedOn String
+  approvedOn String?
+  quantityDelta Float @default(0)
+  costDeltaSatang BigInt @default(0)
+  scheduleDeltaDays Int @default(0)
+  replacesItemId String?
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, id])
+  @@index([operatorId, assetId, projectId, status])
+  @@map("change_order")
+}
+
+model BuildingComponent {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  projectId String?
+  project BuildingProject? @relation(fields: [operatorId, assetId, projectId], references: [operatorId, assetId, id], onDelete: Restrict)
+  roomId String?
+  room BuildingRoom? @relation(fields: [operatorId, assetId, roomId], references: [operatorId, assetId, id], onDelete: Restrict)
+  componentType String
+  name String
+  description String @default("")
+  serialNumber String?
+  installedOn String?
+  status String @default("active")
+  warrantyUntil String?
+  acquisitionCostSatang BigInt @default(0)
+  replacesComponentId String?
+  replacesComponent BuildingComponent? @relation("ComponentReplacement", fields: [operatorId, assetId, replacesComponentId], references: [operatorId, assetId, id], onDelete: Restrict)
+  replacedBy BuildingComponent[] @relation("ComponentReplacement")
+  history ComponentHistory[]
+  documents AssetDocument[]
+  services BuildingService[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, id])
+  @@unique([operatorId, assetId, id])
+  @@index([operatorId, assetId, status, componentType])
+  @@map("building_component")
+}
+
+model ComponentHistory {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  componentId String
+  component BuildingComponent @relation(fields: [operatorId, assetId, componentId], references: [operatorId, assetId, id], onDelete: Restrict)
+  eventType String
+  occurredOn String
+  fromRoomId String?
+  fromRoom BuildingRoom? @relation("ComponentFromRoom", fields: [operatorId, assetId, fromRoomId], references: [operatorId, assetId, id], onDelete: Restrict)
+  toRoomId String?
+  toRoom BuildingRoom? @relation("ComponentToRoom", fields: [operatorId, assetId, toRoomId], references: [operatorId, assetId, id], onDelete: Restrict)
+  details String @default("")
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@id([operatorId, id])
+  @@index([operatorId, assetId, componentId, occurredOn])
+  @@map("component_history")
+}
+
+model BuildingService {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  componentId String?
+  component BuildingComponent? @relation(fields: [operatorId, assetId, componentId], references: [operatorId, assetId, id], onDelete: Restrict)
+  serviceType String
+  name String
+  description String @default("")
+  scheduledOn String?
+  completedOn String?
+  costSatang BigInt @default(0)
+  vendor String @default("")
+  warrantyUntil String?
+  ledgerEntryId Int? @unique
+  ledgerEntry LedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  documents AssetDocument[]
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([operatorId, id])
+  @@unique([operatorId, assetId, id])
+  @@index([operatorId, assetId, scheduledOn, serviceType])
+  @@map("building_service")
+}
+
+model ProjectPayment {
+  operatorId String
+  id String @default(uuid())
+  assetId String
+  projectId String
+  project BuildingProject @relation(fields: [operatorId, assetId, projectId], references: [operatorId, assetId, id], onDelete: Restrict)
+  ledgerEntryId Int @unique
+  ledgerEntry LedgerEntry @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  paymentType String
+  direction String
+  amountSatang BigInt
+  occurredOn String
+  reference String @default("")
+  note String @default("")
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@id([operatorId, id])
+  @@index([operatorId, assetId, projectId, occurredOn])
+  @@map("project_payment")
 }
 
 model AssetParty {
@@ -873,8 +1187,15 @@ model AssetDocument {
   id String @default(uuid())
   assetId String
   asset Asset @relation(fields: [operatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  projectId String?
+  project BuildingProject? @relation(fields: [operatorId, assetId, projectId], references: [operatorId, assetId, id], onDelete: Restrict)
+  componentId String?
+  component BuildingComponent? @relation(fields: [operatorId, assetId, componentId], references: [operatorId, assetId, id], onDelete: Restrict)
+  serviceId String?
+  service BuildingService? @relation(fields: [operatorId, assetId, serviceId], references: [operatorId, assetId, id], onDelete: Restrict)
   documentType String
   fileName String
+  description String @default("")
   storageKey String
   mimeType String?
   uploadedAt DateTime @default(now())

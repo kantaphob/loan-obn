@@ -1,3 +1,3 @@
 import { getDatabaseUrl } from '../lib/database-config'
 import { syncRecordFiles } from '../lib/record-files.mjs'
-console.log(syncRecordFiles(getDatabaseUrl()))
+syncRecordFiles(getDatabaseUrl()).then(console.log).catch(error => { console.error(error); process.exitCode = 1 })

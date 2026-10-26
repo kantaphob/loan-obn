@@ -64,6 +64,12 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    title: "Receivables",
+    items: [
+      { label: "ลูกหนี้ค้างรับ", href: "/dashboard/receivables", icon: BanknoteArrowUp },
+    ],
+  },
+  {
     title: "Accounting",
     items: [
       { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: Banknote },
@@ -91,6 +97,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Property", href: "/thing/property", icon: DatabaseBackup },
       { label: "Asset", href: "/thing/asset", icon: Landmark },
+      { label: "Liabilities", href: "/thing/liabilities", icon: Landmark },
       { label: "รายการที่ลบ", href: "/thing/deleted", icon: Trash2 },
  ],
   },
