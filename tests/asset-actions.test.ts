@@ -265,6 +265,35 @@ test('assets, independent debt, immutable terms, audit snapshots and ledger reco
   const variationReload = (await getAssetWorkspace()).data
   assert.deepEqual(variationReload, extraPaid.data)
   assert.equal(JSON.parse(await getAssetRevision(variationReload.revision)).loans.at(-1).contractorPayments.at(-1).stageId, 'action-vo-add')
+  const { POST: uploadContractDocument } = await import('../app/api/thing/contract-documents/route')
+  const { GET: readContractDocument } = await import('../app/api/thing/contract-documents/[id]/route')
+  const form = new FormData(); form.set('file', new File(['%PDF-1.7\nTest document'], 'plan.pdf', { type: 'application/pdf' })); form.set('kind', 'plan'); form.set('contractCode', 'CT-002')
+  const uploaded = await uploadContractDocument(new Request('http://localhost.test/api/thing/contract-documents', { method: 'POST', body: form, headers: { origin: 'http://localhost.test' } }))
+  assert.equal(uploaded.status, 201)
+  const document = await uploaded.json()
+  assert.equal(document.storageCode, 'CT-002')
+  const { contractDocumentPath: documentPath } = await import('../lib/contract-document-files')
+  assert.ok(documentPath(user.id, document.id, document.storageCode, document.mimeType).endsWith(`/CT-002/${document.id}.pdf`))
+  assert.throws(() => documentPath(user.id, document.id, '../escape', document.mimeType))
+  try {
+    const context = { params: Promise.resolve({ id: document.id }) }
+    assert.equal((await readContractDocument(new Request('http://localhost.test'), context)).status, 404, 'staged files cannot be read before being linked to this workspace')
+    const docWorkspace = structuredClone(variationReload)
+    const docContract = docWorkspace.loans.at(-1)!.contractorContracts!.find(row => row.id === 'house-percent-agreement')!
+    docContract.documents = [document]
+    docContract.boqSummary = { rows: [{key:'structure',name:'โครงสร้าง',amount:452580}],managementFee:179112.9,agreedTotal:1970000,reference:'BOQ v1' }
+    const docSaved = await saveAssetWorkspace(docWorkspace, 'แนบแปลนและ BOQ'); assert.ok(docSaved.data, docSaved.error)
+    assert.deepEqual((await getAssetWorkspace()).data, docSaved.data)
+    assert.deepEqual(JSON.parse(await getAssetRevision(docSaved.data.revision)).loans.at(-1).contractorContracts.find((row: {id:string}) => row.id === docContract.id).boqSummary, docContract.boqSummary)
+    const downloaded = await readContractDocument(new Request('http://localhost.test'), context)
+    assert.equal(downloaded.status, 200); assert.equal(downloaded.headers.get('content-type'), 'application/pdf'); assert.equal(await downloaded.text(), '%PDF-1.7\nTest document')
+    assert.equal(await prisma.ledgerEntry.count(), 8, 'documents and BOQ summary never create duplicate cash records')
+    assert.equal((await uploadContractDocument(new Request('http://localhost.test/api/thing/contract-documents', { method: 'POST', body: form, headers: { origin: 'https://other.test' } }))).status, 403)
+  } finally {
+    const { contractDocumentPath } = await import('../lib/contract-document-files')
+    const { unlink } = await import('node:fs/promises')
+    await unlink(contractDocumentPath(user.id, document.id, document.storageCode, document.mimeType))
+  }
   await prisma.user.update({ where: { id: user.id }, data: { role: 'REVIEWER' } })
   assert.match((await saveBankLoanContractSettings('draw-loan', amended.data.revision, contractSettings)).error ?? '', /ไม่มีสิทธิ์/)
   assert.match((await recordBankLoanCash({ ...receipt, requestKey: crypto.randomUUID(), revision: beforeFailure.revision })).error ?? '', /ไม่มีสิทธิ์/)

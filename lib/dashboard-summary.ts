@@ -6,7 +6,7 @@ import { cashCarryforward, readCashMovements } from '@/lib/cash-carryforward'
 const thaiMonthAbbreviations = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
 /** Read only: monetary totals remain in satang until display. */
-export async function getDashboardSummary() {
+export async function getDashboardSummary(period: string = 'all') {
   const today = bangkokToday()
   const [year, month] = today.split('-').map(Number)
   const months = Array.from({ length: 6 }, (_, i) => {
@@ -35,7 +35,8 @@ export async function getDashboardSummary() {
   let outstanding = 0, overdueAmount = 0, overdueCount = 0, activeCount = 0, invalidCount = 0
   const dueSoon: { id: number; due: string; remaining: number }[] = []
   const distribution = new Map<string, number>()
-  const cash = cashCarryforward(cashEntries, '1900-01-01', today)
+  const startOn = period === 'month' ? `${today.slice(0,7)}-01` : period === 'year' ? `${today.slice(0,4)}-01-01` : '1900-01-01'
+  const cash = cashCarryforward(cashEntries, startOn, today)
   let actualDisbursement = 0, unrecordedDisbursementCount = 0, unrecordedDisbursementAmount = 0
   let totalPrincipal = 0, principalWaived = 0, interestReceived = 0, upfrontInterest = 0, penaltyReceived = 0
   let principalReturned = 0, principalOutstanding = 0, interestOutstanding = 0, totalLoanReceived = 0
@@ -85,10 +86,10 @@ export async function getDashboardSummary() {
   const lendingCashOut = lendingCashEntries.filter(e => e.direction === 'OUT').reduce((sum,e) => sum+e.amountSatang,0)
   const lendingCashAvailable = lendingCashIn-lendingCashOut
   return { today, borrowers, lenders, lendingCashAvailable, lendingCashIn, lendingCashOut, funding, totalPrincipal, principalWaived, interestReceived, upfrontInterest, penaltyReceived,
-    cashAvailable: cash.available,
+    cashAvailable: cash.available, cashSources: cash.sources, overlappingYears: cash.overlappingYears, startOn,
     allIncoming: cash.incoming ?? 0,
     allOutgoing: cash.outgoing ?? 0,
-    cashNet: cash.closing ?? 0,
+    cashNet: cash.available ? cash.incoming - cash.outgoing : 0,
     cashEntryCount: cashEntries.length,
     actualDisbursement, unrecordedDisbursementCount, unrecordedDisbursementAmount,
     totalLoanReceived, principalReturned, principalOutstanding, interestOutstanding,

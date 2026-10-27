@@ -387,3 +387,31 @@ test('approved work variations adjust net contract and stages without rewriting 
   const removed = structuredClone(data); removed.loans[0].contractorContracts![0].variations!.pop()
   assert.throws(() => validateHistory(removed, data), /เก็บประวัติ/)
 })
+
+test('contract BOQ summary preserves document price and counts approved replacement differences once', async () => {
+  const { contractBoqSummary } = await import('../app/thing/_shared/model')
+  const data = initialData()
+  const contract: import('../app/thing/_shared/model').ContractorContract = { id: 'summary-contract', code: 'CT-SUMMARY', name: 'บ้าน', contractor: 'ช่าง', amount: 2600000, signedOn: '', description: '', stages: [{id:'summary-stage',number:1,name:'งาน',amount:2600000,dueOn:''}], boqSummary: { rows: [{key:'roof',name:'หลังคา',amount:200000}],managementFee:20000,agreedTotal:219000,reference:'BOQ'}, documents:[{id:'11111111-1111-4111-8111-111111111111',kind:'plan',name:'plan.pdf',mimeType:'application/pdf',size:100}], variations:[
+    {id:'summary-vo',code:'VO-SUMMARY',kind:'add',name:'หลังคาทดแทน',quantity:1,unit:'งาน',unitPrice:30000,amount:30000,date:'2020-01-01',status:'approved',summaryKey:'roof',replacement:{original:50000,proposed:80000},reference:'',notes:''},
+    {id:'summary-draft',code:'VO-SUMMARY-DRAFT',kind:'deduct',name:'ยังไม่ตกลง',quantity:1,unit:'งาน',unitPrice:10000,amount:10000,date:'2020-01-01',status:'draft',stageId:'summary-stage',summaryKey:'roof',reference:'',notes:''}
+  ] }
+  data.loans[0].contractorContracts=[contract]; validateAssetData(data)
+  const summary=contractBoqSummary(contract)
+  assert.equal(summary.base,220000); assert.equal(summary.rows[0].net,230000); assert.equal(summary.net,2630000); assert.equal(summary.agreedDifference,2380000)
+  assert.equal(contract.boqSummary!.rows[0].amount,200000)
+  const bad=structuredClone(data);bad.loans[0].contractorContracts![0].variations![0].replacement!.proposed=90000
+  assert.throws(() => validateAssetData(bad), /ยอดทดแทน/)
+  const unknown=structuredClone(data);unknown.loans[0].contractorContracts![0].variations![0].summaryKey='unknown'
+  assert.throws(() => validateAssetData(unknown), /หมวด BOQ/)
+  const unsafe=structuredClone(data);unsafe.loans[0].contractorContracts![0].documents![0].id='../private'
+  assert.throws(() => validateAssetData(unsafe), /รหัสรายการ|เอกสารสัญญา/)
+})
+
+test('BOQ PDF summary reads amounts on separate baselines and agreed price above its label', async () => {
+  const {readContractBoqSummary}=await import('../app/thing/_shared/contract-boq-import')
+  const summary={rows:Array.from({length:7},(_,i)=>({key:`category-${i+1}`,name:`หมวด ${i+1}`,amount:0})),managementFee:0,reference:''}
+  const imported=readContractBoqSummary(['1 หมวดงานโครงสร้าง','452,580.00','2 หมวดงานโครงสร้างหลังคา 212,851.00','3 หมวดงานสถาปัตยกรรม 805,473.00','4 หมวดงานสุขภัณฑ์','34,368.00','5 หมวดงานระบบสุขาภิบาล 72,000.00','6 หมวดงานไฟฟ้า','118,490.00','7 หมวดงานสี 95,367.00','รวมหมวดงาน 1 - 7 1,791,129.00','ค่าดาเนินงานก่อสร้าง 179,112.90','รวมค่าก่อสร้างเป็นเงิน 1,970,241.90','1,970,000.00','คิดเป็นค่าก่อสร้างเพียง'],summary,'boq.pdf')!
+  assert.deepEqual(imported.rows.map(row=>row.amount),[452580,212851,805473,34368,72000,118490,95367])
+  assert.equal(imported.managementFee,179112.9);assert.equal(imported.agreedTotal,1970000)
+  assert.equal(readContractBoqSummary(['not a summary'],summary,'bad.pdf'),null)
+})

@@ -23,8 +23,8 @@ async function Content({ section, tab }: { section: 'assets' | 'debts' | 'histor
     return <AppFrame><AssetRegistry initial={data} categories={categories} canWrite={canWrite} ledger={ledger} financialCategories={financialCategories} channels={channels} mode="basic" /></AppFrame>
   }
   if (section === 'assets' && tab === 'overview') {
-    const { data, categories, canWrite } = await getAssetWorkspace()
-    return <AppFrame><PropertyRegistry initial={data} categories={categories} canWrite={canWrite} /></AppFrame>
+    const { data, categories, canWrite, ledger, financialCategories, channels } = await getAssetWorkspace()
+    return <AppFrame><PropertyRegistry initial={data} categories={categories} canWrite={canWrite} ledger={ledger} financialCategories={financialCategories} channels={channels} /></AppFrame>
   }
   return <AppFrame><AssetWorkspace initialSection={section} initialTab={tab} /></AppFrame>
 }

@@ -285,6 +285,26 @@ export function validateAssetData(data: AssetData) {
       if (contract.location !== undefined) text(contract.location)
       if (!contract.code.trim() || contractCodes.has(contract.code.trim().toUpperCase()) || !contract.name.trim() || !contract.contractor.trim() || !Array.isArray(contract.stages) || !contract.stages.length || contract.stages.length > 600) fail('ระบุรหัสสัญญา ชื่องาน ผู้รับเหมา และงวดงานให้ครบ รหัสสัญญาต้องไม่ซ้ำ')
       contractCodes.add(contract.code.trim().toUpperCase())
+      if (contract.documents !== undefined) {
+        if (!Array.isArray(contract.documents) || contract.documents.length > 30) fail('แนบเอกสารได้ไม่เกิน 30 ไฟล์ต่อสัญญา')
+        for (const doc of contract.documents) {
+          id(doc.id); text(doc.name)
+          if (doc.storageCode !== undefined && (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(doc.storageCode) || doc.storageCode !== contract.code.trim())) fail('รหัสโฟลเดอร์เอกสารต้องตรงกับรหัสสัญญา กรุณาคงรหัสสัญญาที่แนบเอกสารแล้วไว้')
+          if (!/^[a-f0-9-]{36}$/i.test(doc.id) || !doc.name.trim() || doc.name.length > 240 || !['plan', 'bank_boq', 'quotation', 'other'].includes(doc.kind) || !['application/pdf','image/png','image/jpeg'].includes(doc.mimeType) || !Number.isSafeInteger(doc.size) || doc.size < 1 || doc.size > 15 * 1024 * 1024) fail('เอกสารสัญญาไม่ถูกต้อง')
+        }
+      }
+      if (contract.boqSummary !== undefined) {
+        const summary = contract.boqSummary
+        if (!Array.isArray(summary.rows) || summary.rows.length > 100) fail('สรุป BOQ ไม่ถูกต้อง')
+        text(summary.reference); amount(summary.managementFee)
+        if (summary.agreedTotal !== undefined) amount(summary.agreedTotal)
+        const keys = new Set<string>()
+        for (const row of summary.rows) {
+          text(row.key); text(row.name); amount(row.amount)
+          if (!row.key.trim() || !row.name.trim() || keys.has(row.key)) fail('หมวดสรุป BOQ ต้องมีชื่อและรหัสไม่ซ้ำ')
+          keys.add(row.key)
+        }
+      }
       const stageNumbers = new Set<number>(); let agreed = 0
       const percentSum = contract.stages.reduce((sum, stage) => sum + (stage.percent ?? 0), 0)
       if (contract.stages.every(stage => stage.percent !== undefined) && Math.abs(percentSum - 100) > .000001 || percentSum > 100.000001) fail('เปอร์เซ็นต์งวดชำระต้องรวมเป็น 100% และต้องไม่เกิน 100%')
@@ -304,6 +324,12 @@ export function validateAssetData(data: AssetData) {
         id(variation.id); text(variation.code); text(variation.name); text(variation.unit); text(variation.reference); text(variation.notes); date(variation.date)
         amount(variation.quantity, true); amount(variation.unitPrice, true); amount(variation.amount, true)
         if (!variation.code.trim() || variationCodes.has(variation.code.toUpperCase()) || !variation.name.trim() || !variation.unit.trim() || !['add', 'deduct'].includes(variation.kind) || !['draft', 'approved', 'cancelled'].includes(variation.status) || Math.abs(roundMoney(variation.quantity * variation.unitPrice) - variation.amount) > .009) fail('ข้อมูลหรือราคางานเพิ่ม–งานลดไม่ถูกต้อง รหัสต้องไม่ซ้ำ')
+        if (variation.summaryKey !== undefined && !contract.boqSummary?.rows.some(row => row.key === variation.summaryKey)) fail('ไม่พบหมวด BOQ ที่อ้างอิง')
+        if (variation.replacement !== undefined) {
+          amount(variation.replacement.original); amount(variation.replacement.proposed)
+          const delta = roundMoney(variation.replacement.proposed - variation.replacement.original)
+          if (Math.abs(Math.abs(delta) - variation.amount) > .009 || (delta > 0 ? 'add' : 'deduct') !== variation.kind) fail('ยอดทดแทนต้องตรงกับส่วนต่างราคาเดิมและราคาใหม่')
+        }
         variationCodes.add(variation.code.toUpperCase())
         if (variation.stageId !== undefined && !contract.stages.some(stage => stage.id === variation.stageId) || variation.kind === 'deduct' && !variation.stageId) fail('กรุณาเลือกงวดงานเดิมที่ปรับลดหรือปรับเพิ่ม')
         if (variation.status === 'approved' && (variation.date > today() || contract.signedOn && variation.date < contract.signedOn)) fail('วันที่ตกลงงานเพิ่ม–งานลดต้องไม่ก่อนสัญญาหรือเป็นอนาคต')

@@ -12,8 +12,23 @@ export function priceContractStages(total: number, stages: ContractorStage[]): C
   }
   return priced
 }
-export type ContractVariation = { id: string; code: string; kind: 'add' | 'deduct'; name: string; quantity: number; unit: string; unitPrice: number; amount: number; date: string; status: 'draft' | 'approved' | 'cancelled'; stageId?: string; reference: string; notes: string }
-export type ContractorContract = { id: string; code: string; name: string; contractor: string; amount: number; signedOn: string; description: string; stages: ContractorStage[]; kind?: 'construction' | 'land_purchase'; landReference?: string; location?: string; variations?: ContractVariation[] }
+export type ContractVariation = { id: string; code: string; kind: 'add' | 'deduct'; name: string; quantity: number; unit: string; unitPrice: number; amount: number; date: string; status: 'draft' | 'approved' | 'cancelled'; stageId?: string; summaryKey?: string; replacement?: { original: number; proposed: number }; reference: string; notes: string }
+export type ContractorDocument = { id: string; kind: 'plan' | 'bank_boq' | 'quotation' | 'other'; storageCode?: string; name: string; mimeType: string; size: number }
+export type ContractBoqSummary = { rows: { key: string; name: string; amount: number }[]; managementFee: number; agreedTotal?: number; reference: string }
+export type ContractorContract = { id: string; code: string; name: string; contractor: string; amount: number; signedOn: string; description: string; stages: ContractorStage[]; kind?: 'construction' | 'land_purchase'; landReference?: string; location?: string; variations?: ContractVariation[]; documents?: ContractorDocument[]; boqSummary?: ContractBoqSummary }
+export function contractBoqSummary(contract: ContractorContract) {
+  const summary = contract.boqSummary
+  const approved = (contract.variations ?? []).filter(row => row.status === 'approved')
+  const rows = (summary?.rows ?? []).map(row => {
+    const changes = approved.filter(change => change.summaryKey === row.key)
+    const additions = roundMoney(changes.filter(change => change.kind === 'add').reduce((sum, change) => sum + change.amount, 0))
+    const deductions = roundMoney(changes.filter(change => change.kind === 'deduct').reduce((sum, change) => sum + change.amount, 0))
+    return { ...row, additions, deductions, net: roundMoney(row.amount + additions - deductions) }
+  })
+  const base = roundMoney(rows.reduce((sum, row) => sum + row.amount, 0) + (summary?.managementFee ?? 0))
+  const unmapped = approved.filter(change => !rows.some(row => row.key === change.summaryKey)).reduce((sum, change) => sum + (change.kind === 'add' ? change.amount : -change.amount), 0)
+  return { rows, base, unmapped: roundMoney(unmapped), agreedDifference: roundMoney(contract.amount - base), ...contractPrice(contract) }
+}
 export function contractPrice(contract: ContractorContract, asOf?: string) {
   const variations = (contract.variations ?? []).filter(row => row.status === 'approved' && (!asOf || row.date <= asOf))
   const additions = roundMoney(variations.filter(row => row.kind === 'add').reduce((sum, row) => sum + row.amount, 0))

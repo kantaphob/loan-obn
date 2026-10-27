@@ -63,7 +63,7 @@ export async function getAssetWorkspace() {
   const user = await operator()
   const [data, categories, ledger, history, financialCategories, channels] = await Promise.all([
     load(user.id), getCategories(),
-    prisma.ledgerEntry.findMany({ where: { direction: 'OUT', voidedAt: null }, orderBy: [{ occurredOn: 'desc' }, { id: 'desc' }], take: 1000, select: ledgerSelect }),
+    prisma.ledgerEntry.findMany({ where: { direction: { in: ['IN', 'OUT'] }, voidedAt: null }, orderBy: [{ occurredOn: 'desc' }, { id: 'desc' }], take: 5000, select: ledgerSelect }),
     prisma.assetWorkspaceRevision.findMany({ where: { operatorId: user.id }, orderBy: { revision: 'desc' }, take: 30, select: { id: true, revision: true, reason: true, createdAt: true } }),
     prisma.financialCategory.findMany({ where: { isActive: true, OR: [{ direction: 'OUT', group: { not: 'LOAN' } }, { direction: 'IN', group: 'INCOME' }], NOT: { code: { in: ['INTEREST_RECEIVED', 'TRADE_PAYABLE'] } } }, orderBy: { sortOrder: 'asc' }, select: { code: true, nameTh: true, direction: true } }),
     prisma.paymentChannel.findMany({ where: { isActive: true }, orderBy: { code: 'asc' }, select: { code: true, nameTh: true } }),

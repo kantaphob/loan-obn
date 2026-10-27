@@ -1,0 +1,44 @@
+'use client'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
+import { readContractBoqSummary } from '@/app/thing/_shared/contract-boq-import'
+import { extractBoqPdfText } from '@/app/thing/_shared/actions'
+import { contractBoqSummary, money, type ContractBoqSummary, type ContractorContract, type ContractorDocument } from '@/app/thing/_shared/model'
+export const contractDocumentNames = { plan: 'แปลนบ้าน', bank_boq: 'BOQ ที่ส่งธนาคาร', quotation: 'ใบเสนอราคา / ใบงานเพิ่ม–ลด', other: 'เอกสารอื่น' }
+export function emptyContractSummary(): ContractBoqSummary { return { rows: ['หมวดงานโครงสร้าง','หมวดงานโครงสร้างหลังคา','หมวดงานสถาปัตยกรรม','หมวดงานสุขภัณฑ์','หมวดงานระบบสุขาภิบาล','หมวดงานไฟฟ้า','หมวดงานสี'].map((name, i) => ({ key: `category-${i+1}`, name, amount: 0 })), managementFee: 0, reference: '' } }
+export function ContractSummaryView({ contract }: { contract: ContractorContract }) {
+  const summary = contractBoqSummary(contract)
+  return <div className="space-y-4"><section className="rounded-xl border border-slate-200 p-3"><h4 className="text-sm font-semibold">เอกสารสัญญา</h4><div className="mt-2 flex flex-wrap gap-2">{(Object.keys(contractDocumentNames) as ContractorDocument['kind'][]).map(kind => { const docs = contract.documents?.filter(doc => doc.kind === kind) ?? []; return <div key={kind} className="rounded-lg bg-slate-50 p-3 text-xs"><strong>{contractDocumentNames[kind]}</strong>{docs.length ? docs.map(doc => <a key={doc.id} className="mt-2 block text-blue-700 underline" href={`/api/thing/contract-documents/${doc.id}`} target="_blank" rel="noreferrer">{doc.name}</a>) : <p className="mt-2 text-slate-400">ยังไม่แนบ</p>}</div> })}</div></section>
+    {contract.boqSummary ? <section className="space-y-2"><h4 className="text-sm font-semibold">สรุปราคา BOQ เทียบงานเพิ่ม–ลด</h4><p className="text-xs text-slate-500">{contract.boqSummary.reference} · ส่วนต่างนับเฉพาะรายการที่ตกลงแล้ว</p><div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-left text-xs"><thead className="bg-slate-50"><tr>{['ITEM','DESCRIPTION','ราคา BOQ เดิม','เพิ่ม (+)','ลด (−)','ยอดทดแทน / หลังปรับ'].map(h => <th key={h} className="p-3">{h}</th>)}</tr></thead><tbody>{summary.rows.map((row,i) => <tr key={row.key} className="border-t border-slate-100"><td className="p-3">{i+1}</td><td className="p-3">{row.name}</td><td className="p-3">{money(row.amount)}</td><td className="p-3 text-orange-700">{money(row.additions)}</td><td className="p-3 text-emerald-700">{money(row.deductions)}</td><td className="p-3 font-semibold">{money(row.net)}</td></tr>)}</tbody></table></div><dl className="grid gap-2 rounded-xl bg-slate-50 p-3 text-xs">{[['รวมหมวดงาน', summary.rows.reduce((sum,row) => sum+row.amount,0)],['ค่าดำเนินงานก่อสร้าง',contract.boqSummary.managementFee],['รวมค่าก่อสร้างตาม BOQ',summary.base],...(contract.boqSummary.agreedTotal === undefined ? [] : [['ราคาตกลงตามเอกสาร BOQ',contract.boqSummary.agreedTotal]]),['ราคาสัญญาเดิม',contract.amount],['ส่วนต่างราคาสัญญากับยอดรวม BOQ',summary.agreedDifference],['งานเพิ่มที่ตกลงแล้ว',summary.additions],['งานลดที่ตกลงแล้ว',summary.deductions],['ส่วนต่างที่ยังไม่แยกหมวด BOQ',summary.unmapped],['ราคาสัญญาสุทธิหลังปรับ',summary.net]].map(([label,value]) => <div key={label} className="flex justify-between gap-4"><dt>{label}</dt><dd className="font-semibold tabular-nums">{money(Number(value))} บาท</dd></div>)}</dl></section> : <p className="text-xs text-slate-500">ยังไม่กรอกสรุป BOQ · เพิ่มได้ในแก้ไขสัญญา</p>}
+    {contract.variations?.length ? <div className="overflow-x-auto"><h4 className="mb-2 text-sm font-semibold">ใบเสนอราคางานเพิ่ม–ลด / งานทดแทน</h4><table className="w-full whitespace-nowrap text-left text-xs"><thead><tr>{['ใบงาน','รายการ','ราคาเดิม','ราคาใหม่ทดแทน','ส่วนต่าง','สถานะ'].map(h => <th className="p-2" key={h}>{h}</th>)}</tr></thead><tbody>{contract.variations.map(row => <tr className="border-t border-slate-100" key={row.id}><td className="p-2">{row.code}</td><td className="p-2">{row.name}</td><td className="p-2">{row.replacement ? money(row.replacement.original) : '—'}</td><td className="p-2">{row.replacement ? money(row.replacement.proposed) : '—'}</td><td className="p-2">{row.kind === 'add' ? '+' : '−'}{money(row.amount)}</td><td className="p-2">{row.status === 'approved' ? 'ตกลงแล้ว' : row.status === 'draft' ? 'ร่าง' : 'ยกเลิก'}</td></tr>)}</tbody></table></div> : null}
+  </div>
+}
+export function ContractSummaryEditor({ contractCode, summary, documents, onSummary, onDocuments, onUploading }: { contractCode: string; summary: ContractBoqSummary; documents: ContractorDocument[]; onSummary: (value: ContractBoqSummary) => void; onDocuments: (value: ContractorDocument[]) => void; onUploading: (value: boolean) => void }) {
+  const [uploading,setUploading] = useState(false)
+  const { toast } = useToast()
+  async function upload(file: File, kind: ContractorDocument['kind']) {
+    setUploading(true); onUploading(true)
+    try {
+      const f = new FormData(); f.set('file',file); f.set('kind',kind); f.set('contractCode',contractCode)
+      const response = await fetch('/api/thing/contract-documents',{method:'POST',body:f}), result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? 'แนบไฟล์ไม่สำเร็จ')
+      onDocuments([...documents,result])
+      if (kind === 'bank_boq' && file.name.toLowerCase().endsWith('.pdf')) {
+        try {
+          const parsed = await extractBoqPdfText(f)
+          const lines = parsed.pages.at(-1) ?? []
+          const imported = readContractBoqSummary(lines, summary, file.name)
+          const found = !!imported
+          if (imported) onSummary(imported)
+          toast({title:'แนบ BOQ แล้ว',description:found ? 'อ่านสรุปราคาแล้ว กรุณาตรวจตัวเลขก่อนบันทึกสัญญา' : 'กรุณากรอกสรุปราคาตามเอกสาร',variant:'success'})
+        } catch { toast({title:'แนบ BOQ แล้ว',description:'อ่านราคาอัตโนมัติไม่ได้ กรุณากรอกสรุปราคาตามเอกสาร',variant:'warning'}) }
+      } else toast({title:'แนบไฟล์แล้ว',description:'กดบันทึกสัญญาเพื่อเก็บเอกสารเข้ารายการ',variant:'success'})
+    } catch(error) { toast({title:'แนบไฟล์ไม่สำเร็จ',description:error instanceof Error ? error.message : '',variant:'error'}) }
+    finally {setUploading(false);onUploading(false)}
+  }
+  const field='mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm'
+  return <section className="space-y-4 rounded-xl border border-slate-200 p-3"><h3 className="text-sm font-semibold">เอกสารและสรุป BOQ</h3><p className="break-all text-xs text-slate-500">โฟลเดอร์สัญญา: {contractCode.trim() || 'กรอกรหัสสัญญาก่อนแนบไฟล์'} / ID ไฟล์ · สร้างโฟลเดอร์ก่อนเก็บไฟล์</p><p className="text-xs text-slate-500">PDF / JPG / PNG ไม่เกิน 15 MB ต่อไฟล์ · แนบ BOQ PDF เพื่ออ่านสรุปราคา แล้วตรวจแก้ก่อนบันทึก</p><div className="grid gap-3 sm:grid-cols-2">{(Object.keys(contractDocumentNames) as ContractorDocument['kind'][]).map(kind => <label key={kind} className="text-xs font-medium">{contractDocumentNames[kind]}<input className={field} type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading || !contractCode.trim() || documents.length >=30} onChange={e => {const file=e.currentTarget.files?.[0];e.currentTarget.value='';if(file) void upload(file,kind)}} /></label>)}</div>{documents.map(doc => <div key={doc.id} className="flex items-center justify-between gap-2 text-xs"><span>{contractDocumentNames[doc.kind]} · {doc.name}</span><Button disabled={uploading} onClick={() => onDocuments(documents.filter(row => row.id !== doc.id))}>นำออกจากสัญญา</Button></div>)}
+    <div className="space-y-2">{summary.rows.map((row,i) => <label key={row.key} className="grid gap-2 text-xs sm:grid-cols-2"><span>{i+1}. {row.name}</span><input aria-label={`ราคา BOQ ${row.name}`} className={field} type="number" min="0" step="0.01" max={1e12} value={row.amount || ''} onChange={e => onSummary({...summary,rows:summary.rows.map(r => r.key === row.key ? {...r,amount:Number(e.target.value)} : r)})} /></label>)}</div><label className="block text-xs">ค่าดำเนินงานก่อสร้าง<input className={field} type="number" min="0" max={1e12} step="0.01" value={summary.managementFee || ''} onChange={e => onSummary({...summary,managementFee:Number(e.target.value)})} /></label><label className="block text-xs">ราคาตกลงตามเอกสาร BOQ (ถ้ามี)<input className={field} type="number" min="0" max={1e12} step="0.01" value={summary.agreedTotal ?? ''} onChange={e => onSummary({...summary,agreedTotal:e.target.value === '' ? undefined : Number(e.target.value)})} /></label><label className="block text-xs">อ้างอิงเอกสาร / เวอร์ชัน<input className={field} value={summary.reference} maxLength={3000} onChange={e => onSummary({...summary,reference:e.target.value})} /></label><p className="text-xs">รวม BOQ {money(summary.rows.reduce((sum,row) => sum+row.amount,0)+summary.managementFee)} บาท · ราคาสัญญากรอกแยกด้านบน</p>
+  </section>
+}
