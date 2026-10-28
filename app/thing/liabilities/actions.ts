@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { ledgerAmount, validLedgerDate } from '@/lib/ledger'
 import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
-import { assertUniqueLedgerProof } from '@/lib/ledger-proof'
+import { readRepaymentSlip } from '@/lib/repayment-slip'
+import { assertUniqueLedgerProof, slipDigest } from '@/lib/ledger-proof'
 import { syncGoogleLedger } from '@/lib/google-sync'
 import { migrateAssetData, contractPaymentStages, type Payment } from '@/app/thing/_shared/model'
 import { validateAssetData } from '@/app/thing/_shared/validation'
@@ -20,7 +21,7 @@ export type BankLoanCashInput = {
   payment?: Pick<Payment, 'roundId' | 'principal' | 'interest' | 'fee' | 'penalty' | 'extraPrincipal' | 'bankInstallment'>
 }
 
-export async function recordBankLoanCash(input: BankLoanCashInput) {
+export async function recordBankLoanCash(input: BankLoanCashInput, file?: File | null) {
   try {
     const user = await getCurrentUser()
     if (!user || user.status !== 'ACTIVE' || user.role === 'REVIEWER') throw new Error('ไม่มีสิทธิ์ทำรายการนี้')
@@ -31,6 +32,8 @@ export async function recordBankLoanCash(input: BankLoanCashInput) {
     if (input.direction === 'OUT' && Boolean(input.payment) === Boolean(input.contractorPayment) || input.direction === 'IN' && (input.payment || input.contractorPayment)) throw new Error('ระบุรายละเอียดการรับหรือจ่ายให้ถูกต้อง')
     if (input.drawNumber !== undefined && (input.direction !== 'IN' || !Number.isSafeInteger(input.drawNumber) || input.drawNumber < 1 || input.drawNumber > 10000)) throw new Error('เลขงวดรับไม่ถูกต้อง')
     if (input.drawType !== undefined && (input.direction !== 'IN' || !['land', 'house'].includes(input.drawType))) throw new Error('ประเภทรับเงินกู้ไม่ถูกต้อง')
+    const slip = await readRepaymentSlip(file)
+    const slipHash = slip ? slipDigest(slip.fileData) : null
     const result = await prisma.$transaction(async tx => {
       const state = await tx.assetWorkspaceState.findUniqueOrThrow({ where: { operatorId: user.id } })
       const current = migrateAssetData(JSON.parse(state.payload))
@@ -50,7 +53,7 @@ export async function recordBankLoanCash(input: BankLoanCashInput) {
         const samePayment = input.direction === 'IN' || !!contractor && !!linked || !!input.payment && !!linkedPayment
           && (['roundId', 'principal', 'interest'] as const).every(key => linkedPayment[key] === input.payment![key])
           && (['fee', 'penalty', 'extraPrincipal', 'bankInstallment'] as const).every(key => (linkedPayment[key] ?? 0) === (input.payment![key] ?? 0))
-        if (!linked || !samePayment || previous.voidedAt || previous.createdBy !== user.id || previous.direction !== input.direction || previous.categoryCode !== categoryCode || previous.amountSatang !== amountSatang || previous.occurredOn !== input.date || previous.channelCode !== input.channelCode || previous.reference !== input.reference.trim() || previous.note !== note) throw new Error('คำขอนี้ถูกใช้กับรายการอื่นแล้ว กรุณาโหลดหน้าใหม่')
+        if (!linked || !samePayment || previous.voidedAt || previous.createdBy !== user.id || previous.direction !== input.direction || previous.categoryCode !== categoryCode || previous.amountSatang !== amountSatang || previous.occurredOn !== input.date || previous.channelCode !== input.channelCode || previous.reference !== input.reference.trim() || previous.note !== note || (previous.slipHash ?? null) !== slipHash) throw new Error('คำขอนี้ถูกใช้กับรายการอื่นแล้ว กรุณาโหลดหน้าใหม่')
         return { entryId: previous.id, data: current }
       }
       if (state.revision !== input.revision) throw new Error('ข้อมูลเปลี่ยนจากอีกหน้าต่าง กรุณาโหลดหน้าใหม่ก่อนบันทึก')
@@ -59,8 +62,8 @@ export async function recordBankLoanCash(input: BankLoanCashInput) {
       const category = await tx.financialCategory.upsert({ where: { code: categoryCode }, update: {}, create: { code: categoryCode, nameTh: categoryName, group: categoryGroup, direction: input.direction, sortOrder: input.direction === 'IN' ? 330 : 340 } })
       if (!category.isActive || category.direction !== input.direction || category.group !== categoryGroup) throw new Error('หมวดเงินกู้ธนาคารไม่เปิดใช้งานหรือมีการตั้งค่าไม่ตรงประเภท')
       await assertAccountingDateOpen(tx, input.date)
-      await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: input.channelCode })
-      const entry = await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, kind: 'GENERAL', direction: input.direction, categoryCode, categoryName: category.nameTh, amountSatang, occurredOn: input.date, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note, createdBy: user.id } })
+      await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: input.channelCode, slipHash })
+      const entry = await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash, ...(slip ? { slip: { create: slip } } : {}), kind: 'GENERAL', direction: input.direction, categoryCode, categoryName: category.nameTh, amountSatang, occurredOn: input.date, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note, createdBy: user.id } })
       const next = structuredClone(current)
       const updated = next.loans.find(row => row.id === input.loanId)!
       if (input.direction === 'IN') {
@@ -90,4 +93,14 @@ export async function recordBankLoanCash(input: BankLoanCashInput) {
   } catch (error) {
     return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'รายการหรือเลขอ้างอิงนี้บันทึกแล้ว กรุณาโหลดหน้าใหม่' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกรับ–จ่ายไม่สำเร็จ กรุณาลองใหม่' }
   }
+}
+
+export async function getBankLoanCashEvidence(loanId: string) {
+  const user = await getCurrentUser()
+  if (!user || user.status !== 'ACTIVE') throw new Error('ไม่มีสิทธิ์ดูหลักฐาน')
+  const state = await prisma.assetWorkspaceState.findUnique({ where: { operatorId: user.id } })
+  const loan = state && migrateAssetData(JSON.parse(state.payload)).loans.find(row => row.id === loanId)
+  if (!loan) return []
+  const ids = [...(loan.disbursements ?? []), ...(loan.contractorPayments ?? []), ...loan.payments].flatMap(row => row.ledgerEntryId ? [row.ledgerEntryId] : [])
+  return prisma.ledgerSlip.findMany({ where: { entryId: { in: ids }, entry: { createdBy: user.id } }, select: { entryId: true, originalName: true, mimeType: true, sizeBytes: true } })
 }

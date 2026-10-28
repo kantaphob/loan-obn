@@ -1,5 +1,6 @@
 'use client'
 
+import { DataLoading } from '@/components/ui/data-loading'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Check, Search, UserRound } from 'lucide-react'
@@ -88,7 +89,7 @@ export function ContractBorrowerStep({ onSaved }: { onSaved?: (code: string, con
       </form>
       {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
       <div aria-live="polite" aria-busy={pending} className="mt-3">
-        {pending && <p role="status" className="rounded-lg bg-white/30 p-4 text-center text-xs text-slate-500">กำลังโหลดรายชื่อผู้กู้จาก Borrowers…</p>}
+        {pending && <DataLoading compact label="กำลังโหลดรายชื่อผู้กู้จาก Borrowers…" />}
         {searched && results.length === 0 && <p className="rounded-lg bg-white/30 p-4 text-center text-xs text-slate-500">ไม่พบผู้กู้ยืม ลองค้นหาด้วยชื่อ เบอร์โทร หรือรหัสผู้กู้อีกครั้ง</p>}
         {searched && results.length > 0 && <p className="mb-1 text-[11px] text-slate-500">พบ {results.length} รายการ{results.length === 20 ? ' (แสดงสูงสุด 20 รายการ กรุณาระบุคำค้นให้เจาะจงขึ้น)' : ''}</p>}
         <div className="max-h-60 space-y-2 overflow-y-auto overscroll-contain pr-1">{results.map(b => {

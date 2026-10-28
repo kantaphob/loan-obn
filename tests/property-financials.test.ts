@@ -74,3 +74,24 @@ test('reported sale has no invented sale date and preserves costs while excludin
   assert.equal(summary.properties[0].saleAmounts?.remaining, saleDeclarationAmounts(home.saleDeclaration, home.landValue).remaining)
   assert.equal(home.purchasePrice, 2662000)
 })
+
+test('property appraisal uses complete single-asset coverage and never sums combined valuations', async () => {
+  const { appraisalHistory, appraisalComparison, propertyAppraisal } = await import('../app/thing/property/financials')
+  const land = newHome('Land', 'house'); land.purchasePrice = 250000
+  const house = newHome('House', 'house'); house.id = 'house'; house.purchasePrice = 750000
+  land.valuations = [{ id: 'land-value', date: '2026-01-01', landValue: 350000, buildingValue: 0, source: 'Bank', notes: '' }]
+  house.valuations = [{ id: 'combined', date: '2026-02-01', landValue: 350000, buildingValue: 850000, source: 'Combined', notes: '' }]
+  assert.equal(appraisalHistory(house, false).length, 0)
+  assert.equal(propertyAppraisal([land, house], new Set([land.id])).complete, false)
+  house.valuations.push({ id: 'house-value', date: '2026-03-01', landValue: 0, buildingValue: 850000, source: 'Bank house only', notes: '' })
+  const result = propertyAppraisal([land, house], new Set([land.id]))
+  assert.equal(result.amount, 1200000)
+  assert.equal(result.cost, 1000000)
+  assert.equal(result.difference, 200000)
+  assert.equal(result.percent, 20)
+  assert.equal(appraisalComparison(land, 200000).percent, -20)
+  house.purchasePrice = 0
+  assert.equal(propertyAppraisal([land, house], new Set([land.id])).percent, null)
+  land.valuations.push({ id: 'future', date: '2999-01-01', landValue: 9999999, buildingValue: 0, source: 'Future', notes: '' })
+  assert.equal(appraisalHistory(land, true)[0].amount, 350000)
+})

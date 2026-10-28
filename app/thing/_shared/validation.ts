@@ -33,7 +33,7 @@ export function validateAssetData(data: AssetData) {
       if (received > sale.salePrice + .009) fail('ยอดรับเงินจริงจากการขายเกินราคาขาย')
     }
     if (!home.name.trim()) fail('กรุณาระบุชื่อบ้าน')
-    if (!['house', 'vehicle', 'other'].includes(home.kind) || !['cash', 'loan'].includes(home.financing)) fail('ประเภทสินทรัพย์หรือการชำระไม่ถูกต้อง')
+    if (!['house', 'vehicle', 'other'].includes(home.kind) || !['cash', 'loan', 'finance'].includes(home.financing) || home.financing === 'finance' && home.kind !== 'vehicle') fail('ประเภทสินทรัพย์หรือการชำระไม่ถูกต้อง')
     if (home.vehicleType !== undefined && (home.kind !== 'vehicle' || !['car', 'pickup', 'sedan', 'other'].includes(home.vehicleType))) fail('ประเภทรถไม่ถูกต้อง')
     if (home.vehicleDetails !== undefined) {
       if (home.kind !== 'vehicle') fail('รายละเอียดรถใช้กับสินทรัพย์ประเภทยานพาหนะเท่านั้น')
@@ -42,6 +42,29 @@ export function validateAssetData(data: AssetData) {
       amount(vehicle.modelYear); amount(vehicle.engineCc); amount(vehicle.odometerKm)
       if (vehicle.modelYear && (!Number.isInteger(vehicle.modelYear) || vehicle.modelYear < 1900 || vehicle.modelYear > new Date().getFullYear() + 1)) fail('ปีรถไม่ถูกต้อง')
       if (!Number.isInteger(vehicle.engineCc) || !Number.isInteger(vehicle.odometerKm)) fail('ขนาดเครื่องยนต์และเลขไมล์ต้องเป็นจำนวนเต็ม')
+    }
+    if (home.vehicleFinancing !== undefined) {
+      const financing = home.vehicleFinancing
+      if (home.kind !== 'vehicle' || home.financing !== 'finance') fail('ข้อมูลไฟแนนซ์ใช้ได้เฉพาะรถที่เลือกผ่อนชำระ')
+      text(financing.lender); text(financing.contractNumber); date(financing.firstDueOn, true)
+      for (const value of [financing.downPayment, financing.financedAmount, financing.installmentAmount]) amount(value)
+      if (!financing.lender.trim() || financing.financedAmount <= 0 || financing.installmentCount < 1 || financing.installmentCount > 600 || !Number.isInteger(financing.installmentCount) || financing.downPayment > home.purchasePrice || financing.financedAmount > home.purchasePrice - financing.downPayment + .009 || !Array.isArray(financing.payments) || financing.payments.length > 10000 || !Array.isArray(financing.downPayments) || financing.downPayments.length > 1000) fail('ข้อมูลสัญญาไฟแนนซ์รถไม่ถูกต้อง')
+      let paidDownPayment = 0
+      for (const payment of financing.downPayments) {
+        id(payment.id); date(payment.date); text(payment.reference); text(payment.note)
+        amount(payment.amount, true)
+        if (!Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1 || payment.date > today()) fail('รายการจ่ายเงินดาวน์รถไม่ถูกต้อง')
+        paidDownPayment += payment.amount
+      }
+      if (paidDownPayment > financing.downPayment + .009) fail('ยอดจ่ายเงินดาวน์เกินยอดตามสัญญา')
+      let paidPrincipal = 0
+      for (const payment of financing.payments) {
+        id(payment.id); date(payment.date); text(payment.reference); text(payment.note)
+        amount(payment.amount, true); amount(payment.principal); amount(payment.interest)
+        if (!Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1 || payment.date > today() || Math.abs(payment.amount - payment.principal - payment.interest) > .009) fail('ยอดหรือรายการชำระค่างวดรถไม่ถูกต้อง')
+        paidPrincipal += payment.principal
+      }
+      if (paidPrincipal > financing.financedAmount + .009) fail('ยอดเงินต้นที่ชำระเกินยอดจัดไฟแนนซ์')
     }
     if (home.vehicleRecords !== undefined) {
       if (!Array.isArray(home.vehicleRecords) || home.vehicleRecords.length > 10000 || home.kind !== 'vehicle') fail('รายการยานพาหนะไม่ถูกต้อง')

@@ -152,5 +152,25 @@
 .credit-history-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
 .credit-history-grid dt { font-size: 11px; color: #8392a5; }
 .credit-history-grid dd { margin: 6px 0 0; font-size: 16px; font-weight: 600; color: #405b7b; font-variant-numeric: tabular-nums; }
+.credit-received-summary h3 { margin: 0; color: #40516a; font-size: 14px; font-weight: 600; }
+.credit-received-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 16px 0 0; }
+.credit-received-grid > div { min-width: 0; padding: 12px; border: 1px solid #e5ebf3; border-radius: 12px; background: #f8fafd; }
+.credit-received-grid dt { color: #8392a5; font-size: 10px; }
+.credit-received-grid dd { margin: 6px 0 0; color: #405b7b; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.credit-received-grid small { color: #92a0b2; font-size: 10px; font-weight: 400; }
+.credit-received-grid > div:nth-child(2) dd { color: #8658c1; }
+.credit-interest-split { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 12px; }
+.credit-interest-split > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; padding: 11px 13px; border: 1px solid #eee5f7; border-radius: 11px; background: #fbf9fd; }
+.credit-interest-split span { color: #827296; font-size: 10px; }
+.credit-interest-split strong { color: #7651a7; font-size: 15px; font-variant-numeric: tabular-nums; }
+.credit-received-note { margin: 12px 0 0; color: #8392a5; font-size: 10px; line-height: 1.6; }
+.credit-persuader-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 18px 0 0; }
+.credit-persuader-grid > div { padding: 14px; border: 1px solid #e4e9f2; border-radius: 13px; background: #f8fafd; }
+.credit-persuader-grid dt { color: #8392a5; font-size: 10px; }
+.credit-persuader-grid dd { margin: 6px 0 0; color: #405b7b; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.credit-persuader-grid [data-due='true'] { border-color: #f4c5d0; background: #fff5f6; }
+.credit-persuader-grid [data-due='true'] dd { color: #be123c; }
 .credit-money-bars .credit-debt-total { font-size: clamp(26px, 3vw, 36px); }
-@media(max-width: 700px) { .credit-due-summary { grid-template-columns: 1fr; } .credit-history-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media(max-width: 700px) { .credit-due-summary { grid-template-columns: 1fr; } .credit-history-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .credit-received-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width: 500px) { .credit-interest-split { grid-template-columns: 1fr; } }
+@media(max-width: 500px) { .credit-persuader-grid { grid-template-columns: 1fr; } }

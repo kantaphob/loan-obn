@@ -7,8 +7,9 @@ import { loanAssetIds } from '@/app/thing/_shared/model'
 
 export type BankLoanFields = Pick<BankLoan, 'name' | 'bank' | 'accountNumber' | 'assetId' | 'assetIds'>
 
-export function BankLoanForm({ initial, properties, busy, error, onCancel, onSave }: {
+export function BankLoanForm({ initial, initialAssetIds = [], properties, busy, error, onCancel, onSave }: {
   initial: BankLoan | null
+  initialAssetIds?: string[]
   properties: Home[]
   busy: boolean
   error: string
@@ -18,7 +19,7 @@ export function BankLoanForm({ initial, properties, busy, error, onCancel, onSav
   const [name, setName] = useState(initial?.name ?? '')
   const [bank, setBank] = useState(initial?.bank ?? '')
   const [accountNumber, setAccountNumber] = useState(initial?.accountNumber ?? '')
-  const [assetIds, setAssetIds] = useState<string[]>(initial ? loanAssetIds(initial) : [])
+  const [assetIds, setAssetIds] = useState<string[]>(initial ? loanAssetIds(initial) : initialAssetIds)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

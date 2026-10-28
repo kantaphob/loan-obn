@@ -1,5 +1,6 @@
 'use client'
 
+import { DataLoading } from '@/components/ui/data-loading'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Eraser, PenLine } from 'lucide-react'
@@ -204,7 +205,7 @@ export function ContractSignatureModal({ contract, onClose, onSigned }: { contra
       {(contract.borrowerSignedAt || contract.lenderSignedAt || contract.witnesses.length > 0 || contract.documentSignatures.length > 0) && <section aria-label="หลักฐานการลงนาม" className="space-y-3 rounded-2xl border border-slate-200 bg-white/40 p-4">
         <h3 className="m-0 text-sm font-semibold">หลักฐานการลงนาม</h3>
         {recordsError && <p role="alert" className="mb-0 text-xs text-red-700">{recordsError}</p>}
-        {!records && !recordsError && <p role="status" className="mb-0 text-xs text-slate-500">กำลังโหลดหลักฐาน…</p>}
+        {!records && !recordsError && <DataLoading compact label="กำลังโหลดหลักฐาน…" />}
         {records && <>
           <div className="grid gap-3 sm:grid-cols-2">{([
             { name: 'ผู้กู้', record: records.borrower },

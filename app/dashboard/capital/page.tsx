@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
@@ -16,7 +17,7 @@ const percent = (value: number, total: number) => `${capitalPercent(value, total
 
 export default function CapitalPage() {
   return <PageContainer>
-    <Suspense fallback={<p role="status" className="p-8 text-sm text-slate-500">กำลังโหลดภาพรวมเงินทุน…</p>}><CapitalContent /></Suspense>
+    <Suspense fallback={<DataLoading label="กำลังโหลดภาพรวมเงินทุน…" />}><CapitalContent /></Suspense>
   </PageContainer>
 }
 

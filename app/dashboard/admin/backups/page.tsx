@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
@@ -7,7 +8,7 @@ import { getCurrentUser } from '@/lib/auth/current-user'
 import { BackupManager } from './backup-manager'
 
 export default function BackupsPage() {
-  return <Suspense fallback={<p role="status" className="p-6 text-sm">กำลังโหลดข้อมูลสำรอง…</p>}><BackupsContent /></Suspense>
+  return <Suspense fallback={<DataLoading label="กำลังโหลดข้อมูลสำรอง…" />}><BackupsContent /></Suspense>
 }
 
 async function BackupsContent() {

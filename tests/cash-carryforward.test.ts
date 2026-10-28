@@ -46,3 +46,18 @@ test('multiple historical accounts in a year require source reconciliation', () 
   const mixed = cashCarryforward([...entries, { ...entries[0], accountCode: 'ANOTHER_BANK' }], '2026-01-01', '2026-12-31')
   assert.equal(mixed.available, false)
 })
+
+test('confirmed distinct ledger entries and historical movements in the same year are combined', () => {
+  const receipts: CashMovement[] = [
+    { source: 'HISTORICAL', accountCode: 'ARCHIVE', occurredOn: '2025-09-01', direction: 'IN', amountSatang: 10000 },
+    { source: 'LEDGER', occurredOn: '2025-09-20', direction: 'IN', amountSatang: 30000000 },
+    { source: 'LEDGER', occurredOn: '2025-12-31', direction: 'OUT', amountSatang: 45000000 },
+    { source: 'LEDGER', occurredOn: '2025-12-31', direction: 'OUT', amountSatang: 45000000 },
+  ]
+  const result = cashCarryforward(receipts, '2025-01-01', '2025-12-31')
+  assert.equal(result.available, true)
+  assert.equal(result.incoming, 30010000)
+  assert.equal(result.outgoing, 90000000)
+  assert.equal(result.closing, -59990000)
+  assert.deepEqual(result.overlappingYears, [])
+})

@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import './borrower.css'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
@@ -12,7 +13,7 @@ import { bangkokToday } from '@/lib/ledger'
 import { borrowerStatuses } from '@/lib/borrower'
 
 export default function BorrowerPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
-  return <Suspense fallback={<PageContainer className="borrower-page"><p role="status" className="p-6 text-sm text-slate-300">กำลังโหลดข้อมูลผู้กู้ยืม…</p></PageContainer>}><BorrowerContent searchParams={searchParams} /></Suspense>
+  return <Suspense fallback={<PageContainer className="borrower-page"><DataLoading label="กำลังโหลดข้อมูลผู้กู้ยืม…" /></PageContainer>}><BorrowerContent searchParams={searchParams} /></Suspense>
 }
 
 async function BorrowerContent({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {

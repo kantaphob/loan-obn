@@ -84,4 +84,66 @@
 @media(max-width:480px) { .dash-asset-metrics { grid-template-columns:minmax(0,1fr); } }
 
 /* Keep lending and asset work visibly separate; never aggregate their balances. */
-.dash-filters{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:18px 0}.dash-filters label{display:flex;gap:8px;align-items:center}.dash-filters select,.dash-filters button{padding:10px;border:1px solid #d6dee7;border-radius:10px;background:var(--card-bg,#fff);color:inherit}.dash-filters small{flex-basis:100%;color:#64748b}.dash-actions,.dash-cash-review{margin-bottom:18px}.dash-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.dash-action-grid a{padding:14px;background:#f5f7fb;border-radius:12px;color:#334155;text-decoration:none}.dash-action-grid strong{display:block;margin-top:6px}.dash-sale-note{display:block;color:#64748b;margin-top:4px}.dash-cash-review summary{cursor:pointer;font-weight:600}.dash-scope-assets .dash-loan-section,.dash-scope-assets .dash-loan-action{display:none}.dash-scope-loans .dash-asset-section,.dash-scope-loans .dash-asset-action{display:none}.dash-filters button:focus-visible,.dash-filters select:focus-visible,.dash-action-grid a:focus-visible{outline:3px solid #7461ed;outline-offset:3px}
+.dash-actions{margin-bottom:18px}.dash-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.dash-action-grid a{padding:14px;background:#f5f7fb;border-radius:12px;color:#334155;text-decoration:none}.dash-action-grid strong{display:block;margin-top:6px}
+
+.dash-history-summary { margin-top:16px; }.dash-history-totals { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:18px; }.dash-history-totals > div { display:flex;flex-direction:column;gap:8px; }.dash-history-totals span { font-size:11px;color:#667492; }.dash-history-totals strong { font-size:20px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+@media(max-width:600px) { .dash-history-totals { grid-template-columns:1fr; } }
+
+.dash-year-summary { margin-top:20px; }
+
+/* Compact property summary, matching the dashboard's numeric scale. */
+.dash-property-total { display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 12px;margin:14px 0;padding-bottom:12px;border-bottom:1px solid var(--surface-border,#e1e8f0); }
+.dash-property-total > span,.dash-property-total small { font-size:10px;color:var(--workspace-muted,#718198); }
+.dash-property-total > strong { margin-left:auto;font-size:19px;font-weight:600;letter-spacing:-.4px;font-variant-numeric:tabular-nums; }
+.dash-property-total small { flex-basis:100%; }
+.dash-property-list { display:grid;gap:12px; }
+.dash-property-item { min-width:0;padding:14px;border:1px solid var(--surface-border,#dce5ef);border-radius:12px;background:var(--surface-subtle,#f8faff); }
+.dash-property-header { display:flex;justify-content:space-between;align-items:center;gap:10px; }
+.dash-property-header h3 { margin:3px 0 0;font-size:13px;font-weight:600;overflow-wrap:anywhere; }
+.dash-property-code { font-size:9px;color:var(--workspace-muted,#718198);letter-spacing:.05em; }
+.dash-property-badge { flex-shrink:0;border-radius:20px;padding:4px 8px;font-size:9px;color:#245fbd;background:#eaf1ff; }
+.dash-property-badge.is-sold { color:#56718d;background:#e7edf4; }
+.dash-property-cost { display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding-bottom:10px;border-bottom:1px solid var(--surface-border,#dce5ef);font-size:10px; }
+.dash-property-cost > span { color:var(--workspace-muted,#718198); }
+.dash-property-cost strong { font-size:12px;font-weight:500;font-variant-numeric:tabular-nums; }
+.dash-property-sale-status { display:flex;align-items:center;gap:6px;font-size:9px;color:#087e60;margin-top:10px; }
+.dash-property-sale-status i { width:5px;height:5px;background:#159d78;border-radius:50%; }
+.dash-property-sale-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0 0; }
+.dash-property-sale-grid > div { min-width:0; }
+.dash-property-sale-grid dt { font-size:10px;line-height:1.5;color:var(--workspace-muted,#718198); }
+.dash-property-sale-grid dd { margin:5px 0 0;font-size:16px;font-weight:550;letter-spacing:-.3px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+.dash-property-sale-grid .dash-property-remaining { grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:3px 12px;padding:10px 12px;border-radius:9px;background:#f0f8f5;border:1px solid #dceee6; }
+.dash-property-remaining dt { color:#31745f; }
+.dash-property-remaining dd { grid-column:2;grid-row:1/3;margin:0;font-size:18px;color:#087e60; }
+.dash-property-remaining small { font-size:9px;color:#6c9184; }
+.dash-property-footer { display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:10px;font-size:9px;line-height:1.6; }
+.dash-property-footer > span { color:var(--workspace-muted,#718198); }
+.dash-property-footer a { color:#245fbd;text-decoration:none; }
+@media(max-width:480px) {
+  .dash-property-item { padding:12px; }
+  .dash-property-header { flex-wrap:wrap; }
+  .dash-property-sale-grid { gap:10px; }
+  .dash-property-sale-grid dd { font-size:14px; }
+  .dash-property-sale-grid .dash-property-remaining { grid-template-columns:minmax(0,1fr); }
+  .dash-property-remaining dd { grid-column:1;grid-row:auto;font-size:17px; }
+}
+
+/* Decision-first dashboard: four compact cards, then cash, lending, assets. */
+.dash-today-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px; }
+.workspace-theme .dash-dashboard .dash-today-card { border-radius:14px;padding:18px;border:1px solid var(--surface-border,#dce5ef);background:var(--card-bg,#fff);box-shadow:0 4px 15px #1f375408;min-width:0; }
+.dash-today-card a { display:flex;flex-direction:column;gap:12px;color:inherit;text-decoration:none; }
+.dash-today-card a > span { font-size:11px;color:var(--workspace-muted,#718198); }
+.dash-today-card strong { font-size:clamp(20px,2vw,28px);font-weight:600;letter-spacing:-.6px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums; }
+.dash-today-card small { font-size:10px;line-height:1.7;color:var(--workspace-muted,#718198); }
+.dash-today-card.tone-blue strong { color:#245fbd; }.dash-today-card.tone-amber strong { color:#a57527; }.dash-today-card.tone-green strong { color:#087e60; }.dash-today-card.tone-red strong { color:#ba3b51; }
+.dash-action-inline { display:flex;flex-wrap:wrap;gap:12px;margin:10px 0 22px; }.dash-action-inline a { padding:10px 14px;border-radius:10px;background:#fff5e6;color:#8a6329;text-decoration:none;font-size:11px; }
+.dash-cash-chart-row { margin-top:16px; }.dash-cash-chart-row .dash-area-chart svg { max-height:250px; }
+.dash-open-item { display:flex;justify-content:space-between;gap:10px;font-size:11px;padding:12px 0;border-top:1px solid var(--surface-border,#dce5ef); }.dash-open-item span { color:var(--workspace-muted,#718198); }
+.dash-allocation-chart { display:grid;gap:15px; }.dash-allocation-chart > div { display:grid;grid-template-columns:54px minmax(0,1fr) 92px;align-items:center;gap:12px;font-size:10px; }.dash-allocation-chart strong { text-align:right;font-weight:500;font-variant-numeric:tabular-nums; }.dash-allocation-track { display:flex;height:10px;border-radius:5px;overflow:hidden;background:#edf2f8; }.dash-allocation-track i { height:100%;display:block; }
+.dash-operating-section,.dash-recent { margin-top:22px; }
+.dash-today-card a:focus-visible,.dash-action-inline a:focus-visible { outline:2px solid #245fbd;outline-offset:4px;border-radius:6px; }
+@media(max-width:1100px) { .dash-today-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:540px) { .dash-today-grid { grid-template-columns:minmax(0,1fr); }.dash-allocation-chart > div { grid-template-columns:44px minmax(0,1fr) 80px;gap:7px; } }
+.dash-funding-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); }
+
+.dash-project-sub { display:block;font-size:9px;color:var(--workspace-muted,#718198);margin-top:5px; }.dash-tableWrap tfoot { font-weight:600; }

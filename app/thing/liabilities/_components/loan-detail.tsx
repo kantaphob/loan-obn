@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowLeft, Landmark, Plus, House, MapPin, Wallet, ArrowDownToLine } from 'lucide-react'
 import { Header } from '@/components/ui/header'
 import { PageContainer } from '@/components/ui/page-container'
@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { Modal } from '@/components/ui/modal'
+import { CashEvidence, type CashEvidenceInfo } from './cash-evidence'
+import { getBankLoanCashEvidence } from '@/app/thing/liabilities/actions'
 import type { BankLoanCashInput } from '@/app/thing/liabilities/actions'
 import { type InitialLoanSettings } from '../initial-settings'
 import { ContractSettingsForm } from './contract-settings-form'
@@ -24,7 +26,14 @@ function Summary({ label, value }: { label: string; value: string }) { return <C
 function Table({ headings, children }: { headings: string[]; children: ReactNode }) { return <div className="overflow-x-auto rounded-xl border border-slate-200"><table className="w-full whitespace-nowrap text-left text-xs"><thead className="bg-slate-100"><tr>{headings.map(h => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div> }
 const cell = 'px-4 py-3 tabular-nums'
 
-export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onSave, onSaveSettings }: { onSaveSettings: (settings: InitialLoanSettings) => Promise<void>; loan: BankLoan; canWrite: boolean; channels: { code: string; nameTh: string }[]; onRecordCash: (input: Omit<BankLoanCashInput, 'loanId' | 'revision'>) => Promise<void>; onBack: () => void; onSave: (loan: BankLoan, reason: string) => Promise<void> }) {
+export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onSave, onSaveSettings }: { onSaveSettings: (settings: InitialLoanSettings) => Promise<void>; loan: BankLoan; canWrite: boolean; channels: { code: string; nameTh: string }[]; onRecordCash: (input: Omit<BankLoanCashInput, 'loanId' | 'revision'>, file?: File | null) => Promise<void>; onBack: () => void; onSave: (loan: BankLoan, reason: string) => Promise<void> }) {
+  const [evidence, setEvidence] = useState<CashEvidenceInfo[]>([])
+  useEffect(() => {
+    let current = true
+    getBankLoanCashEvidence(loan.id).then(rows => { if (current) setEvidence(rows) }).catch(() => { if (current) setEvidence([]) })
+    return () => { current = false }
+  }, [loan])
+  const evidenceById = new Map(evidence.map(row => [row.entryId,row]))
   const [tab, setTab] = useState<Tab>('cashflow')
   const [modal, setModal] = useState<Tab | null>(null)
   const [busy, setBusy] = useState(false)
@@ -53,10 +62,10 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
     catch (e) { setError(e instanceof Error ? e.message : 'บันทึกสัญญาไม่สำเร็จ') }
     finally { saving.current = false; setBusy(false) }
   }
-  async function recordCash(input: Omit<BankLoanCashInput, 'loanId' | 'revision'>) {
+  async function recordCash(input: Omit<BankLoanCashInput, 'loanId' | 'revision'>, file?: File | null) {
     if (!canWrite || saving.current) return
     saving.current = true; setBusy(true); setError(''); setNotice('')
-    try { await onRecordCash(input); setModal(null); setNotice('บันทึกรายการหนี้สินและ ledger แล้ว') }
+    try { await onRecordCash(input, file); setModal(null); setNotice('บันทึกรายการหนี้สินและ ledger แล้ว') }
     catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ') }
     finally { saving.current = false; setBusy(false) }
   }
@@ -106,7 +115,7 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
         <p className="text-sm text-slate-500">สมุดรายรับ–รายจ่ายสำหรับเงินก่อสร้าง รับเงินจากธนาคาร จ่ายซื้อที่ดินและจ่ายให้ช่างตามสัญญา</p>
         <div className="grid gap-3 sm:grid-cols-2"><Summary label="รับเงินกู้สะสมที่บันทึก" value={`${money((loan.disbursements ?? []).reduce((sum, row) => sum + row.amount, 0))} บาท`} /><Summary label="จ่ายค่าที่ดินและงวดงาน" value={`${money(contractorPaid)} บาท`} /></div>
         <div className="flex flex-wrap items-end justify-between gap-3"><label className="text-xs font-medium text-slate-500">ประเภทรายการ<select className={inputClass} value={cashDirection} onChange={e => setCashDirection(e.target.value as typeof cashDirection)}><option value="all">รับและจ่ายทั้งหมด</option><option value="IN">รับเงินกู้</option><option value="OUT">รายจ่าย</option></select></label><label className="min-w-48 flex-1 text-xs font-medium text-slate-500">ค้นหารายการ<input className={inputClass} type="search" placeholder="วันที่ เลขอ้างอิง รายละเอียด หรือ TX" value={cashSearch} onChange={e => setCashSearch(e.target.value)} /></label><span className="pb-3 text-xs text-slate-500">{visibleCashflow.length} รายการ</span></div>
-        <Table headings={['วันที่', 'รหัสรายการ', 'รายการ / ผู้รับ–ผู้จ่าย', 'รหัสสัญญา', 'รายรับ (บาท)', 'รายจ่าย (บาท)', 'อ้างอิง', 'Ledger']}>{visibleCashflow.map(row => <tr key={row.id}><td className={cell}>{row.date}</td><td className={`${cell} font-medium`}>{row.code}</td><td className={cell}><span>{row.type}</span><p className="mt-1 text-xs text-slate-500">{row.party}</p>{row.notes ? <p className="mt-1 max-w-60 whitespace-normal text-xs text-slate-500">{row.notes}</p> : null}</td><td className={cell}>{row.contractCode}</td><td className={`${cell} text-emerald-700`}>{row.direction === 'IN' ? money(row.amount) : '—'}</td><td className={`${cell} text-orange-800`}>{row.direction === 'OUT' ? money(row.amount) : '—'}</td><td className={cell}>{row.reference || '—'}</td><td className={cell}>{row.ledgerEntryId ? <a className="text-blue-700 underline" href={`/dashboard/ledger?q=TX-${String(row.ledgerEntryId).padStart(6, '0')}`}>TX-{String(row.ledgerEntryId).padStart(6, '0')}</a> : 'ยังไม่เชื่อม'}</td></tr>)}</Table>
+        <Table headings={['วันที่', 'รหัสรายการ', 'รายการ / ผู้รับ–ผู้จ่าย', 'รหัสสัญญา', 'รายรับ (บาท)', 'รายจ่าย (บาท)', 'อ้างอิง', 'หลักฐาน / บิล', 'Ledger']}>{visibleCashflow.map(row => <tr key={row.id}><td className={cell}>{row.date}</td><td className={`${cell} font-medium`}>{row.code}</td><td className={cell}><span>{row.type}</span><p className="mt-1 text-xs text-slate-500">{row.party}</p>{row.notes ? <p className="mt-1 max-w-60 whitespace-normal text-xs text-slate-500">{row.notes}</p> : null}</td><td className={cell}>{row.contractCode}</td><td className={`${cell} text-emerald-700`}>{row.direction === 'IN' ? money(row.amount) : '—'}</td><td className={`${cell} text-orange-800`}>{row.direction === 'OUT' ? money(row.amount) : '—'}</td><td className={cell}>{row.reference || '—'}</td><td className={cell}><CashEvidence evidence={evidenceById.get(row.ledgerEntryId ?? 0)} /></td><td className={cell}>{row.ledgerEntryId ? <a className="text-blue-700 underline" href={`/dashboard/ledger?q=TX-${String(row.ledgerEntryId).padStart(6, '0')}`}>TX-{String(row.ledgerEntryId).padStart(6, '0')}</a> : 'ยังไม่เชื่อม'}</td></tr>)}</Table>
         {!visibleCashflow.length ? <div className="py-8 text-center text-sm text-slate-500"><p>{cashflow.length ? 'ไม่พบรายการตามเงื่อนไขที่ค้นหา' : 'ยังไม่มีรายการรับ–จ่าย'}</p><p className="mt-2 text-xs">{cashflow.length ? 'ลองเปลี่ยนประเภทหรือคำค้นหา' : 'กดเพิ่มรายการเพื่อบันทึกรับเงินธนาคาร จ่ายซื้อที่ดิน หรือจ่ายผู้รับเหมา พร้อมลง ledger'}</p></div> : null}
       </> : null}
       {tab === 'variations' ? <VariationOrders loan={loan} canWrite={canWrite} busy={busy} onContracts={() => setTab('contractors')} onSave={(contractId, variation) => commit({ ...loan, contractorContracts: loan.contractorContracts?.map(contract => contract.id === contractId ? { ...contract, variations: contract.variations?.some(row => row.id === variation.id) ? contract.variations.map(row => row.id === variation.id ? variation : row) : [...(contract.variations ?? []), variation] } : contract) }, `บันทึกงานเพิ่ม–งานลด ${variation.code}`)} /> : null}
@@ -122,7 +131,7 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
         </div>
         <section className="space-y-4" aria-label="ประวัติงวดรับเงิน">
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5"><div><h3 className="m-0 text-sm font-semibold text-slate-800">ประวัติงวดรับเงิน</h3><p className="mb-0 mt-1 text-xs text-slate-500">{visibleDraws.length} รายการ{receiptType !== 'all' ? ' ตามประเภทที่เลือก' : 'ทั้งหมด'}</p></div><div role="group" aria-label="ประเภทเงินรับ" className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">{([['all','ทั้งหมด'],['land','ที่ดิน'],['house','บ้าน'],...((loan.disbursements ?? []).some(row => !row.drawType) ? [['unspecified','ยังไม่ระบุ']] : [])] as [typeof receiptType,string][]).map(([value,label]) => <button type="button" key={value} aria-pressed={receiptType === value} onClick={() => setReceiptType(value)} className={`min-h-10 rounded-lg px-4 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${receiptType === value ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>{label}</button>)}</div></div>
-        <Table headings={['ประเภท', 'งวดที่', 'วันที่รับเงิน', 'จำนวนเงิน (บาท)', 'อ้างอิง / รายละเอียด', 'Ledger']}>{visibleDraws.map(row => <tr key={row.id}><td className={cell}>{row.drawType === 'land' ? 'ที่ดิน' : row.drawType === 'house' ? 'บ้าน' : 'ยังไม่ระบุ'}</td><td className={cell}>{row.drawNumber ?? '—'}</td><td className={cell}>{row.date}</td><td className={`${cell} font-medium text-emerald-700`}>{money(row.amount)}</td><td className={cell}>{row.reference || '—'}{row.notes ? <p className="mt-1 whitespace-normal text-xs text-slate-500">{row.notes}</p> : null}</td><td className={cell}>{row.ledgerEntryId ? <a className="text-blue-700 underline" href={`/dashboard/ledger?q=TX-${String(row.ledgerEntryId).padStart(6, '0')}`}>TX-{String(row.ledgerEntryId).padStart(6, '0')}</a> : 'ยังไม่เชื่อม'}</td></tr>)}</Table>
+        <Table headings={['ประเภท', 'งวดที่', 'วันที่รับเงิน', 'จำนวนเงิน (บาท)', 'อ้างอิง / รายละเอียด', 'หลักฐาน / บิล', 'Ledger']}>{visibleDraws.map(row => <tr key={row.id}><td className={cell}>{row.drawType === 'land' ? 'ที่ดิน' : row.drawType === 'house' ? 'บ้าน' : 'ยังไม่ระบุ'}</td><td className={cell}>{row.drawNumber ?? '—'}</td><td className={cell}>{row.date}</td><td className={`${cell} font-medium text-emerald-700`}>{money(row.amount)}</td><td className={cell}>{row.reference || '—'}{row.notes ? <p className="mt-1 whitespace-normal text-xs text-slate-500">{row.notes}</p> : null}</td><td className={cell}><CashEvidence evidence={evidenceById.get(row.ledgerEntryId ?? 0)} /></td><td className={cell}>{row.ledgerEntryId ? <a className="text-blue-700 underline" href={`/dashboard/ledger?q=TX-${String(row.ledgerEntryId).padStart(6, '0')}`}>TX-{String(row.ledgerEntryId).padStart(6, '0')}</a> : 'ยังไม่เชื่อม'}</td></tr>)}</Table>
           {!visibleDraws.length ? <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-10 text-center"><span className="mb-3 rounded-full bg-blue-50 p-3"><ArrowDownToLine size={23} className="text-blue-500" aria-hidden="true" /></span><p className="m-0 text-sm font-medium text-slate-700">{loan.disbursements?.length ? 'ยังไม่มีงวดรับในประเภทนี้' : 'ยังไม่มีงวดรับเงิน'}</p><p className="mb-0 mt-2 max-w-sm text-xs leading-6 text-slate-500">{loan.disbursements?.length ? 'เลือกประเภทอื่นเพื่อดูรายการ หรือเพิ่มงวดรับใหม่' : 'เมื่อธนาคารโอนเงินให้ บันทึกประเภท งวดที่ วันที่รับ และจำนวนเงินได้ที่นี่'}</p>{canWrite ? <Button className="mt-4" variant="primary" disabled={busy} onClick={() => open('disbursements')}><Plus size={14} aria-hidden="true" />{loan.disbursements?.length ? 'เพิ่มงวดรับ' : 'บันทึกงวดรับแรก'}</Button> : null}</div> : null}
         </section>
       </div> : null}

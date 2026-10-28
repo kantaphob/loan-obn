@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { paymentBehavior, agingBands, closureMethod, parseRevision, outstandingBreakdown } from '../lib/credit-history'
+import { paymentBehavior, agingBands, closureMethod, parseRevision, outstandingBreakdown, receivedBreakdown } from '../lib/credit-history'
 const contract = { repaymentSatang: 10000, status: 'PAID', paidAt: '2026-01-01', repaymentDueDate: '2026-01-10' }
 const payment = { id: 1, kind: 'REPAYMENT', amountSatang: 10000, occurredOn: '2026-01-10' }
 assert.equal(paymentBehavior(contract, [payment], '2026-02-01'), 'ON_TIME')
@@ -42,3 +42,8 @@ assert.deepEqual(outstandingBreakdown(100000, { disbursed: true, baseRemaining: 
 assert.deepEqual(outstandingBreakdown(100000, { disbursed: true, baseRemaining: 0, penaltyRemaining: 0 }), { principal: 0, interest: 0, penalty: 0, total: 0 })
 assert.deepEqual(outstandingBreakdown(100000, { disbursed: false, baseRemaining: 120000, penaltyRemaining: 5000 }), { principal: 0, interest: 0, penalty: 0, total: 0 })
 console.log('Outstanding breakdown checks passed')
+
+assert.deepEqual(receivedBreakdown({ principalSatang: 100000, interestSatang: 20000, interestMethod: 'INTEREST_WITH_PRINCIPAL', repaymentSatang: 120000, balance: { disbursed: true, received: 55000, penaltyPaid: 5000 } }), { principal: 30000, interest: 20000, interestUpfront: 0, interestAfter: 20000, penalty: 5000, total: 55000 })
+assert.deepEqual(receivedBreakdown({ principalSatang: 100000, interestSatang: 20000, interestMethod: 'INTEREST_UPFRONT', repaymentSatang: 100000, balance: { disbursed: true, received: 35000, penaltyPaid: 5000 } }), { principal: 30000, interest: 20000, interestUpfront: 20000, interestAfter: 0, penalty: 5000, total: 55000 })
+assert.deepEqual(receivedBreakdown({ principalSatang: 100000, interestSatang: 20000, interestMethod: 'INTEREST_UPFRONT', repaymentSatang: 100000, balance: { disbursed: false, received: 0, penaltyPaid: 0 } }), { principal: 0, interest: 0, interestUpfront: 0, interestAfter: 0, penalty: 0, total: 0 })
+console.log('Received amount breakdown checks passed')

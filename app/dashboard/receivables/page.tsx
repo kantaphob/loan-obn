@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
 import { PageContainer } from '@/components/ui/page-container'
@@ -7,7 +8,7 @@ import { getTradeReceivables } from './actions'
 import { TradeReceivablesWorkspace } from './workspace'
 
 export default function TradeReceivablesPage() {
-  return <Suspense fallback={<PageContainer className="borrower-page"><p role="status" className="p-6 text-sm text-slate-500">กำลังโหลดลูกหนี้ค้างรับ…</p></PageContainer>}><Content /></Suspense>
+  return <Suspense fallback={<PageContainer className="borrower-page"><DataLoading label="กำลังโหลดลูกหนี้ค้างรับ…" /></PageContainer>}><Content /></Suspense>
 }
 
 async function Content() {

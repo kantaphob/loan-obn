@@ -299,6 +299,8 @@ model LoanContract {
   reviewVersion Int @default(0)
   revisions ContractRevision[]
   ledgerEntries LedgerEntry[]
+  persuaderShareEvents PersuaderShareEvent[]
+  persuaderSharePayments PersuaderSharePayment[]
   witnesses ContractWitness[]
   documentSignatures ContractDocumentSignature[]
   collateralAttachments ContractCollateralAttachment[]
@@ -306,6 +308,12 @@ model LoanContract {
   requestKey        String   @unique
   borrowerId        Int
   lenderId          Int
+  persuaderId       Int?
+  persuader         Persuader? @relation(fields: [persuaderId], references: [id], onDelete: Restrict)
+  persuaderNameSnapshot String?
+  persuaderShareBase String?
+  persuaderShareBasisPoints Int?
+  persuaderShareSatang Float?
   borrower          Borrower @relation(fields: [borrowerId], references: [id], onDelete: Restrict)
   lender            Lender   @relation(fields: [lenderId], references: [id], onDelete: Restrict)
   borrowerCode      String
@@ -369,6 +377,7 @@ model LoanContract {
   signatureTermsHash    String?
 
   @@index([status, createdAt])
+  @@index([persuaderId, createdAt])
   @@map("loan_contract")
 }
 
@@ -441,6 +450,8 @@ model LedgerEntry {
   payable TradePayable? @relation(fields: [payableId], references: [id], onDelete: Restrict)
   receivableId Int?
   receivable TradeReceivable? @relation(fields: [receivableId], references: [id], onDelete: Restrict)
+  persuaderShareEvents PersuaderShareEvent[]
+  persuaderSharePayment PersuaderSharePayment?
   id Int @id @default(autoincrement())
   requestKey String @unique
   contractId Int?
@@ -464,6 +475,40 @@ model LedgerEntry {
   @@index([contractId, voidedAt])
   @@index([occurredOn])
   @@map("ledger_entry")
+}
+
+model PersuaderShareEvent {
+  id Int @id @default(autoincrement())
+  contractId Int
+  contract LoanContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  persuaderId Int
+  persuader Persuader @relation(fields: [persuaderId], references: [id], onDelete: Restrict)
+  ledgerEntryId Int
+  ledgerEntry LedgerEntry @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  eventType String
+  amountSatang Float
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([persuaderId, createdAt])
+  @@index([contractId, createdAt])
+  @@map("persuader_share_event")
+}
+
+model PersuaderSharePayment {
+  id Int @id @default(autoincrement())
+  contractId Int
+  contract LoanContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  persuaderId Int
+  persuader Persuader @relation(fields: [persuaderId], references: [id], onDelete: Restrict)
+  ledgerEntryId Int @unique
+  ledgerEntry LedgerEntry @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  amountSatang Float
+  createdAt DateTime @default(now())
+
+  @@index([persuaderId, createdAt])
+  @@index([contractId, createdAt])
+  @@map("persuader_share_payment")
 }
 
 model TradePayable {
@@ -1305,4 +1350,23 @@ model PropertyAsset {
   @@id([operatorId, propertyId, assetId])
   @@unique([operatorId, assetId])
   @@map("property_asset")
+}
+
+model Persuader {
+  contracts LoanContract[]
+  shareEvents PersuaderShareEvent[]
+  sharePayments PersuaderSharePayment[]
+  id Int @id @default(autoincrement())
+  name String
+  phone String @default("")
+  bankCode String @default("")
+  bankAccount String @default("")
+  bankAccountName String @default("")
+  notes String @default("")
+  isActive Boolean @default(true)
+  borrowerId Int? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("persuader")
 }

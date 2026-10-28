@@ -7,10 +7,11 @@ import Image from 'next/image'
 import { DraftSignaturePad } from './draft-signature-pad'
 import { Button } from '@/components/ui/button'
 import { validContractSchedule, formatContractDate, type DraftContractSignature } from '@/lib/contracts'
-import { getContractInterestRates, getContractProvinces, getContractDistricts, getContractSubdistricts, saveContract, signContract } from './actions'
+import { getContractInterestRates, getContractPersuaders, getContractProvinces, getContractDistricts, getContractSubdistricts, saveContract, signContract } from './actions'
 import { ContractDocumentOptions, WitnessCountOptions, signingMethods, documentPackages } from './contract-document-options'
 import { CollateralAgreementFields, type CollateralAgreementValues } from './collateral-agreement-fields'
 import { collateralAgreementSigners, collateralSignatureSetupReady, type ContractDocumentStage } from '@/lib/contracts'
+import { DEFAULT_REFERRAL_SHARE_PERCENT, referralShareFromPrincipal } from '@/lib/referral-share'
 
 type ContractPhase = 'DETAILS' | 'LOAN' | 'GUARANTEE' | 'COLLATERAL' | 'REVIEW'
 
@@ -34,6 +35,9 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
   const [documentChoice, setDocumentChoice] = useState<'CREATE' | 'NONE' | ''>('')
   const [interestMethod, setInterestMethod] = useState<'INTEREST_UPFRONT' | 'INTEREST_WITH_PRINCIPAL'>('INTEREST_UPFRONT')
   const [principal, setPrincipal] = useState('')
+  const [persuaders, setPersuaders] = useState<Awaited<ReturnType<typeof getContractPersuaders>>>([])
+  const [persuaderId, setPersuaderId] = useState('')
+  const [persuaderSharePercent, setPersuaderSharePercent] = useState(DEFAULT_REFERRAL_SHARE_PERCENT)
   const [draftSignatures, setDraftSignatures] = useState<DraftContractSignature[]>([])
   const [signatureConsent, setSignatureConsent] = useState(false)
   const [collateralDescription, setCollateralDescription] = useState('')
@@ -65,8 +69,8 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([getContractInterestRates(), getContractProvinces()]).then(([values, locationValues]) => { if (!cancelled) { setRates(values); setProvinces(locationValues) } })
-      .catch(() => { if (!cancelled) setError('โหลดอัตราดอกเบี้ยไม่สำเร็จ กรุณาปิดและเปิดหน้าต่างอีกครั้ง') })
+    Promise.all([getContractInterestRates(), getContractProvinces(), getContractPersuaders()]).then(([values, locationValues, persuaderValues]) => { if (!cancelled) { setRates(values); setPersuaderSharePercent(values.some(item => item.percent === 5) ? '5' : values[0] ? String(values[0].percent) : ''); setProvinces(locationValues); setPersuaders(persuaderValues) } })
+      .catch(() => { if (!cancelled) setError('โหลดข้อมูลสัญญาไม่สำเร็จ กรุณาปิดและเปิดหน้าต่างอีกครั้ง') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
@@ -88,6 +92,9 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
     : rates.find(item => item.code === internalRateCode)?.percent ?? null
   const principalSatang = Math.round(amount * 100)
   const interestSatang = validPrincipal && selectedInternalRate !== null ? Math.round(principalSatang * selectedInternalRate / 100) : null
+  const validPersuaderPercent = rates.some(item => String(item.percent) === persuaderSharePercent)
+  const selectedPersuader = persuaders.find(item => String(item.id) === persuaderId)
+  const persuaderShareSatang = selectedPersuader && validPrincipal && validPersuaderPercent ? referralShareFromPrincipal(principalSatang, persuaderSharePercent) : null
   const deductionSatang = interestMethod === 'INTEREST_UPFRONT' ? interestSatang : 0
   const netSatang = validPrincipal && interestSatang !== null
     ? principalSatang - deductionSatang!
@@ -102,7 +109,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
   const needsGuarantor = documentChoice === 'CREATE' && documentPackage !== '' && documentPackage !== 'LOAN'
   const activeSignatures = documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE' ? draftSignatures.filter(item => (item.documentStage === 'LOAN' || needsGuarantor && item.documentStage === 'GUARANTEE' || documentPackage === 'LOAN_GUARANTEE_COLLATERAL' && item.documentStage === 'COLLATERAL') && (!item.signer.startsWith('WITNESS_') || Number(item.signer.slice(-1)) <= (item.documentStage === 'GUARANTEE' ? guaranteeWitnessCount : witnessCount))) : []
   const guarantorReady = !needsGuarantor || Boolean(guarantorTitle.trim() && guarantorFirstName.trim() && guarantorLastName.trim() && /^\d{1,3}$/.test(guarantorAge) && Number(guarantorAge) >= 15 && guarantorHouseNumber.trim() && guarantorProvinceId && guarantorDistrictId && guarantorSubdistrictId)
-  const detailsReady = validSchedule && canCalculate && (internalRateCode !== 'CUSTOM' || validInternalCustomRate) && Boolean(documentChoice) && (documentChoice !== 'CREATE' || Boolean(signingMethod && documentPackage))
+  const detailsReady = validSchedule && canCalculate && (internalRateCode !== 'CUSTOM' || validInternalCustomRate) && (!persuaderId || validPersuaderPercent) && Boolean(documentChoice) && (documentChoice !== 'CREATE' || Boolean(signingMethod && documentPackage))
   const ready = detailsReady && guarantorReady
   const signerCount = phase === 'GUARANTEE' ? guaranteeWitnessCount : witnessCount
   const requiredSignatures = documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE'
@@ -136,7 +143,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
     setSaveError('')
     if (!requestKey.current) requestKey.current = crypto.randomUUID()
     try {
-      const result = await saveContract({ borrowerId, lenderId, requestKey: requestKey.current, witnessCount, guaranteeWitnessCount, documentChoice, signingMethod, documentPackage, interestMethod, internalRateCode, internalCustomRate, principal, collateralDescription, collateralAgreementData: JSON.stringify(collateralAgreementData), guarantorName, guarantorAge, guarantorHouseNumber, guarantorSoi, guarantorRoad, guarantorProvinceId, guarantorDistrictId, guarantorSubdistrictId, guaranteeCollateralDescription, scheduledDisbursementDate, repaymentDueDate })
+      const result = await saveContract({ borrowerId, lenderId, requestKey: requestKey.current, persuaderId: persuaderId ? Number(persuaderId) : null, persuaderSharePercent, witnessCount, guaranteeWitnessCount, documentChoice, signingMethod, documentPackage, interestMethod, internalRateCode, internalCustomRate, principal, collateralDescription, collateralAgreementData: JSON.stringify(collateralAgreementData), guarantorName, guarantorAge, guarantorHouseNumber, guarantorSoi, guarantorRoad, guarantorProvinceId, guarantorDistrictId, guarantorSubdistrictId, guaranteeCollateralDescription, scheduledDisbursementDate, repaymentDueDate })
       if (result.error) { setSaveError(result.error); return }
       if (result.code && result.id) {
         for (const signature of activeSignatures) {
@@ -202,6 +209,29 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
           {internalCustomRate && !validInternalCustomRate && <span className="mt-1 block text-xs text-red-700">อัตราอ้างอิงภายในต้องอยู่ระหว่าง 0–100%</span>}
         </label>}
       </div>
+      <section className="mt-5 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+        <h3 className="m-0 text-sm font-semibold text-slate-800">ผู้แนะนำและส่วนแบ่งภายใน</h3>
+        <p className="mb-3 mt-1 text-xs leading-5 text-slate-600">เลือก Persuader ถ้ามี บันทึกเป็นข้อมูลภายใน ไม่แสดงในเอกสารผู้กู้ และยังไม่บันทึกการจ่ายเงินจริง</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm font-medium">Persuader
+            <select value={persuaderId} onChange={event => setPersuaderId(event.target.value)} className={fieldClass}>
+              <option value="">ไม่มีผู้แนะนำ</option>
+              {persuaders.map(item => <option key={item.id} value={item.id}>{item.name}{item.phone ? ` · ${item.phone}` : ''}</option>)}
+            </select>
+          </label>
+        {persuaderId && <label className="text-sm font-medium">ส่วนแบ่ง (% ของเงินต้น)
+            <select value={persuaderSharePercent} onChange={event => setPersuaderSharePercent(event.target.value)} aria-invalid={!validPersuaderPercent} className={fieldClass}>
+              <option value="">เลือกอัตราส่วนแบ่ง</option>
+              {rates.map(item => <option key={item.code} value={String(item.percent)}>ร้อยละ {item.percent}</option>)}
+            </select>
+          </label>}
+        </div>
+        {persuaderId && <div aria-live="polite" className="mt-3 grid gap-2 rounded-lg bg-white px-3 py-2.5 text-sm sm:grid-cols-3">
+          <p className="m-0">ดอกเบี้ยรวมตามระบบ <strong className="tabular-nums">{money(interestSatang)}</strong></p>
+          <p className="m-0">ดอกเบี้ยส่วนผู้ให้กู้ <strong className="tabular-nums">{money(interestSatang !== null && persuaderShareSatang !== null ? Math.max(0, interestSatang - persuaderShareSatang) : null)}</strong></p>
+          <p className="m-0">ส่วนแบ่งตามเงื่อนไข <strong className="tabular-nums">{money(persuaderShareSatang)}</strong></p>
+        </div>}
+      </section>
       <fieldset className="m-0 mt-6 min-w-0 border-0 p-0">
         <legend className="mb-3 flex items-center text-sm font-semibold text-slate-800"><span className="mr-2 grid h-6 w-6 place-items-center rounded-lg bg-violet-100 text-xs font-bold text-violet-800">3</span>กำหนดรับและจ่ายเงิน</legend>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -306,6 +336,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
             ['วิธีจ่ายเงิน', interestMethod === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ยก่อนจ่าย · คืนเงินต้น' : 'รับเงินต้นเต็มจำนวน · คืนเงินต้นพร้อมดอกเบี้ย'],
             ['อัตราอ้างอิงภายใน', internalRateCode ? `${internalRateCode === 'CUSTOM' ? internalCustomRate || '—' : rates.find(item => item.code === internalRateCode)?.percent ?? '—'}% ต่อเดือน` : 'ไม่ระบุ'],
             ['อัตราดอกเบี้ยในเอกสาร', 'เว้นว่าง'],
+            ...(selectedPersuader ? [['Persuader', selectedPersuader.name], ['ส่วนแบ่งภายใน', `${persuaderSharePercent}% ของเงินต้น · ${money(persuaderShareSatang)}`]] : []),
           ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-1 font-medium">{value}</dd></div>)}
         </dl>
         <dl className="mb-0 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -317,6 +348,7 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
           ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-2 text-lg font-semibold">{value}</dd></div>)}
         </dl>
         {canCalculate && <p className="mb-0 mt-4 text-xs text-slate-500">คำนวณดอกเบี้ยในระบบตามวิธีจ่ายที่เลือก · เอกสารสัญญาอ้างเงินต้นและเว้นช่องอัตราดอกเบี้ย</p>}
+        {selectedPersuader && <p className="mb-0 mt-2 rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-900">ส่วนแบ่ง Persuader เป็นข้อมูลภายใน คำนวณจากเงินต้นและไม่แสดงในเอกสารสัญญา · จะเป็นยอดรอจ่ายเมื่อผู้กู้ชำระครบสัญญา</p>}
       </div>}
       {phase === 'REVIEW' && activeSignatures.length > 0 && <section className="mt-5 rounded-2xl border border-slate-200 p-4">
         <h3 className="m-0 text-sm font-semibold">ลายเซ็นสำหรับประทับในเอกสาร</h3>

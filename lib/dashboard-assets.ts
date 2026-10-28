@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { isHomeDisposed, assetAcquisitionCost, saleDeclarationAmounts, assetCosts, migrateAssetData, outstanding, propertyAssetIds, roundMoney, type AssetData } from '@/app/thing/_shared/model'
+import { isHomeDisposed, assetAcquisitionCost, saleDeclarationAmounts, assetCosts, migrateAssetData, outstanding, activeRound, propertyAssetIds, roundMoney, type AssetData } from '@/app/thing/_shared/model'
 
 /** Values in this workspace are baht, unlike the lending ledger's satang. */
 export function summarizeDashboardAssets(data: AssetData, asOf: string) {
@@ -26,8 +26,19 @@ export function summarizeDashboardAssets(data: AssetData, asOf: string) {
     const saleAmounts = sale ? saleDeclarationAmounts(sale, sale.landCost ?? reported!.landValue) : null
     return { historicalCost: roundMoney(members.reduce((sum,home) => sum + assetAcquisitionCost(home), 0)), saleAmounts, saleRecorded: Boolean(reported?.sale), id: property.id, code: property.code, name: property.name, status: sold ? 'DISPOSED' : property.status ?? 'ACTIVE', count: ids.length, cost: roundMoney(ids.reduce((sum,id) => sum + (costs.get(id) ?? 0),0)) }
   })
+  const liabilities = data.loans.map(loan => {
+    const round = activeRound(loan,asOf)
+    const elapsed = round?.effectiveOn ? Math.max(1,(Number(asOf.slice(0,4))-Number(round.effectiveOn.slice(0,4)))*12+Number(asOf.slice(5,7))-Number(round.effectiveOn.slice(5,7))+1) : 1
+    const installment = round?.periods.find(period => period.from<=elapsed && period.to>=elapsed)?.installment ?? null
+    return { id:loan.id, name:loan.name, bank:loan.bank, remaining:outstanding(loan,asOf), installment,
+      lastPaid:loan.payments.filter(p=>p.date<=asOf).sort((a,b)=>b.date.localeCompare(a.date))[0]?.date ?? null }
+  }).filter(row=>row.remaining>0)
+  const projects = active.flatMap(home => [
+    ...(home.landDevelopments ?? []).filter(work=>work.status!=='cancelled').map(work=>({id:work.id,name:work.name,asset:home.name,status:work.status,budget:work.budget,actual:work.actualCost,paid:roundMoney(work.payments.filter(p=>p.date<=asOf).reduce((n,p)=>n+(p.direction==='IN'?-p.amount:p.amount),0))})),
+    ...(home.buildingProjects ?? []).map(work=>({id:work.id,name:work.name,asset:home.name,status:work.status,budget:work.pricingMode==='lump_sum'?work.lumpSum:roundMoney(work.boqLines.reduce((n,r)=>n+r.quantity*r.unitPrice+r.labor,0)),actual:work.actualCost,paid:roundMoney(work.payments.filter(p=>p.date<=asOf).reduce((n,p)=>n+(p.direction==='IN'?-p.amount:p.amount),0))})),
+  ])
   const debt = roundMoney(data.loans.reduce((sum,loan) => sum + outstanding(loan,asOf),0))
-  return { count: active.length, sold: sold.length, archived: data.homes.filter(asset => Boolean(asset.archivedOn)).length,
+  return { liabilities, projects, count: active.length, sold: sold.length, archived: data.homes.filter(asset => Boolean(asset.archivedOn)).length,
     cost: roundMoney([...costs.values()].reduce((sum,value) => sum+value,0)), debt,
     heldPropertyCount: rows.filter(row => row.status !== 'DISPOSED').length, soldPropertyCount: rows.filter(row => row.status === 'DISPOSED').length,
     propertyCount: properties.length, linkedCount: linked.size,

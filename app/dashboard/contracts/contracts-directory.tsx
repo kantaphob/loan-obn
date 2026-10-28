@@ -1,6 +1,8 @@
 'use client'
 
+import { DataLoading } from '@/components/ui/data-loading'
 import { useEffect, useState, type FormEvent } from 'react'
+import Link from 'next/link'
 import { ClipboardCopy, FileSignature, Plus, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,6 +10,7 @@ import { CreateContractModal } from './create-contract-modal'
 import { listContracts } from './actions'
 import { contractCode, contractSignaturesComplete, formatContractDate } from '@/lib/contracts'
 import { lenderCode } from '@/lib/lender'
+import { bangkokToday } from '@/lib/ledger'
 import { Modal } from '@/components/ui/modal'
 import { LoanAgreementTemplate } from './loan-agreement-template'
 import { ContractSignatureModal } from './contract-signature-modal'
@@ -97,8 +100,22 @@ export function ContractsDirectory() {
   }
   const legacyStatusLabel = (row: Awaited<ReturnType<typeof listContracts>>[number]) => {
     const sourceStatus = legacyStatus(row)
-    if (sourceStatus === 'จองสัญญา' && row.status === 'WAITING_PAYMENT') return 'จองสัญญา · รอจ่ายเงินจริง'
-    return sourceStatus ? `${sourceStatus} · ข้อมูลเดิม` : 'รายการย้อนหลัง'
+    if (sourceStatus === 'จองสัญญา' && row.status === 'WAITING_PAYMENT') return 'รอจ่ายเงินจริง'
+    if (['เกินกำหนด', 'เกินกำหนดชำระ'].includes(sourceStatus)) return 'เกินกำหนดชำระ'
+    if (['รอส่งคืน', 'รอชำระคืน', 'รอรับชำระคืน'].includes(sourceStatus)) return 'รอรับชำระคืน'
+    if (sourceStatus === 'ปิดยอด') return 'ปิดยอดแล้ว'
+    return sourceStatus || 'รายการย้อนหลัง'
+  }
+  const contractStatus = (row: Awaited<ReturnType<typeof listContracts>>[number]) => {
+    if (row.status === 'REJECTED') return { label: 'ไม่อนุมัติ', tone: 'rose', style: 'border-rose-200 bg-rose-50 text-rose-800' }
+    if (row.limitApprovalRequired) return { label: 'รออนุมัติวงเงิน', tone: 'violet', style: 'border-violet-200 bg-violet-50 text-violet-800' }
+    if (row.status === 'WAITING_PAYMENT') return { label: row.legacySourceCode && legacyStatus(row) === 'จองสัญญา' ? 'จองสัญญา · รอจ่ายเงินจริง' : 'รอจ่ายเงิน', tone: 'amber', style: 'border-amber-200 bg-amber-50 text-amber-800' }
+    if (row.status === 'CLOSED' || row.legacySourceCode && legacyStatus(row) === 'ปิดยอด') return { label: 'ปิดยอดแล้ว', tone: 'emerald', style: 'border-emerald-200 bg-emerald-50 text-emerald-800' }
+    if (row.legacySourceCode && ['เกินกำหนด', 'เกินกำหนดชำระ'].includes(legacyStatus(row))) return { label: 'เกินกำหนดชำระ', tone: 'rose', style: 'border-rose-200 bg-rose-50 text-rose-800' }
+    if (row.repaymentDueDate && row.repaymentDueDate < bangkokToday()) return { label: 'เกินกำหนดชำระ', tone: 'rose', style: 'border-rose-200 bg-rose-50 text-rose-800' }
+    if (row.repaymentDueDate === bangkokToday()) return { label: 'ครบกำหนดวันนี้', tone: 'orange', style: 'border-orange-200 bg-orange-50 text-orange-800' }
+    if (row.legacySourceCode && ['รอส่งคืน', 'รอชำระคืน', 'รอรับชำระคืน'].includes(legacyStatus(row))) return { label: 'รอรับชำระคืน', tone: 'sky', style: 'border-sky-200 bg-sky-50 text-sky-800' }
+    return { label: row.legacySourceCode ? legacyStatusLabel(row) : 'รอรับชำระคืน', tone: 'sky', style: 'border-sky-200 bg-sky-50 text-sky-800' }
   }
   const signingLabel = (row: Awaited<ReturnType<typeof listContracts>>[number]) => {
     if (row.legacySourceCode) return 'รายการย้อนหลัง · ไม่มีเอกสาร'
@@ -132,7 +149,7 @@ export function ContractsDirectory() {
     }} />}
     {notice && <p role="status" className="text-sm text-emerald-800">{notice}</p>}
     {loadError && <p role="alert" className="text-sm text-red-700">{loadError}</p>}
-    {loading && <p role="status" className="text-sm text-slate-500">กำลังโหลดสัญญา…</p>}
+    {loading && <DataLoading compact label="กำลังโหลดสัญญา…" />}
     <div className="borrower-metrics contracts-metrics">
       {[
         ['สัญญาทั้งหมด', 'สัญญาที่บันทึกในระบบ', rows.length],
@@ -148,7 +165,7 @@ export function ContractsDirectory() {
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="borrower-directory-heading"><h2>ทะเบียนสัญญา</h2><span className="borrower-count">{rows.length} สัญญา</span></div>
-        <div className="flex flex-wrap gap-2"><ContractExportButton rows={rows} /><Button onClick={() => setLegacyImporting(true)}>นำเข้ารายการเก่า</Button><Button variant="primary" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />เพิ่มสัญญา</Button></div>
+        <div className="flex flex-wrap gap-2"><Link href="/dashboard/persuaders/shares" className="action-button action-button--secondary">ส่วนแบ่ง Persuader</Link><ContractExportButton rows={rows} /><Button onClick={() => setLegacyImporting(true)}>นำเข้ารายการเก่า</Button><Button variant="primary" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />เพิ่มสัญญา</Button></div>
       </div>
       <div className="borrower-toolbar flex flex-wrap gap-3 p-4">
         <form onSubmit={search} className="flex min-w-0 flex-1 basis-72 gap-2">
@@ -165,9 +182,9 @@ export function ContractsDirectory() {
         <table className="w-full whitespace-nowrap text-left text-xs">
           <caption className="sr-only">รายการสัญญาสินเชื่อ</caption>
           <thead><tr>{['จัดการ', 'เลขสัญญา', 'วันที่ทำสัญญา', 'รหัสผู้กู้', 'ชื่อผู้กู้', 'รหัสผู้ให้กู้', 'วงเงินสัญญา', 'สถานะ', 'สัญญาและการลงนาม', 'วันที่จ่ายเงิน', 'วันที่ปิดยอด'].map(label => <th scope="col" key={label} className="px-4 py-4 font-medium">{label}</th>)}</tr></thead>
-          <tbody>{visibleRows.map(row => <tr key={row.id}>
+          <tbody>{visibleRows.map(row => <tr key={row.id} data-contract-status={contractStatus(row).tone}>
             <td className="border-b px-4 py-3"><div className="flex flex-wrap items-center gap-2"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button><Button aria-label={`คัดลอกข้อความสัญญา ${contractCode(row.id)}`} title="คัดลอกข้อความสัญญาเพื่อส่งต่อ" onClick={() => void copyContractMessage(row)}><ClipboardCopy size={17} aria-hidden="true" /></Button>{row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">พิมพ์สัญญา</a>}{row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}</div></td>
-            {[<span key="code">{contractCode(row.id)}{row.legacySourceCode && <span className="mt-1 block text-[10px] text-slate-500">เลขเดิม {row.legacySourceCode}</span>}</span>, row.legacySourceCode && row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : date(row.createdAt), row.borrowerCode, <span key="borrower">{row.borrowerName}{row.legacySourceCode && legacyBorrowerName(row) && <span className="mt-1 block text-[10px] text-slate-500">ชื่อเดิม {legacyBorrowerName(row)}</span>}</span>, lenderCode(row.lenderId), money(row.principalSatang), row.status === 'REJECTED' ? 'ไม่อนุมัติ' : row.limitApprovalRequired ? 'รออนุมัติวงเงิน' : row.legacySourceCode ? legacyStatusLabel(row) : row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : row.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว', signingLabel(row), row.paidAt ? date(row.paidAt) : '—', row.closedDate ? date(row.closedDate) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
+            {[<span key="code">{contractCode(row.id)}{row.legacySourceCode && <span className="mt-1 block text-[10px] text-slate-500">เลขเดิม {row.legacySourceCode}</span>}</span>, row.legacySourceCode && row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : date(row.createdAt), row.borrowerCode, <span key="borrower">{row.borrowerName}{row.legacySourceCode && legacyBorrowerName(row) && <span className="mt-1 block text-[10px] text-slate-500">ชื่อเดิม {legacyBorrowerName(row)}</span>}</span>, lenderCode(row.lenderId), money(row.principalSatang), <span key="status" className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-5 ${contractStatus(row).style}`}>{contractStatus(row).label}</span>, signingLabel(row), row.paidAt ? date(row.paidAt) : '—', row.closedDate ? date(row.closedDate) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
           </tr>)}{!matches.length && !loading && !loadError && <tr><td colSpan={11} className="!p-0">
             <div className="borrower-empty" role="status">
               <span className="borrower-empty-icon"><FileSignature size={30} aria-hidden="true" /></span>
@@ -187,6 +204,7 @@ export function ContractsDirectory() {
       {viewing && <dl className="grid gap-4 text-sm sm:grid-cols-2">{[
         ...(viewing.legacySourceCode ? [['เลขรายการเดิม', viewing.legacySourceCode], ['ชื่อผู้กู้ในรายการเดิม', legacyBorrowerName(viewing) || '—'], ['สถานะเดิม', legacyStatus(viewing) || '—'], ['ยอดชำระก่อนนำเข้า', `${money(viewing.legacyReceivedSatang)} บาท`], ['ยอดคงเหลือตามข้อมูลเดิม', `${money(Math.max(0, viewing.repaymentSatang - viewing.legacyReceivedSatang))} บาท`]] : []),
         ['ผู้กู้', viewing.borrowerName], ['ผู้ให้กู้', viewing.lenderName],
+        ...(viewing.persuaderId && viewing.persuaderNameSnapshot ? [['Persuader (ข้อมูลภายใน)', viewing.persuaderNameSnapshot], ['ส่วนแบ่งตามเงื่อนไข', `${(viewing.persuaderShareBasisPoints ?? 0) / 100}% ของเงินต้น · ${money(viewing.persuaderShareSatang ?? 0)} บาท`], ['ฐานส่วนแบ่ง', viewing.persuaderShareBase === 'PRINCIPAL' ? 'เงินต้น' : '—']] : []),
         ['สถานะ', viewing.status === 'REJECTED' ? 'ไม่อนุมัติ' : viewing.limitApprovalRequired ? 'รออนุมัติวงเงิน' : viewing.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : viewing.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'],
         ...(viewing.limitApprovedAt ? [['อนุมัติวงเงินโดย', `${viewing.limitApprovedBy ?? 'ผู้ดูแล'} · ${date(viewing.limitApprovedAt.toISOString())}`]] : []),
         ...(viewing.status === 'REJECTED' && viewing.revisions[0] ? [['เหตุผลไม่อนุมัติ', viewing.revisions[0].reason], ['ผู้บันทึกไม่อนุมัติ', viewing.revisions[0].createdBy], ['วันที่ไม่อนุมัติ', viewing.revisions[0].createdAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })]] : []),

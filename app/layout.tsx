@@ -4,6 +4,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 import "./workspace-light.css";
 import "./workspace-white.css";
+import "./data-loading.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

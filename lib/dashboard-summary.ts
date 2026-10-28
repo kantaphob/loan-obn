@@ -15,7 +15,7 @@ export async function getDashboardSummary(period: string = 'all') {
     const label = `${thaiMonthAbbreviations[date.getUTCMonth()]} ${String(buddhistYear % 100).padStart(2, '0')}`
     return { key: date.toISOString().slice(0, 7), label, incoming: 0, outgoing: 0 }
   })
-  const [borrowers, lenders, limits, contracts, entries, statuses, cashEntries] = await Promise.all([
+  const [borrowers, lenders, limits, contracts, statuses, cashEntries] = await Promise.all([
     prisma.borrower.count(), prisma.lender.count(),
     prisma.borrower.aggregate({ _sum: { approvedLimit: true, usedLimit: true } }),
     prisma.loanContract.findMany({ select: {
@@ -23,16 +23,17 @@ export async function getDashboardSummary(period: string = 'all') {
       repaymentDueDate: true, penaltyMaxDays: true, legacyReceivedSatang: true,
       ledgerEntries: { where: { voidedAt: null }, select: { id: true, kind: true, amountSatang: true, occurredOn: true, penaltyWaivedSatang: true, penaltyAssessed: true, settlementWaivedSatang: true } },
     } }),
-    prisma.ledgerEntry.findMany({ where: { voidedAt: null, occurredOn: { gte: `${months[0].key}-01`, lte: today } }, select: { direction: true, amountSatang: true, occurredOn: true } }),
     prisma.loanStatus.findMany({ select: { code: true, nameTh: true }, orderBy: { sortOrder: 'asc' } }),
     prisma.$transaction(tx => readCashMovements(tx, today)),
   ])
-  for (const entry of entries) {
+  for (const entry of cashEntries) {
     const bucket = months.find(m => m.key === entry.occurredOn.slice(0, 7))
     if (bucket && entry.direction === 'IN') bucket.incoming += entry.amountSatang
     if (bucket && entry.direction === 'OUT') bucket.outgoing += entry.amountSatang
   }
   let outstanding = 0, overdueAmount = 0, overdueCount = 0, activeCount = 0, invalidCount = 0
+  const overdueContracts: { id: number; due: string; days: number; remaining: number }[] = []
+  const loanMonths = months.map(m => ({ key:m.key, label:m.label, principal:0, interest:0, penalty:0 }))
   const dueSoon: { id: number; due: string; remaining: number }[] = []
   const distribution = new Map<string, number>()
   const startOn = period === 'month' ? `${today.slice(0,7)}-01` : period === 'year' ? `${today.slice(0,4)}-01-01` : '1900-01-01'
@@ -43,7 +44,17 @@ export async function getDashboardSummary(period: string = 'all') {
   const weekEnd = new Date(`${today}T00:00:00Z`); weekEnd.setUTCDate(weekEnd.getUTCDate() + 7)
   for (const contract of contracts) {
     distribution.set(contract.status, (distribution.get(contract.status) ?? 0) + 1)
-    if (contract.status === 'CANCELLED') continue
+    if (['CANCELLED','REJECTED'].includes(contract.status)) continue
+    for (const m of loanMonths) {
+      const start = `${m.key}-01`
+      const before = new Date(`${start}T00:00:00Z`); before.setUTCDate(0)
+      const end = new Date(`${start}T00:00:00Z`); end.setUTCMonth(end.getUTCMonth()+1); end.setUTCDate(0)
+      const previous = capitalPosition(contract,contract.ledgerEntries,before.toISOString().slice(0,10))
+      const current = capitalPosition(contract,contract.ledgerEntries,end.toISOString().slice(0,10) < today ? end.toISOString().slice(0,10) : today)
+      m.principal += (current?.principalReceived ?? 0)-(previous?.principalReceived ?? 0)
+      m.interest += (current?.interestReceived ?? 0)-(previous?.interestReceived ?? 0)
+      m.penalty += (current?.penaltyReceived ?? 0)-(previous?.penaltyReceived ?? 0)
+    }
     const balance = contractLedgerBalance(contract, contract.ledgerEntries, today)
     if (balance.invalid) invalidCount++
     const position = capitalPosition(contract, contract.ledgerEntries, today)
@@ -68,7 +79,7 @@ export async function getDashboardSummary(period: string = 'all') {
     }
     if (!balance.disbursed || balance.remaining <= 0) continue
     activeCount++; outstanding += balance.remaining
-    if (contract.repaymentDueDate && contract.repaymentDueDate < today) { overdueCount++; overdueAmount += balance.remaining }
+    if (contract.repaymentDueDate && contract.repaymentDueDate < today) { overdueCount++; overdueAmount += balance.remaining; overdueContracts.push({id:contract.id,due:contract.repaymentDueDate,days:Math.round((Date.parse(today)-Date.parse(contract.repaymentDueDate))/86400000),remaining:balance.remaining}) }
     if (contract.repaymentDueDate && contract.repaymentDueDate >= today && contract.repaymentDueDate <= weekEnd.toISOString().slice(0, 10)) dueSoon.push({ id: contract.id, due: contract.repaymentDueDate, remaining: balance.remaining })
   }
   const capitalAmount = (code: string, direction: string) => cashEntries.filter(e => e.source === 'LEDGER' && isLendingCashEntry({ ...e, categoryCode: e.categoryCode ?? '' }) && e.categoryCode === code && e.direction === direction).reduce((sum,e) => sum + e.amountSatang,0)
@@ -85,7 +96,12 @@ export async function getDashboardSummary(period: string = 'all') {
   const lendingCashIn = lendingCashEntries.filter(e => e.direction === 'IN').reduce((sum,e) => sum+e.amountSatang,0)
   const lendingCashOut = lendingCashEntries.filter(e => e.direction === 'OUT').reduce((sum,e) => sum+e.amountSatang,0)
   const lendingCashAvailable = lendingCashIn-lendingCashOut
-  return { today, borrowers, lenders, lendingCashAvailable, lendingCashIn, lendingCashOut, funding, totalPrincipal, principalWaived, interestReceived, upfrontInterest, penaltyReceived,
+  const cashYears = [...new Set(cashEntries.map(e => e.occurredOn.slice(0,4)))].sort().reverse().map(year => {
+    const rows = cashEntries.filter(e => e.occurredOn.startsWith(year))
+    const totals = cashCarryforward(rows, `${year}-01-01`, today)
+    return { year, available: totals.available, incoming: totals.incoming, outgoing: totals.outgoing, sources: totals.sources }
+  })
+  return { today, borrowers, lenders, cashYears, loanMonths, overdueContracts:overdueContracts.sort((a,b)=>b.days-a.days), lendingCashAvailable, lendingCashIn, lendingCashOut, funding, totalPrincipal, principalWaived, interestReceived, upfrontInterest, penaltyReceived,
     cashAvailable: cash.available, cashSources: cash.sources, overlappingYears: cash.overlappingYears, startOn,
     allIncoming: cash.incoming ?? 0,
     allOutgoing: cash.outgoing ?? 0,
@@ -97,6 +113,6 @@ export async function getDashboardSummary(period: string = 'all') {
     pendingPrincipal: contracts.filter(c => c.status === 'WAITING_PAYMENT').reduce((n,c) => n+c.principalSatang,0), approved: limits._sum.approvedLimit ?? 0, used: limits._sum.usedLimit ?? 0,
     totalContracts: contracts.length, activeCount, outstanding, overdueCount, overdueAmount, invalidCount, months,
     dueSoon: dueSoon.sort((a, b) => a.due.localeCompare(b.due)),
-    statuses: [...distribution].map(([code, count]) => ({ code, count, label: statuses.find(s => s.code === code)?.nameTh ?? ({ PAID: "จ่ายเงินแล้ว", WAITING_PAYMENT: "รอจ่ายเงิน", CLOSED: "ปิดยอด", CANCELLED: "ยกเลิก" } as Record<string, string>)[code] ?? code })),
+    statuses: [...distribution].map(([code, count]) => ({ code, count, label: statuses.find(s => s.code === code)?.nameTh ?? ({ PAID: "จ่ายเงินแล้ว", WAITING_PAYMENT: "รอจ่ายเงิน", CLOSED: "ปิดยอด", CANCELLED: "ยกเลิก", REJECTED: "ไม่อนุมัติ" } as Record<string, string>)[code] ?? code })),
   }
 }

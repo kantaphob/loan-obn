@@ -1,5 +1,6 @@
 'use client'
 
+import { DataLoading } from '@/components/ui/data-loading'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Check, Landmark, Search } from 'lucide-react'
@@ -55,7 +56,7 @@ export function ContractLenderStep({ borrowerName, onBack, selected, onSelect, o
       </form>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div aria-live="polite" aria-busy={pending} className="mt-3">
-        {pending ? <p role="status" className="text-sm text-slate-500">กำลังโหลดผู้ให้กู้…</p> : !error && <p className="text-xs text-slate-500">{rows.length ? `พบ ${rows.length} รายการ${rows.length === 20 ? ' · แสดงสูงสุด 20 รายการ กรุณาระบุคำค้นให้เจาะจงขึ้น' : ''}` : 'ไม่พบผู้ให้กู้ ลองเปลี่ยนคำค้นหาหรือเพิ่มข้อมูลในเมนูผู้ให้กู้'}</p>}
+        {pending ? <DataLoading compact label="กำลังโหลดผู้ให้กู้…" /> : !error && <p className="text-xs text-slate-500">{rows.length ? `พบ ${rows.length} รายการ${rows.length === 20 ? ' · แสดงสูงสุด 20 รายการ กรุณาระบุคำค้นให้เจาะจงขึ้น' : ''}` : 'ไม่พบผู้ให้กู้ ลองเปลี่ยนคำค้นหาหรือเพิ่มข้อมูลในเมนูผู้ให้กู้'}</p>}
         <div className="max-h-60 space-y-2 overflow-y-auto overscroll-contain pr-1">{rows.map(lender => <article key={lender.id} className={`flex flex-wrap items-center gap-2.5 rounded-xl border p-3 ${selected?.id === lender.id ? 'border-emerald-600 bg-emerald-50/70' : 'border-white/70 bg-white/40'}`}>
           <Landmark size={18} aria-hidden="true" />
           <div className="min-w-0 flex-1"><h3 className="m-0 text-xs font-semibold">{name(lender)} {lender.nickname && `(${lender.nickname})`}</h3>

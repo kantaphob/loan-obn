@@ -11,6 +11,7 @@ import { publishCreditBureauChanged } from '@/lib/realtime'
 import { collateralAgreementSigners, type ContractDocumentStage, type ContractDocumentSigner } from '@/lib/contracts'
 import { parseLegacyLoanCsv, type LegacyLoanRow } from '@/lib/legacy-loans'
 import { syncGoogleContract } from '@/lib/google-sync'
+import { referralPercentBasisPoints, referralShareFromPrincipalBasisPoints, DEFAULT_REFERRAL_SHARE_PERCENT } from '@/lib/referral-share'
 
 export async function searchContractBorrowers(query: string) {
   const user = await getCurrentUser()
@@ -67,6 +68,12 @@ export async function getContractInterestRates() {
   })
 }
 
+export async function getContractPersuaders() {
+  const user = await getCurrentUser()
+  if (!user || user.status !== 'ACTIVE' || user.role === 'REVIEWER') throw new Error('ไม่มีสิทธิ์สร้างสัญญา')
+  return prisma.persuader.findMany({ where: { isActive: true }, select: { id: true, name: true, phone: true }, orderBy: [{ name: 'asc' }, { id: 'asc' }] })
+}
+
 export async function getContractProvinces() {
   const user = await getCurrentUser()
   if (!user || user.status !== 'ACTIVE' || user.role === 'REVIEWER') throw new Error('ไม่มีสิทธิ์สร้างสัญญา')
@@ -97,6 +104,9 @@ export async function saveContract(input: import('@/lib/contracts').ContractDraf
     if (input.guaranteeWitnessCount !== undefined && ![0, 1, 2].includes(input.guaranteeWitnessCount)) throw new Error('จำนวนพยานในสัญญาค้ำประกันไม่ถูกต้อง')
     if (typeof input.principal !== 'string') throw new Error('ข้อมูลยอดเงินไม่ถูกต้อง')
     if ((input.internalRateCode !== undefined && typeof input.internalRateCode !== 'string') || (input.internalCustomRate !== undefined && typeof input.internalCustomRate !== 'string')) throw new Error('อัตราอ้างอิงภายในไม่ถูกต้อง')
+    if (input.persuaderId !== undefined && input.persuaderId !== null && (!Number.isSafeInteger(input.persuaderId) || input.persuaderId <= 0)) throw new Error('ผู้แนะนำไม่ถูกต้อง')
+    const sharePercentText = input.persuaderSharePercent ?? DEFAULT_REFERRAL_SHARE_PERCENT
+    const shareBasisPoints = input.persuaderId ? referralPercentBasisPoints(sharePercentText) : null
     if (!validContractSchedule(input.scheduledDisbursementDate, input.repaymentDueDate)) throw new Error('กรุณาระบุวันที่จ่ายเงินและวันครบกำหนด โดยวันครบกำหนดต้องไม่ก่อนวันที่จ่ายเงิน')
     if (input.collateralDescription !== undefined && (typeof input.collateralDescription !== 'string' || input.collateralDescription.length > 2000)) throw new Error('รายละเอียดหลักประกันต้องไม่เกิน 2,000 ตัวอักษร')
     const needsGuarantor = input.documentChoice === 'CREATE' && input.documentPackage !== 'LOAN'
@@ -134,8 +144,11 @@ export async function saveContract(input: import('@/lib/contracts').ContractDraf
       }
       const borrower = await tx.borrower.findUnique({ where: { id: input.borrowerId }, include: { contracts: { include: { ledgerEntries: { where: { voidedAt: null } } } } } })
       const lender = await tx.lender.findUnique({ where: { id: input.lenderId } })
+      const persuader = input.persuaderId ? await tx.persuader.findUnique({ where: { id: input.persuaderId } }) : null
       if (!borrower || ['INACTIVE', 'BLACKLIST'].includes(borrower.status)) throw new Error('ผู้กู้ไม่พร้อมใช้งาน กรุณาเลือกใหม่')
       if (!lender || lender.status !== 'ACTIVE') throw new Error('ผู้ให้กู้ไม่พร้อมใช้งาน กรุณาเลือกใหม่')
+      if (input.persuaderId && !persuader?.isActive) throw new Error('ผู้แนะนำไม่พร้อมใช้งาน กรุณาเลือกใหม่')
+      if (persuader && !await tx.interestRate.findFirst({ where: { isActive: true, percent: Number(sharePercentText) }, select: { code: true } })) throw new Error('กรุณาเลือกส่วนแบ่งจาก Masterdata ที่ยังใช้งานอยู่')
       const internalRateCode = input.internalRateCode ?? ''
       const internalRate = internalRateCode && internalRateCode !== 'CUSTOM' ? await tx.interestRate.findUnique({ where: { code: internalRateCode } }) : null
       const provinceId = Number(input.guarantorProvinceId), districtId = Number(input.guarantorDistrictId), subdistrictId = Number(input.guarantorSubdistrictId)
@@ -155,11 +168,19 @@ export async function saveContract(input: import('@/lib/contracts').ContractDraf
       const interestMethod = input.interestMethod!
       if (interestMethod === 'INTEREST_UPFRONT' && internalInterestPercent === null) throw new Error('กรุณาเลือกอัตราอ้างอิงภายในเพื่อคำนวณยอดหักดอกก่อนจ่าย')
       const amounts = contractAmounts(input.principal, internalInterestPercent ?? 0, interestMethod)
+      const persuaderShareSatang = persuader && shareBasisPoints !== null
+        ? referralShareFromPrincipalBasisPoints(amounts.principalSatang, shareBasisPoints)
+        : null
       const percent = 0
       const committed = borrowerPosition(borrower.contracts, borrower.usedLimit).committedLimit
       const limitApprovalRequired = Math.round(committed * 100) + amounts.principalSatang > Math.round(borrower.approvedLimit * 100)
       return tx.loanContract.create({ data: {
         requestKey: input.requestKey, borrowerId: borrower.id, lenderId: lender.id,
+        persuaderId: persuader?.id ?? null,
+        persuaderNameSnapshot: persuader?.name ?? null,
+        persuaderShareBase: persuader ? 'PRINCIPAL' : null,
+        persuaderShareBasisPoints: shareBasisPoints,
+        persuaderShareSatang,
         borrowerCode: borrower.borrowerId || `BR-${borrower.id}`,
         borrowerName: [borrower.titleTh, borrower.firstName, borrower.middleNameTh, borrower.lastName].filter(Boolean).join(' ') || borrower.nickname,
         lenderName: [lender.firstName, lender.lastName].filter(Boolean).join(' ') || lender.nickname,

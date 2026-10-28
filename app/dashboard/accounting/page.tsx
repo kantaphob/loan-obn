@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
@@ -15,7 +16,7 @@ const field = 'mt-1 block w-full rounded-xl border border-slate-200 bg-white px-
 export default function AccountingPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  return <Suspense fallback={<PageContainer><p role="status" className="p-6 text-sm text-slate-500">กำลังโหลดรายงานบัญชี…</p></PageContainer>}><AccountingContent searchParams={searchParams} /></Suspense>
+  return <Suspense fallback={<PageContainer><DataLoading label="กำลังโหลดรายงานบัญชี…" /></PageContainer>}><AccountingContent searchParams={searchParams} /></Suspense>
 }
 
 async function AccountingContent({ searchParams }: {

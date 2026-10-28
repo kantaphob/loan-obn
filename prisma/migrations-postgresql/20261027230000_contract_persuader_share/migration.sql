@@ -1,0 +1,2 @@
+-- Persuader contract columns, foreign key and index were added by
+-- 20261027221000_contract_persuaders. No additional schema changes.

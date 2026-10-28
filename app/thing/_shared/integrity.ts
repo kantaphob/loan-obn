@@ -5,6 +5,13 @@ export function validateHistory(next: AssetData, previous: AssetData, options: {
   for (const home of previous.homes) {
     const updatedHome = next.homes.find(row => row.id === home.id)
     if (!updatedHome) continue
+    for (const payment of home.vehicleFinancing?.payments ?? []) if (JSON.stringify(updatedHome.vehicleFinancing?.payments?.find(row => row.id === payment.id)) !== JSON.stringify(payment)) throw new Error('รายการค่างวดรถที่ลงบัญชีแล้วแก้หรือลบไม่ได้')
+    for (const payment of home.vehicleFinancing?.downPayments ?? []) if (JSON.stringify(updatedHome.vehicleFinancing?.downPayments?.find(row => row.id === payment.id)) !== JSON.stringify(payment)) throw new Error('รายการจ่ายเงินดาวน์รถที่ลงบัญชีแล้วแก้หรือลบไม่ได้')
+    if (home.vehicleFinancing?.payments.length || home.vehicleFinancing?.downPayments.length) {
+      const priorTerms = Object.fromEntries(Object.entries(home.vehicleFinancing).filter(([key]) => key !== 'payments' && key !== 'downPayments'))
+      const nextTerms = Object.fromEntries(Object.entries(updatedHome.vehicleFinancing ?? {}).filter(([key]) => key !== 'payments' && key !== 'downPayments'))
+      if (JSON.stringify(priorTerms) !== JSON.stringify(nextTerms)) throw new Error('สัญญาไฟแนนซ์รถที่มีประวัติรับจ่ายแล้วแก้เงื่อนไขเดิมไม่ได้')
+    }
     if (home.sale) {
       const updatedSale = updatedHome.sale
       if (!updatedSale) throw new Error('เก็บใบขายและสถานะขายแล้วไว้ในประวัติ')
@@ -53,6 +60,8 @@ export function validateLedgerLinks(data: AssetData, entries: LedgerOption[]) {
     used.add(id)
   }
   for (const home of data.homes) for (const row of home.boq) check(row.ledgerEntryId, row.paid)
+  for (const home of data.homes) for (const payment of home.vehicleFinancing?.payments ?? []) check(payment.ledgerEntryId, payment.amount, payment.date)
+  for (const home of data.homes) for (const payment of home.vehicleFinancing?.downPayments ?? []) check(payment.ledgerEntryId, payment.amount, payment.date, 'OUT')
   for (const loan of data.loans) for (const p of loan.payments) check(p.ledgerEntryId, p.amount, p.date)
   for (const loan of data.loans) for (const draw of loan.disbursements ?? []) check(draw.ledgerEntryId, draw.amount, draw.date, 'IN')
   for (const loan of data.loans) for (const payment of loan.contractorPayments ?? []) check(payment.ledgerEntryId, payment.amount, payment.date, 'OUT')
@@ -63,5 +72,5 @@ export function validateLedgerLinks(data: AssetData, entries: LedgerOption[]) {
 }
 
 export function assetLedgerIds(data: AssetData) {
-  return [...data.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(row => row.ledgerEntryId)), ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(row => row.ledgerEntryId)), ...(home.buildingChangeOrders ?? []).flatMap(order => (order.payments ?? []).map(row => row.ledgerEntryId)), ...(home.sale?.payments ?? []).map(payment => payment.ledgerEntryId)]), ...data.loans.flatMap(loan => [...loan.payments.map(row => row.ledgerEntryId), ...(loan.disbursements ?? []).map(row => row.ledgerEntryId), ...(loan.contractorPayments ?? []).map(row => row.ledgerEntryId)])].filter((id): id is number => Boolean(id))
+  return [...data.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.vehicleFinancing?.payments ?? []).map(payment => payment.ledgerEntryId), ...(home.vehicleFinancing?.downPayments ?? []).map(payment => payment.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(row => row.ledgerEntryId)), ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(row => row.ledgerEntryId)), ...(home.buildingChangeOrders ?? []).flatMap(order => (order.payments ?? []).map(row => row.ledgerEntryId)), ...(home.sale?.payments ?? []).map(payment => payment.ledgerEntryId)]), ...data.loans.flatMap(loan => [...loan.payments.map(row => row.ledgerEntryId), ...(loan.disbursements ?? []).map(row => row.ledgerEntryId), ...(loan.contractorPayments ?? []).map(row => row.ledgerEntryId)])].filter((id): id is number => Boolean(id))
 }

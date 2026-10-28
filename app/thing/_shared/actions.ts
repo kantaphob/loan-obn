@@ -10,7 +10,7 @@ import { syncLandRegister } from '@/lib/land-register'
 import { syncPropertyRegister } from '@/lib/property-register'
 import { syncBuildingBoqRegister } from '@/lib/building-boq-register'
 import { assignAssetCodes, validateCategories, validatePropertyCategories } from '../property/categories'
-import { initialData, migrateAssetData, type AssetData } from './model'
+import { initialData, migrateAssetData, money, type AssetData, type VehicleDownPayment } from './model'
 import { validateAssetData } from './validation'
 import { assetLedgerIds, validateHistory, validateLedgerLinks } from './integrity'
 import { configureInitialLoan, type InitialLoanSettings } from '../liabilities/initial-settings'
@@ -204,6 +204,117 @@ export async function createBuildingProjectPayment(input: BuildingProjectPayment
     return { success: true as const, ...result }
   } catch (error) {
     return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'เลขอ้างอิงหรือสลิปซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ กรุณาลองอีกครั้ง' }
+  }
+}
+
+export type VehicleDownPaymentInput = { requestKey: string; paymentId: string; vehicleId: string; amount: string; occurredOn: string; channelCode: string; reference: string; note: string }
+
+/** Record an actual vehicle down-payment in the cash ledger and vehicle history atomically. */
+export async function createVehicleDownPayment(input: VehicleDownPaymentInput, file?: File | null) {
+  try {
+    const user = await operator(true)
+    if (!input || !/^[a-f0-9-]{36}$/i.test(input.requestKey) || !/^[a-f0-9-]{36}$/i.test(input.paymentId) || typeof input.vehicleId !== 'string') throw new Error('ข้อมูลรายการไม่ถูกต้อง')
+    const amountSatang = ledgerAmount(input.amount)
+    if (!validLedgerDate(input.occurredOn)) throw new Error('วันที่จ่ายเงินดาวน์ไม่ถูกต้อง หรือเป็นวันที่ในอนาคต')
+    if (typeof input.reference !== 'string' || input.reference.length > 150 || typeof input.note !== 'string' || input.note.length > 1000) throw new Error('เลขอ้างอิงหรือหมายเหตุยาวเกินกำหนด')
+    const slip = await readRepaymentSlip(file)
+    const result = await prisma.$transaction(async tx => {
+      const state = await tx.assetWorkspaceState.findUniqueOrThrow({ where: { operatorId: user.id } })
+      const current = migrateAssetData(JSON.parse(state.payload))
+      const vehicle = current.homes.find(row => row.id === input.vehicleId)
+      const financing = vehicle?.vehicleFinancing
+      if (!vehicle || vehicle.kind !== 'vehicle' || vehicle.archivedOn || vehicle.financing !== 'finance' || !financing) throw new Error('ไม่พบสัญญาไฟแนนซ์รถ กรุณาโหลดหน้าใหม่')
+      const paidDownPayment = financing.downPayments.reduce((sum, row) => sum + row.amount, 0)
+      if (amountSatang / 100 > financing.downPayment - paidDownPayment + .009) throw new Error('ยอดจ่ายเงินดาวน์เกินยอดที่ตกลงกับไฟแนนซ์')
+      const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
+      if (!channel?.isActive) throw new Error('เลือกช่องทางจ่ายเงินที่ใช้งานได้')
+      const category = await tx.financialCategory.upsert({ where: { code: 'VEHICLE_DOWN_PAYMENT' }, update: {}, create: { code: 'VEHICLE_DOWN_PAYMENT', nameTh: 'จ่ายเงินดาวน์รถ', nameEn: 'Vehicle down payment', group: 'ASSET', direction: 'OUT', sortOrder: 361 } })
+      if (!category.isActive || category.direction !== 'OUT' || category.group !== 'ASSET') throw new Error('หมวดจ่ายเงินดาวน์รถไม่เปิดใช้งาน')
+      await assertAccountingDateOpen(tx, input.occurredOn)
+      await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: channel.code, slipHash: slip ? slipDigest(slip.fileData) : null })
+      const categories = await tx.assetCategory.findMany({ select: { code: true, nameTh: true, parentCode: true, isActive: true } })
+      const homes = assignAssetCodes(current.homes, current.homes, categories)
+      const savedVehicle = homes.find(row => row.id === input.vehicleId)!
+      const label = `${savedVehicle.assetCode ?? 'VEH'} · ${savedVehicle.name}`
+      const entry = await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, ...(slip ? { slip: { create: slip } } : {}), kind: 'GENERAL', contractId: null, direction: 'OUT', categoryCode: category.code, categoryName: category.nameTh, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: [`${label} · จ่ายเงินดาวน์รถ · ${financing.lender}`, input.note.trim()].filter(Boolean).join(' · '), createdBy: user.id } })
+      const payment: VehicleDownPayment = { id: input.paymentId, date: input.occurredOn, amount: amountSatang / 100, ledgerEntryId: entry.id, reference: input.reference.trim(), note: input.note.trim() }
+      const updatedVehicle = { ...savedVehicle, vehicleFinancing: { ...financing, downPayments: [...financing.downPayments, payment] } }
+      const nextInput: AssetData = { ...current, homes: homes.map(row => row.id === vehicle.id ? updatedVehicle : row) }
+      validateAssetData(nextInput); validateHistory(nextInput, current)
+      const linkedIds = assetLedgerIds(nextInput)
+      const linkedEntries = await tx.ledgerEntry.findMany({ where: { id: { in: linkedIds }, voidedAt: null }, select: ledgerSelect })
+      validateLedgerLinks(nextInput, linkedEntries)
+      const next: AssetData = { ...nextInput, revision: current.revision + 1 }
+      validateCategories(next.homes, current.homes, categories); validatePropertyCategories(next, categories)
+      await syncLandRegister(tx, user.id, next, categories); await syncPropertyRegister(tx, user.id, next); await syncBuildingBoqRegister(tx, user.id, next)
+      const payload = JSON.stringify(next)
+      const saved = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: current.revision }, data: { revision: next.revision, payload } })
+      if (saved.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')
+      await tx.assetWorkspaceRevision.create({ data: { operatorId: user.id, revision: next.revision, payload, reason: `จ่ายเงินดาวน์รถ ${label} / ${financing.lender} / TX-${String(entry.id).padStart(6, '0')}` } })
+      return { entryId: entry.id, data: next }
+    }, { timeout: 30000 })
+    try { await syncGoogleLedger(result.entryId) } catch { /* Ledger entry is already committed; sync can retry later. */ }
+    revalidatePath('/dashboard/ledger'); revalidatePath('/thing/asset'); revalidatePath('/thing/property')
+    return { success: true as const, ...result }
+  } catch (error) {
+    return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'รายการหรือเลขอ้างอิงนี้บันทึกแล้ว กรุณาโหลดหน้าใหม่' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกเงินดาวน์รถไม่สำเร็จ กรุณาลองใหม่' }
+  }
+}
+
+export type VehicleInstallmentInput = { requestKey: string; paymentId: string; vehicleId: string; amount: string; principal: string; interest: string; occurredOn: string; channelCode: string; reference: string; note: string }
+
+/** Record a vehicle finance installment in the cash ledger and vehicle history atomically. */
+export async function createVehicleInstallment(input: VehicleInstallmentInput, file?: File | null) {
+  try {
+    const user = await operator(true)
+    if (!input || !/^[a-f0-9-]{36}$/i.test(input.requestKey) || !/^[a-f0-9-]{36}$/i.test(input.paymentId) || typeof input.vehicleId !== 'string') throw new Error('ข้อมูลรายการไม่ถูกต้อง')
+    const amountSatang = ledgerAmount(input.amount)
+    const principalSatang = ledgerAmount(input.principal)
+    const interestSatang = ledgerAmount(input.interest)
+    if (principalSatang + interestSatang !== amountSatang) throw new Error('ยอดจ่ายต้องเท่ากับเงินต้นบวกดอกเบี้ย')
+    if (!validLedgerDate(input.occurredOn)) throw new Error('วันที่ชำระไม่ถูกต้อง หรือเป็นวันที่ในอนาคต')
+    if (typeof input.reference !== 'string' || input.reference.length > 150 || typeof input.note !== 'string' || input.note.length > 1000) throw new Error('เลขอ้างอิงหรือหมายเหตุยาวเกินกำหนด')
+    const slip = await readRepaymentSlip(file)
+    const result = await prisma.$transaction(async tx => {
+      const state = await tx.assetWorkspaceState.findUniqueOrThrow({ where: { operatorId: user.id } })
+      const current = migrateAssetData(JSON.parse(state.payload))
+      const vehicle = current.homes.find(row => row.id === input.vehicleId)
+      const financing = vehicle?.vehicleFinancing
+      if (!vehicle || vehicle.kind !== 'vehicle' || vehicle.archivedOn || vehicle.financing !== 'finance' || !financing) throw new Error('ไม่พบข้อมูลไฟแนนซ์รถ กรุณาโหลดหน้าใหม่')
+      const paidPrincipal = financing.payments.reduce((sum, row) => sum + row.principal, 0)
+      if (principalSatang / 100 > financing.financedAmount - paidPrincipal + .009) throw new Error('ยอดเงินต้นที่ชำระเกินยอดหนี้คงเหลือ')
+      const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
+      if (!channel?.isActive) throw new Error('เลือกช่องทางจ่ายเงินที่ใช้งานได้')
+      const category = await tx.financialCategory.upsert({ where: { code: 'VEHICLE_FINANCE_PAYMENT' }, update: {}, create: { code: 'VEHICLE_FINANCE_PAYMENT', nameTh: 'จ่ายค่างวดไฟแนนซ์รถ', nameEn: 'Vehicle finance installment', group: 'LIABILITY', direction: 'OUT', sortOrder: 341 } })
+      if (!category.isActive || category.direction !== 'OUT' || category.group !== 'LIABILITY') throw new Error('หมวดจ่ายค่างวดไฟแนนซ์รถไม่เปิดใช้งาน')
+      await assertAccountingDateOpen(tx, input.occurredOn)
+      await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: channel.code, slipHash: slip ? slipDigest(slip.fileData) : null })
+      const categories = await tx.assetCategory.findMany({ select: { code: true, nameTh: true, parentCode: true, isActive: true } })
+      const homes = assignAssetCodes(current.homes, current.homes, categories)
+      const savedVehicle = homes.find(row => row.id === input.vehicleId)!
+      const label = `${savedVehicle.assetCode ?? 'VEH'} · ${savedVehicle.name}`
+      const entry = await tx.ledgerEntry.create({ data: { requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, ...(slip ? { slip: { create: slip } } : {}), kind: 'GENERAL', contractId: null, direction: 'OUT', categoryCode: category.code, categoryName: category.nameTh, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: [`${label} · จ่ายค่างวดไฟแนนซ์รถ · ${financing.lender}`, `เงินต้น ${money(principalSatang / 100)} บาท`, `ดอกเบี้ย ${money(interestSatang / 100)} บาท`, input.note.trim()].filter(Boolean).join(' · '), createdBy: user.id } })
+      const payment = { id: input.paymentId, date: input.occurredOn, amount: amountSatang / 100, principal: principalSatang / 100, interest: interestSatang / 100, ledgerEntryId: entry.id, reference: input.reference.trim(), note: input.note.trim() }
+      const updatedVehicle = { ...savedVehicle, vehicleFinancing: { ...financing, payments: [...financing.payments, payment] } }
+      const nextInput: AssetData = { ...current, homes: homes.map(row => row.id === vehicle.id ? updatedVehicle : row) }
+      validateAssetData(nextInput); validateHistory(nextInput, current)
+      const linkedIds = assetLedgerIds(nextInput)
+      const linkedEntries = await tx.ledgerEntry.findMany({ where: { id: { in: linkedIds }, voidedAt: null }, select: ledgerSelect })
+      validateLedgerLinks(nextInput, linkedEntries)
+      const next: AssetData = { ...nextInput, revision: current.revision + 1 }
+      validateCategories(next.homes, current.homes, categories); validatePropertyCategories(next, categories)
+      await syncLandRegister(tx, user.id, next, categories); await syncPropertyRegister(tx, user.id, next); await syncBuildingBoqRegister(tx, user.id, next)
+      const payload = JSON.stringify(next)
+      const saved = await tx.assetWorkspaceState.updateMany({ where: { operatorId: user.id, revision: current.revision }, data: { revision: next.revision, payload } })
+      if (saved.count !== 1) throw new Error('ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่')
+      await tx.assetWorkspaceRevision.create({ data: { operatorId: user.id, revision: next.revision, payload, reason: `จ่ายค่างวดไฟแนนซ์รถ ${label} / ${financing.lender} / TX-${String(entry.id).padStart(6, '0')}` } })
+      return { entryId: entry.id, data: next }
+    }, { timeout: 30000 })
+    try { await syncGoogleLedger(result.entryId) } catch { /* Ledger entry is already committed; sync can retry later. */ }
+    revalidatePath('/dashboard/ledger'); revalidatePath('/thing/asset'); revalidatePath('/thing/property')
+    return { success: true as const, ...result }
+  } catch (error) {
+    return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'รายการหรือเลขอ้างอิงนี้บันทึกแล้ว กรุณาโหลดหน้าใหม่' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกค่างวดไฟแนนซ์รถไม่สำเร็จ กรุณาลองใหม่' }
   }
 }
 

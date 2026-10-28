@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Landmark, Pencil, Plus } from 'lucide-react'
 import { Header } from '@/components/ui/header'
 import { PageContainer } from '@/components/ui/page-container'
@@ -16,14 +17,26 @@ import type { InitialLoanSettings } from '@/app/thing/liabilities/initial-settin
 import { recordBankLoanCash, type BankLoanCashInput } from '@/app/thing/liabilities/actions'
 
 export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial: AssetData; canWrite: boolean; channels?: { code: string; nameTh: string }[] }) {
+  const searchParams = useSearchParams()
+  const requestedAssetId = searchParams.get('assetId')
   const [data, setData] = useState(initial)
   const [editing, setEditing] = useState<BankLoan | null>(null)
+  const [initialAssetIds, setInitialAssetIds] = useState<string[]>([])
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   useFeedbackToast({ error, success: notice })
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const queryHandled = useRef(false)
+
+  useEffect(() => {
+    if (queryHandled.current || !requestedAssetId || !data.homes.some(home => home.id === requestedAssetId)) return
+    queryHandled.current = true
+    setInitialAssetIds([requestedAssetId])
+    if (canWrite) show()
+    else setSelectedId(data.loans.find(loan => loanAssetIds(loan).includes(requestedAssetId))?.id ?? null)
+  }, [canWrite, data.homes, data.loans, requestedAssetId])
 
   async function persistLoan(loan: BankLoan, reason: string) {
     const next = { ...data, loans: data.loans.map(row => row.id === loan.id ? loan : row) }
@@ -32,9 +45,9 @@ export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial
     setData(result.data)
   }
 
-  async function recordCash(input: Omit<BankLoanCashInput, 'loanId' | 'revision'>) {
+  async function recordCash(input: Omit<BankLoanCashInput, 'loanId' | 'revision'>, file?: File | null) {
     if (!selectedId) throw new Error('กรุณาเลือกสัญญา')
-    const result = await recordBankLoanCash({ ...input, loanId: selectedId, revision: data.revision })
+    const result = await recordBankLoanCash({ ...input, loanId: selectedId, revision: data.revision }, file)
     if (!('data' in result)) throw new Error(result.error || 'บันทึกไม่สำเร็จ')
     setData(result.data)
   }
@@ -46,7 +59,7 @@ export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial
     setData(result.data)
   }
 
-  function show(loan?: BankLoan) { setEditing(loan ?? null); setError(''); setOpen(true) }
+  function show(loan?: BankLoan) { setEditing(loan ?? null); setInitialAssetIds(loan ? loanAssetIds(loan) : initialAssetIds); setError(''); setOpen(true) }
   function close() { if (!busy) setOpen(false) }
   async function save(fields: BankLoanFields) {
     if (busy || !canWrite) return
@@ -56,7 +69,7 @@ export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial
       const next = { ...data, loans: editing ? data.loans.map(row => row.id === loan.id ? loan : row) : [...data.loans, loan] }
       const result = await saveAssetWorkspace(next, editing ? 'แก้ไขข้อมูลธนาคารและข้อมูลอ้างอิงเงินกู้' : 'เพิ่มรายการเงินกู้ธนาคาร')
       if (!result.data) throw new Error(result.error || 'บันทึกไม่สำเร็จ')
-      setData(result.data); setOpen(false); setNotice('บันทึกข้อมูลเงินกู้แล้ว')
+      setData(result.data); setOpen(false); setInitialAssetIds([]); setNotice('บันทึกข้อมูลเงินกู้แล้ว')
     } catch (error) { setError(error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ') }
     finally { setBusy(false) }
   }
@@ -73,8 +86,8 @@ export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial
       const properties = data.homes.filter(row => loanAssetIds(loan).includes(row.id))
       return <Card key={loan.id} className="p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><h2 className="m-0 text-base font-semibold">{loan.name}</h2><p className="mb-0 mt-2 text-xs leading-6 text-slate-500">{loan.bank} · เลขที่สัญญา {loan.accountNumber || 'ยังไม่ระบุ'}</p><p className="mb-0 mt-1 text-xs leading-6 text-slate-500">สินทรัพย์: {properties.length ? properties.map(property => `${property.name}${property.archivedOn ? ' (รายการที่ลบ)' : ''}`).join(' · ') : 'ไม่ผูกกับสินทรัพย์'}</p><p className="mb-0 mt-2 text-xs font-medium text-slate-700">{loan.rounds.length ? `เงินต้นคงเหลือตามข้อมูลที่บันทึก ${money(outstanding(loan))} บาท` : 'ยังไม่ได้ตั้งค่าสัญญาและวงเงินกู้'}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setSelectedId(loan.id)}>จัดการสัญญา</Button>{canWrite ? <Button disabled={busy} onClick={() => show(loan)} aria-label={`แก้ไขเงินกู้ ${loan.name}`}><Pencil size={14} aria-hidden="true" />แก้ไข</Button> : null}</div></div></Card>
     })}</div>
-    <Modal open={open} title={editing ? 'แก้ไขเงินกู้ธนาคาร' : 'เพิ่มเงินกู้ธนาคาร'} onClose={close}>
-      <BankLoanForm key={editing?.id ?? 'new'} initial={editing} properties={data.homes} busy={busy} error={error} onCancel={close} onSave={save} />
+    <Modal open={open} title={editing ? 'แก้ไขเงินกู้ธนาคาร' : requestedAssetId ? 'เพิ่มเงินกู้ / รีไฟแนนซ์' : 'เพิ่มเงินกู้ธนาคาร'} description={requestedAssetId ? 'เลือกบ้านและที่ดินที่จะค้ำประกัน แล้วบันทึกเป็นสัญญาเงินกู้ใหม่' : undefined} onClose={close}>
+      <BankLoanForm key={editing?.id ?? `new-${initialAssetIds.join('-')}`} initial={editing} initialAssetIds={initialAssetIds} properties={data.homes} busy={busy} error={error} onCancel={close} onSave={save} />
     </Modal>
   </PageContainer>
 }

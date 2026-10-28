@@ -12,7 +12,8 @@ is `private/postgres/data`. Keep this directory in place while the server runs.
 
 - `npm run db:setup-postgres`: initialize/start this project's existing local cluster.
 - `node scripts/start-local-postgres.mjs`: start the existing cluster if stopped.
-- `npm run dev`: start the application, as before.
+- `npm run dev`: start PostgreSQL if needed, then start the application.
+- `npm run db:start-postgres`: start PostgreSQL separately when running database tools without the application.
 - `npm run db:generate`: generate both PostgreSQL and legacy SQLite clients.
 - `npm run db:deploy`: apply the PostgreSQL migrations without resetting data.
 - `npm run test:postgres`: run the integration suites against isolated PostgreSQL

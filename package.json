@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "postinstall": "node scripts/generate-database-clients.mjs",
+    "predev": "node scripts/start-local-postgres.mjs",
     "dev": "node server.mjs",
     "build": "next build",
     "start": "NODE_ENV=production node server.mjs",

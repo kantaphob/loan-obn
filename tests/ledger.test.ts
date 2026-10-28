@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { prisma } from '../lib/prisma'
 import { saveLedger, addLendingCapital, voidLedger, getLedger, editLedger } from '../app/dashboard/ledger/actions'
 import { getReceivables, getRepaymentHistory } from '../app/dashboard/repayments/actions'
+import { payPersuaderShare, getPersuaderShares } from '../app/dashboard/persuaders/shares/actions'
 import { ledgerAmount, validLedgerDate, bangkokToday, contractLedgerBalance, type LedgerInput } from '../lib/ledger'
 if (!process.env.DATABASE_URL?.includes('loan-ledger-test-')) throw new Error('Isolated database required')
 after(() => prisma.$disconnect())
@@ -148,6 +149,58 @@ test('historical balances exclude disbursements after the reporting date', () =>
     assert.equal(before.remaining, 0)
     assert.equal(contractLedgerBalance(contract, rows, '2026-10-20').remaining, 10000)
   }
+})
+
+test('Persuader share accrues only on full contract settlement, pays through linked ledger, and reverses on void', async () => {
+  await prisma.user.updateMany({ data: { role: 'ADMIN', status: 'ACTIVE' } })
+  const user = await prisma.user.findFirstOrThrow()
+  const borrower = await prisma.borrower.create({ data: { nickname: 'referral borrower', firstName: 'Referral', lastName: 'Borrower', phone: '' } })
+  const lender = await prisma.lender.create({ data: { nickname: 'referral lender' } })
+  const persuader = await prisma.persuader.create({ data: { name: 'Persuader Sample' } })
+  const today = bangkokToday()
+  await prisma.paymentChannel.upsert({ where: { code: 'CASH' }, create: { code: 'CASH', nameTh: 'เงินสด' }, update: { isActive: true } })
+  await prisma.financialCategory.upsert({ where: { code: 'PERSUADER_SHARE_PAYMENT' }, create: { code: 'PERSUADER_SHARE_PAYMENT', nameTh: 'จ่ายส่วนแบ่งผู้แนะนำ', group: 'EXPENSE', direction: 'OUT' }, update: { isActive: true } })
+  await prisma.financialCategory.upsert({ where: { code: 'LOAN_DISBURSEMENT' }, create: { code: 'LOAN_DISBURSEMENT', nameTh: 'ปล่อยกู้', group: 'LOAN', direction: 'OUT' }, update: { isActive: true } })
+  await prisma.financialCategory.upsert({ where: { code: 'CONTRACT_REPAYMENT' }, create: { code: 'CONTRACT_REPAYMENT', nameTh: 'รับชำระคืน', group: 'LOAN', direction: 'IN' }, update: { isActive: true } })
+  const contract = await prisma.loanContract.create({ data: {
+    borrowerId: borrower.id, lenderId: lender.id, persuaderId: persuader.id, persuaderNameSnapshot: persuader.name,
+    persuaderShareBase: 'PRINCIPAL', persuaderShareBasisPoints: 500, persuaderShareSatang: 50_000,
+    requestKey: randomUUID(), borrowerCode: 'BR-REF', borrowerName: 'Referral Borrower', lenderName: 'Referral Lender',
+    documentChoice: 'NONE', interestMethod: 'INTEREST_UPFRONT', interestPercent: 0, internalInterestPercent: 20,
+    principalSatang: 1_000_000, interestSatang: 200_000, netSatang: 800_000, repaymentSatang: 1_000_000,
+    createdBy: user.id, status: 'WAITING_PAYMENT', repaymentDueDate: today,
+  } })
+  const payoutBase = { requestKey: randomUUID(), contractId: contract.id, amount: '250', occurredOn: today, channelCode: 'CASH', reference: '', note: '' }
+  assert.match((await payPersuaderShare(payoutBase)) .error ?? '', /ยังไม่เกิดสิทธิ์จ่าย/)
+  const disbursement: LedgerInput = { requestKey: randomUUID(), kind: 'DISBURSEMENT', contractId: contract.id, direction: 'OUT', categoryCode: '', amount: '8000', occurredOn: today, channelCode: 'CASH', reference: '', note: '' }
+  assert.ok((await saveLedger(disbursement)).success)
+  const partial: LedgerInput = { ...disbursement, requestKey: randomUUID(), kind: 'REPAYMENT', direction: 'IN', amount: '5000' }
+  assert.ok((await saveLedger(partial)).success)
+  assert.equal(await prisma.persuaderShareEvent.count({ where: { contractId: contract.id } }), 0, 'partial repayment must not create an entitlement')
+  const finalKey = randomUUID()
+  assert.ok((await saveLedger({ ...partial, requestKey: finalKey, amount: '5000' })).success)
+  assert.equal(await prisma.persuaderShareEvent.count({ where: { contractId: contract.id, eventType: 'SETTLEMENT' } }), 1)
+  assert.equal((await getPersuaderShares()).rows[0].dueSatang, 50_000)
+  const finalEntry = await prisma.ledgerEntry.findUniqueOrThrow({ where: { requestKey: finalKey } })
+  const finalEdit = { id: finalEntry.id, expectedRevision: 0, amount: '4500', occurredOn: today, direction: 'IN', categoryCode: 'CONTRACT_REPAYMENT', channelCode: 'CASH', reference: '', note: '', reason: 'แก้ยอดทดสอบให้ยังชำระไม่ครบ' }
+  assert.ok((await editLedger(finalEdit)).success)
+  assert.equal((await getPersuaderShares()).rows[0].dueSatang, 0, 'editing a final receipt to a partial amount reverses the entitlement')
+  assert.ok((await editLedger({ ...finalEdit, expectedRevision: 1, amount: '5000', reason: 'แก้ยอดทดสอบให้ชำระครบ' })).success)
+  assert.equal((await getPersuaderShares()).rows[0].dueSatang, 50_000, 'restoring the final payment restores one entitlement')
+  const firstPayoutKey = randomUUID()
+  const firstPayout = { ...payoutBase, requestKey: firstPayoutKey }
+  assert.ok((await payPersuaderShare(firstPayout)).success)
+  assert.ok((await payPersuaderShare(firstPayout)).success, 'same idempotency key does not create a duplicate')
+  assert.equal(await prisma.persuaderSharePayment.count({ where: { contractId: contract.id } }), 1)
+  assert.match((await payPersuaderShare({ ...payoutBase, requestKey: randomUUID(), amount: '250.01' })).error ?? '', /เกินส่วนแบ่งค้างจ่าย/)
+  assert.ok((await payPersuaderShare({ ...payoutBase, requestKey: randomUUID() })).success)
+  assert.equal((await getPersuaderShares()).rows[0].dueSatang, 0)
+  assert.ok((await voidLedger(finalEntry.id, 'ยกเลิกรับชำระเพื่อทดสอบ')).success)
+  assert.equal(await prisma.persuaderShareEvent.count({ where: { contractId: contract.id, eventType: 'REVERSAL' } }), 2)
+  assert.equal((await getPersuaderShares()).rows[0].dueSatang, -50_000, 'paid share remains visible as amount to adjust after settlement is reversed')
+  const paidLedger = await prisma.ledgerEntry.findUniqueOrThrow({ where: { requestKey: firstPayoutKey } })
+  assert.ok((await voidLedger(paidLedger.id, 'ยกเลิกการโอนเพื่อทดสอบ')).success)
+  assert.equal((await getPersuaderShares()).rows[0].dueSatang, -25_000, 'voiding a share payment preserves the remaining adjustment balance')
 })
 
 test('receivables paginate on the server, preserve global totals and load history separately', async () => {

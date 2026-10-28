@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import '../borrower/borrower.css'
 import './credit-workspace.css'
 import { Suspense } from 'react'
@@ -9,7 +10,7 @@ import { getCreditDirectory } from './actions'
 import { CreditWorkspace } from './credit-workspace'
 
 export default function CreditBureauPage() {
-  return <Suspense fallback={<PageContainer className="borrower-page credit-page"><p role="status" className="p-6 text-sm text-slate-300">กำลังโหลดประวัติเครดิต…</p></PageContainer>}><CreditBureauContent /></Suspense>
+  return <Suspense fallback={<PageContainer className="borrower-page credit-page"><DataLoading label="กำลังโหลดประวัติเครดิต…" /></PageContainer>}><CreditBureauContent /></Suspense>
 }
 
 async function CreditBureauContent() {

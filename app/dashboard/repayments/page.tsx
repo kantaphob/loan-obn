@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import '../borrower/borrower.css'
 import './repayments.css'
 import { Suspense } from 'react'
@@ -13,7 +14,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 export default function RepaymentsPage(props: Props) {
   return <PageContainer className="borrower-page">
     <Header title="ลูกหนี้และรับชำระ" eyebrow="Repayments" description="ติดตามลูกหนี้ ตรวจสัญญาและประวัติ แล้วรับชำระตามวันโอนเงินจริง" icon={<HandCoins size={21} aria-hidden="true" />} />
-    <Suspense fallback={<p role="status" className="p-8 text-center text-sm text-slate-500">กำลังโหลดรายการลูกหนี้…</p>}>
+    <Suspense fallback={<DataLoading label="กำลังโหลดรายการลูกหนี้…" />}>
       <ReceivablesContent {...props} />
     </Suspense>
   </PageContainer>

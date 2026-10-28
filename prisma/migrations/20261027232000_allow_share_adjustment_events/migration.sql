@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS persuader_share_event_ledgerEntryId_eventType_key;

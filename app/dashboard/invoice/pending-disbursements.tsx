@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import { lenderCode } from '@/lib/lender'
 import { EditPendingContractButton } from './edit-pending-contract-button'
 import { DisbursementButton } from './disbursement-button'
@@ -20,7 +21,7 @@ export type Params = { q?: string; period?: string }
 const periods = [['due', 'ถึงกำหนดแล้ว'], ['today', 'วันนี้'], ['upcoming', 'กำหนดถัดไป'], ['unscheduled', 'ยังไม่ระบุวัน'], ['all', 'รอจ่ายทั้งหมด']] as const
 
 export function PendingDisbursements({ searchParams, basePath = '/dashboard/ap' }: { searchParams: Promise<Params>; basePath?: string }) {
-  return <Suspense fallback={<PageContainer><p role="status">กำลังโหลดรายการถึงกำหนดจ่าย…</p></PageContainer>}><InvoiceContent searchParams={searchParams} basePath={basePath} /></Suspense>
+  return <Suspense fallback={<PageContainer><DataLoading label="กำลังโหลดรายการถึงกำหนดจ่าย…" /></PageContainer>}><InvoiceContent searchParams={searchParams} basePath={basePath} /></Suspense>
 }
 
 async function InvoiceContent({ searchParams, basePath }: { searchParams: Promise<Params>; basePath: string }) {

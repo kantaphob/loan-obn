@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
@@ -21,7 +22,7 @@ const money = (n: number) => (n / 100).toLocaleString('th-TH', { minimumFraction
 const monthName = (month: string) => new Intl.DateTimeFormat('th-TH', { month: 'long', timeZone: 'UTC' }).format(new Date(`${month}-01T00:00:00Z`))
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 export default function AC(props: Props) {
-  return <Suspense fallback={<PageContainer><p role="status">กำลังโหลดแฟ้มปิดดุล…</p></PageContainer>}><ClosingContent {...props} /></Suspense>
+  return <Suspense fallback={<PageContainer><DataLoading label="กำลังโหลดแฟ้มปิดดุล…" /></PageContainer>}><ClosingContent {...props} /></Suspense>
 }
 async function ClosingContent({ searchParams }: Props) {
   await connection()

@@ -1,5 +1,6 @@
 export type ContractDraft = {
   borrowerId: number; lenderId: number; requestKey: string;
+  persuaderId?: number | null; persuaderSharePercent?: string;
   documentChoice: string; signingMethod: string; documentPackage: string; witnessCount?: number; guaranteeWitnessCount?: number;
   collateralDescription?: string;
   collateralAgreementData?: string;

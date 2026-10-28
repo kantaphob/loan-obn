@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import '../borrower/borrower.css'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
@@ -10,7 +11,7 @@ import { getHistoricalLedger } from './actions'
 import { CombinedLedgerWorkspace } from './combined-ledger-workspace'
 
 export default function LedgerPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  return <Suspense fallback={<PageContainer className="borrower-page"><p role="status" className="p-6 text-sm text-slate-300">กำลังโหลดบัญชีรับ–จ่าย…</p></PageContainer>}><LedgerContent searchParams={searchParams} /></Suspense>
+  return <Suspense fallback={<PageContainer className="borrower-page"><DataLoading label="กำลังโหลดบัญชีรับ–จ่าย…" /></PageContainer>}><LedgerContent searchParams={searchParams} /></Suspense>
 }
 
 async function LedgerContent({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading'
 import '../borrower/borrower.css'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
@@ -9,7 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { LenderManager } from './lender-manager'
 
 export default function LendersPage({ searchParams }: { searchParams: Promise<{ q?: string; role?: string; status?: string; page?: string }> }) {
-  return <Suspense fallback={<PageContainer><p role="status">กำลังโหลดข้อมูลผู้ให้กู้…</p></PageContainer>}><LenderContent searchParams={searchParams} /></Suspense>
+  return <Suspense fallback={<PageContainer><DataLoading label="กำลังโหลดข้อมูลผู้ให้กู้…" /></PageContainer>}><LenderContent searchParams={searchParams} /></Suspense>
 }
 async function LenderContent({ searchParams }: { searchParams: Promise<{ q?: string; role?: string; status?: string; page?: string }> }) {
   await connection()

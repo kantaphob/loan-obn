@@ -1,5 +1,6 @@
 'use client'
 
+import { DataLoading } from '@/components/ui/data-loading'
 import { useToast } from '@/components/ui/toast'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { useState, useTransition, type FormEvent } from 'react'
@@ -42,7 +43,7 @@ export function DisbursementButton({ contractId, today, channels, ready }: { con
   return <><Button disabled={!ready} title={!ready ? 'กรุณาลงนามให้ครบก่อนบันทึกจ่าย' : undefined} onClick={() => { setRequestKey(crypto.randomUUID()); setError(''); void dialog.show() }}>บันทึกจ่ายแล้ว</Button>
     <Modal open={dialog.open} className="invoice-review-modal" title="ตรวจสอบสัญญาและบันทึกจ่ายเงินจริง" description={contractCode(contractId)} onClose={() => { if (!pending) dialog.close() }}>
       <form onSubmit={submit} className="space-y-4 whitespace-normal">
-        {dialog.loading && <p role="status">กำลังโหลดข้อมูลสัญญาล่าสุด…</p>}
+        {dialog.loading && <DataLoading compact label="กำลังโหลดข้อมูลสัญญาล่าสุด…" />}
         {dialog.error && <p role="alert" className="text-red-700">{dialog.error}</p>}
         {dialog.review && <ContractReviewSummary review={dialog.review} />}
         <p className="text-xs leading-6 text-slate-500">ตรวจข้อมูลสัญญาด้านบน แล้วบันทึกเงินที่จ่ายจริงแล้ว เลือกวันที่ย้อนหลังตามสลิปได้</p>

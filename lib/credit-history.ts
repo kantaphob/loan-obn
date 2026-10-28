@@ -44,3 +44,20 @@ export function outstandingBreakdown(principalSatang: number, balance: { disburs
   const penalty = balance.penaltyRemaining
   return { principal, interest, penalty, total: principal + interest + penalty }
 }
+
+/** Estimate collected components using the ledger waterfall; upfront interest is collected at disbursement. */
+export function receivedBreakdown(contract: {
+  principalSatang: number; interestSatang: number; interestMethod: string; repaymentSatang: number
+  balance: { disbursed: boolean; received: number; penaltyPaid: number }
+}) {
+  if (!contract.balance.disbursed) return { principal: 0, interest: 0, interestUpfront: 0, interestAfter: 0, penalty: 0, total: 0 }
+  const penalty = Math.min(contract.balance.received, contract.balance.penaltyPaid)
+  const baseReceived = Math.min(contract.repaymentSatang, Math.max(0, contract.balance.received - penalty))
+  const upfront = contract.interestMethod === 'INTEREST_UPFRONT'
+  const baseInterest = upfront ? 0 : Math.min(contract.interestSatang, Math.max(0, contract.repaymentSatang - contract.principalSatang))
+  const interestUpfront = upfront ? contract.interestSatang : 0
+  const interestAfter = upfront ? 0 : Math.min(baseInterest, baseReceived)
+  const interest = interestUpfront + interestAfter
+  const principal = Math.min(contract.principalSatang, Math.max(0, baseReceived - baseInterest))
+  return { principal, interest, interestUpfront, interestAfter, penalty, total: principal + interest + penalty }
+}

@@ -1,5 +1,6 @@
 'use client'
 
+import { DataLoading } from '@/components/ui/data-loading'
 import { useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ const field = 'mt-1 block w-full rounded-xl border border-slate-300 bg-white p-3
 export function EditPendingContractButton({ contractId }: { contractId: number }) {
   const dialog = useContractReview(contractId)
   return <><Button variant="edit" onClick={() => { void dialog.show() }}>แก้ไขสัญญาก่อนจ่าย</Button><Modal open={dialog.open} className="invoice-review-modal" title="แก้ไขสัญญาก่อนจ่ายเงินจริง" description={contractCode(contractId)} onClose={dialog.close}>
-    {dialog.loading && <p role="status">กำลังโหลดข้อมูลสัญญา…</p>}
+    {dialog.loading && <DataLoading compact label="กำลังโหลดข้อมูลสัญญา…" />}
     {dialog.error && <p role="alert" className="text-sm text-red-700">{dialog.error}</p>}
     {dialog.review && <EditForm key={dialog.review.reviewToken} review={dialog.review} close={dialog.close} />}
   </Modal></>

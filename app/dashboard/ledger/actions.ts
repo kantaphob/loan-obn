@@ -109,6 +109,7 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
       if (!channel?.isActive) throw new Error('กรุณาเลือกช่องทางชำระเงินที่ใช้งานได้')
       let penaltyWaivedSatang = 0, penaltyWaiverReason = '', settlementWaivedSatang = 0, settlementWaiverReason = ''
       let direction = input.direction, categoryCode = input.categoryCode, categoryName = '', contractId: number | null = null
+      let referralSettlement = false
       if (input.kind === 'GENERAL') {
         if (input.contractId !== null) throw new Error('รายการทั่วไปไม่สามารถผูกสัญญาได้')
         if (accountScope === 'LENDING' && !['OPENING_CAPITAL', 'CAPITAL_INCREASE', 'CAPITAL_INJECTION', 'CAPITAL_WITHDRAWAL'].includes(categoryCode)) throw new Error('บัญชีสินเชื่อบันทึกทั่วไปได้เฉพาะเพิ่มทุนหรือถอนทุน รายการกู้ให้บันทึกผ่านสัญญา')
@@ -151,6 +152,8 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
           }
           const after = contractLedgerBalance(contract, [...contract.ledgerEntries, { kind: 'REPAYMENT', occurredOn: input.occurredOn, amountSatang, penaltyWaivedSatang, settlementWaivedSatang }])
           if (after.invalid) throw new Error('วันที่หรือยอดรับชำระกระทบรายการที่บันทึกไว้แล้ว กรุณาตรวจสอบประวัติ')
+          const actualRepayments = contract.ledgerEntries.filter(entry => entry.kind === 'REPAYMENT').reduce((sum, entry) => sum + entry.amountSatang, 0) + amountSatang + contract.legacyReceivedSatang
+          referralSettlement = after.remaining === 0 && settlementWaivedSatang === 0 && actualRepayments >= contract.repaymentSatang
           direction = 'IN'; categoryCode = 'CONTRACT_REPAYMENT'; categoryName = ''
           await tx.loanContract.update({ where: { id: contract.id }, data: { status: after.remaining === 0 ? 'CLOSED' : 'PAID' } })
         }
@@ -160,7 +163,13 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
         if (!category?.isActive || category.direction !== direction || category.group !== 'LOAN') throw new Error('หมวดบัญชีตามสัญญาไม่พร้อมใช้งาน กรุณาตรวจสอบ Masterdata')
         categoryName = category.nameTh
       }
-      await tx.ledgerEntry.create({ data: { accountScope, requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: input.kind, contractId, direction, categoryCode, categoryName, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: input.note.trim(), createdBy: user.id, settlementWaivedSatang, settlementWaiverReason, penaltyAssessed: input.kind === 'REPAYMENT', penaltyWaivedSatang, penaltyWaiverReason, ...(slip ? { slip: { create: slip } } : {}) } })
+      const savedEntry = await tx.ledgerEntry.create({ data: { accountScope, requestKey: input.requestKey, slipHash: slip ? slipDigest(slip.fileData) : null, kind: input.kind, contractId, direction, categoryCode, categoryName, amountSatang, occurredOn: input.occurredOn, channelCode: channel.code, channelName: channel.nameTh, reference: input.reference.trim(), note: input.note.trim(), createdBy: user.id, settlementWaivedSatang, settlementWaiverReason, penaltyAssessed: input.kind === 'REPAYMENT', penaltyWaivedSatang, penaltyWaiverReason, ...(slip ? { slip: { create: slip } } : {}) } })
+      if (referralSettlement && contractId) {
+        const settledContract = await tx.loanContract.findUniqueOrThrow({ where: { id: contractId }, select: { persuaderId: true, persuaderShareSatang: true } })
+        if (settledContract.persuaderId && settledContract.persuaderShareSatang && settledContract.persuaderShareSatang > 0) {
+          await tx.persuaderShareEvent.create({ data: { contractId, persuaderId: settledContract.persuaderId, ledgerEntryId: savedEntry.id, eventType: 'SETTLEMENT', amountSatang: settledContract.persuaderShareSatang, createdBy: user.id } })
+        }
+      }
     })
     revalidatePath('/dashboard/capital'); revalidatePath('/dashboard'); revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true } })
@@ -195,6 +204,19 @@ export async function voidLedger(id: number, reason: string) {
         await tx.loanContract.update({ where: { id: entry.contractId }, data: entry.kind === 'DISBURSEMENT' ? { status: 'WAITING_PAYMENT', paidAt: null } : { status: 'PAID' } })
       }
       await tx.ledgerEntry.update({ where: { id }, data: { voidedAt: new Date(), voidedBy: user.id, voidReason: reason.trim() } })
+      if (entry.kind === 'REPAYMENT' && entry.contractId) {
+        const contract = await tx.loanContract.findUniqueOrThrow({ where: { id: entry.contractId } })
+        const activeEntries = await tx.ledgerEntry.findMany({ where: { contractId: entry.contractId, voidedAt: null } })
+        const balance = contractLedgerBalance(contract, activeEntries)
+        const cashReceived = contract.legacyReceivedSatang + activeEntries.filter(item => item.kind === 'REPAYMENT').reduce((sum, item) => sum + item.amountSatang, 0)
+        const noSettlementWaiver = !activeEntries.some(item => item.kind === 'REPAYMENT' && item.settlementWaivedSatang > 0)
+        const remainsSettled = balance.remaining === 0 && noSettlementWaiver && cashReceived >= contract.repaymentSatang
+        if (!remainsSettled && contract.persuaderId && (contract.persuaderShareSatang ?? 0) > 0) {
+          const events = await tx.persuaderShareEvent.findMany({ where: { contractId: contract.id }, select: { amountSatang: true } })
+          const entitlement = events.reduce((sum, event) => sum + event.amountSatang, 0)
+          if (entitlement > 0) await tx.persuaderShareEvent.create({ data: { contractId: contract.id, persuaderId: contract.persuaderId, ledgerEntryId: id, eventType: 'REVERSAL', amountSatang: -entitlement, createdBy: user.id } })
+        }
+      }
     })
     const saved = await prisma.ledgerEntry.findUnique({ where: { id }, select: { contractId: true } })
     await syncGoogleLedger(id)
@@ -202,6 +224,7 @@ export async function voidLedger(id: number, reason: string) {
       await syncGoogleContract(saved.contractId)
       publishCreditBureauChanged()
     }
+    revalidatePath('/dashboard/persuaders/shares')
     revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     return { success: true }
   } catch (error) { return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'ยกเลิกไม่สำเร็จ กรุณาลองใหม่' } }
@@ -258,6 +281,16 @@ export async function editLedger(input: {
           const after = contractLedgerBalance(contract, contract.ledgerEntries.map(e => e.id === entry.id ? { ...e, amountSatang, occurredOn: input.occurredOn } : e))
           if (after.invalid) throw new Error('ยอดหรือวันที่แก้ไขทำให้ยอดชำระหรือยกเว้นค่าปรับไม่ถูกต้อง กรุณายกเลิกแล้วบันทึกใหม่')
           await tx.loanContract.update({ where: { id: contract.id }, data: { status: after.remaining === 0 ? 'CLOSED' : 'PAID' } })
+          const updatedRepayments = contract.ledgerEntries.filter(item => item.kind === 'REPAYMENT').reduce((sum, item) => sum + (item.id === entry.id ? amountSatang : item.amountSatang), 0) + contract.legacyReceivedSatang
+          const noSettlementWaiver = !contract.ledgerEntries.some(item => item.kind === 'REPAYMENT' && item.id !== entry.id && item.settlementWaivedSatang > 0) && entry.settlementWaivedSatang === 0
+          const eligible = after.remaining === 0 && noSettlementWaiver && updatedRepayments >= contract.repaymentSatang
+          const share = contract.persuaderShareSatang ?? 0
+          if (contract.persuaderId && share > 0) {
+            const events = await tx.persuaderShareEvent.findMany({ where: { contractId: contract.id }, select: { amountSatang: true } })
+            const currentEntitlement = events.reduce((sum, event) => sum + event.amountSatang, 0)
+            if (eligible && currentEntitlement <= 0) await tx.persuaderShareEvent.create({ data: { contractId: contract.id, persuaderId: contract.persuaderId, ledgerEntryId: entry.id, eventType: 'SETTLEMENT', amountSatang: share, createdBy: user.id } })
+            else if (!eligible && currentEntitlement > 0) await tx.persuaderShareEvent.create({ data: { contractId: contract.id, persuaderId: contract.persuaderId, ledgerEntryId: entry.id, eventType: 'REVERSAL', amountSatang: -Math.min(share, currentEntitlement), createdBy: user.id } })
+          }
         } else throw new Error('รายการสัญญาประเภทนี้ยังไม่รองรับการแก้ไข')
       }
       const before = { principalReceivedSatang: entry.principalReceivedSatang, interestReceivedSatang: entry.interestReceivedSatang, penaltyReceivedSatang: entry.penaltyReceivedSatang, amountSatang: entry.amountSatang, occurredOn: entry.occurredOn, direction: entry.direction, categoryCode: entry.categoryCode, categoryName: entry.categoryName, channelCode: entry.channelCode, channelName: entry.channelName, reference: entry.reference, note: entry.note }
@@ -273,7 +306,7 @@ export async function editLedger(input: {
       await syncGoogleContract(saved.contractId)
       publishCreditBureauChanged()
     }
-    for (const path of ['/dashboard/ledger', '/dashboard/repayments', '/dashboard/receivables', '/dashboard/contracts', '/dashboard/ap']) revalidatePath(path)
+    for (const path of ['/dashboard/ledger', '/dashboard/repayments', '/dashboard/receivables', '/dashboard/contracts', '/dashboard/ap', '/dashboard/persuaders/shares']) revalidatePath(path)
     return { success: true }
   } catch (error) { return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'แก้ไขไม่สำเร็จ กรุณาลองใหม่' } }
 }
