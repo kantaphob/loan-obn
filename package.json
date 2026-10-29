@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "NODE_ENV=production node server.mjs",
     "lint": "eslint",
-    "test": "node tests/run-contracts.mjs && node tests/run-ledger.mjs && npm run test:integrity && npm run test:review && npm run test:closing && npm run test:assets",
+    "test": "node tests/run-contracts.mjs && node tests/run-ledger.mjs && npm run test:integrity && npm run test:review && npm run test:closing && npm run test:assets && npm run test:payroll",
     "db:generate": "node scripts/generate-database-clients.mjs",
     "db:migrate": "tsx scripts/deploy-database.ts --dev",
     "db:seed": "RUST_LOG=info prisma db seed --config prisma7.config.ts",
@@ -25,6 +25,7 @@
     "db:backfill-land": "tsx scripts/backfill-land-register.ts",
     "db:backfill-building-boq": "tsx scripts/backfill-building-boq.ts",
     "db:setup-postgres": "node scripts/setup-local-postgres.mjs",
+    "test:payroll": "node tests/run-payroll.mjs",
     "test:postgres": "node tests/run-postgres.mjs",
     "db:start-postgres": "node scripts/start-local-postgres.mjs"
   },

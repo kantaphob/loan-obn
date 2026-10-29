@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import Image from 'next/image'
 import { DraftSignaturePad } from './draft-signature-pad'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { validContractSchedule, formatContractDate, type DraftContractSignature } from '@/lib/contracts'
 import { getContractInterestRates, getContractPersuaders, getContractProvinces, getContractDistricts, getContractSubdistricts, saveContract, signContract } from './actions'
 import { ContractDocumentOptions, WitnessCountOptions, signingMethods, documentPackages } from './contract-document-options'
@@ -17,13 +18,16 @@ type ContractPhase = 'DETAILS' | 'LOAN' | 'GUARANTEE' | 'COLLATERAL' | 'REVIEW'
 
 export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrowerId, lenderId, availableLimit, onReview, onSaved, outstandingContracts, outstandingReviewed, borrowerInformed, onOutstandingReviewedChange, onBorrowerInformedChange }: {
   borrowerName: string; lenderName: string; borrowerId: number; lenderId: number; availableLimit: number; onBack: () => void;
-  onReview: (reviewing: boolean) => void; onSaved?: (code: string, contractId: number, signingMethod: string | null, limitApprovalRequired: boolean) => void;
+  onReview: (reviewing: boolean) => void; onSaved?: (code: string, contractId: number, signingMethod: string | null, limitApprovalRequired: boolean, pdfSaved: boolean | null) => void;
   outstandingContracts: { contractId: number; label: string; amount: string }[]; outstandingReviewed: boolean; borrowerInformed: boolean;
   onOutstandingReviewedChange: (checked: boolean) => void; onBorrowerInformedChange: (checked: boolean) => void;
 }) {
   const groupId = useId()
   const [phase, setPhase] = useState<ContractPhase>('DETAILS')
   const [saving, setSaving] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [previewError, setPreviewError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [savedCode, setSavedCode] = useState('')
   const requestKey = useRef('')
@@ -74,6 +78,8 @@ export function ContractDetailsStep({ borrowerName, lenderName, onBack, borrower
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
 
   function chooseGuarantorProvince(value: string) {
     setGuarantorProvinceId(value); setGuarantorDistrictId(''); setGuarantorSubdistrictId(''); setDistricts([]); setSubdistricts([])
@@ -151,10 +157,30 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
           if (signed.error) { setSaveError(`บันทึกสัญญาแล้ว แต่ลายเซ็นยังไม่ครบ: ${signed.error}`); break }
         }
         setSavedCode(result.code)
-        onSaved?.(result.code, result.id, documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE' ? 'E_SIGNATURE' : null, result.limitApprovalRequired ?? false)
+        onSaved?.(result.code, result.id, documentChoice === 'CREATE' && signingMethod === 'E_SIGNATURE' ? 'E_SIGNATURE' : null, result.limitApprovalRequired ?? false, result.pdfSaved ?? null)
       }
     } catch { setSaveError('เชื่อมต่อไม่สำเร็จ กรุณาลองบันทึกอีกครั้ง') }
     finally { setSaving(false); saveLock.current = false }
+  }
+
+  async function previewLoanAgreement() {
+    if (!ready || documentChoice !== 'CREATE' || previewLoading) return
+    setPreviewLoading(true)
+    setPreviewError('')
+    try {
+      const response = await fetch('/api/contracts/preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ borrowerId, lenderId, principal, interestMethod, internalRateCode, internalCustomRate, scheduledDisbursementDate, repaymentDueDate, collateralDescription, signingMethod, witnessCount }),
+      })
+      if (!response.ok) {
+        const result = await response.json().catch(() => null) as { message?: string } | null
+        throw new Error(result?.message || 'สร้างตัวอย่างเอกสารไม่สำเร็จ')
+      }
+      const url = URL.createObjectURL(await response.blob())
+      setPreviewUrl(url)
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : 'สร้างตัวอย่างเอกสารไม่สำเร็จ')
+    } finally { setPreviewLoading(false) }
   }
 
   return <div className="space-y-4">
@@ -350,6 +376,11 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
         {canCalculate && <p className="mb-0 mt-4 text-xs text-slate-500">คำนวณดอกเบี้ยในระบบตามวิธีจ่ายที่เลือก · เอกสารสัญญาอ้างเงินต้นและเว้นช่องอัตราดอกเบี้ย</p>}
         {selectedPersuader && <p className="mb-0 mt-2 rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-900">ส่วนแบ่ง Persuader เป็นข้อมูลภายใน คำนวณจากเงินต้นและไม่แสดงในเอกสารสัญญา · จะเป็นยอดรอจ่ายเมื่อผู้กู้ชำระครบสัญญา</p>}
       </div>}
+      {phase === 'REVIEW' && documentChoice === 'CREATE' && <section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50/70 p-4">
+        <div><h3 className="m-0 text-sm font-semibold text-slate-800">ตรวจหนังสือสัญญาก่อนบันทึก</h3><p className="mb-0 mt-1 text-xs leading-5 text-slate-600">เปิด PDF ตัวอย่างที่กรอกจากข้อมูลนี้ได้ก่อน ยังไม่สร้างเลขที่สัญญาและยังไม่บันทึกข้อมูล</p></div>
+        <Button onClick={() => void previewLoanAgreement()} disabled={!ready || previewLoading}>{previewLoading ? 'กำลังสร้างตัวอย่าง…' : 'ดูตัวอย่างหนังสือสัญญา PDF'}</Button>
+        {previewError && <p role="alert" className="mb-0 basis-full text-sm text-red-700">{previewError}</p>}
+      </section>}
       {phase === 'REVIEW' && activeSignatures.length > 0 && <section className="mt-5 rounded-2xl border border-slate-200 p-4">
         <h3 className="m-0 text-sm font-semibold">ลายเซ็นสำหรับประทับในเอกสาร</h3>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">{activeSignatures.map(signature => <figure key={`${signature.documentStage}-${signature.signer}`} className="m-0 rounded-xl bg-white p-3"><figcaption className="text-xs">{signature.documentStage === 'LOAN' ? '3.1 · ' : signature.documentStage === 'GUARANTEE' ? '3.2 · ' : '3.3 · '}{signature.signer === 'BORROWER' ? borrowerName : signature.signer === 'LENDER' ? lenderName : signature.signer === 'GUARANTOR' ? guarantorName : signature.signer === 'PROVIDER' ? signature.signerName : signature.signer === 'CUSTODIAN' ? signature.signerName : signature.witnessName}</figcaption><Image src={signature.signatureData} alt="ตัวอย่างลายเซ็นก่อนยืนยัน" width={480} height={160} unoptimized className="h-20 w-full object-contain" /></figure>)}</div>
@@ -361,6 +392,9 @@ const fieldClass = 'mt-1.5 w-full rounded-lg border border-slate-300 bg-white/70
         <Button variant="primary" disabled={saving || !ready || (outstandingContracts.length > 0 && (!outstandingReviewed || !borrowerInformed)) || !signaturesReady || (activeSignatures.length > 0 && !signatureConsent)} onClick={save}>{saving ? 'กำลังบันทึก…' : 'ยืนยันและบันทึกสัญญา'}</Button>
       </div>}
       {phase === 'REVIEW' && !savedCode && <p className="mb-0 mt-3 text-xs text-slate-500">บันทึกเป็นสถานะรอจ่ายเงิน · บันทึกเอกสารและลายเซ็นตามขั้นตอนที่เลือก</p>}
+      <Modal open={Boolean(previewUrl)} title="ตัวอย่างหนังสือสัญญาเงินกู้" description="ร่างตรวจทานก่อนบันทึก · ยังไม่มีเลขที่สัญญาและยังไม่ลงนาม" onClose={() => setPreviewUrl('')} className="!h-[calc(100dvh-2rem)] !max-w-6xl">
+        {previewUrl && <div className="flex h-[calc(100%-5rem)] min-h-0 flex-col gap-3"><iframe src={`${previewUrl}#view=FitH`} title="ตัวอย่างหนังสือสัญญาเงินกู้ก่อนบันทึก" className="min-h-0 flex-1 rounded-xl border border-slate-200 bg-white" /><div className="flex flex-wrap justify-end gap-2"><a href={previewUrl} download="ร่างตรวจทาน-หนังสือสัญญาเงินกู้.pdf" className="action-button action-button--secondary">ดาวน์โหลดร่างตรวจทาน</a><Button onClick={() => setPreviewUrl('')}>กลับไปตรวจข้อมูล</Button></div></div>}
+      </Modal>
     </Card>
   </div>
 }

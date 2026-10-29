@@ -1,6 +1,6 @@
 import { contractDocumentSignaturesComplete } from '@/lib/contracts'
 
-export function LoanAgreementTemplate({ contractId, signingMethod, borrowerSignedAt, lenderSignedAt, guarantorSignedAt, documentPackage, witnessCount = 0, witnesses = [] }: { witnessCount?: number; witnesses?: { position: number; signedAt: unknown }[]; contractId?: number; signingMethod?: string | null; documentPackage?: string | null; borrowerSignedAt?: string | null; lenderSignedAt?: string | null; guarantorSignedAt?: string | null }) {
+export function LoanAgreementTemplate({ contractId, signingMethod, borrowerSignedAt, lenderSignedAt, guarantorSignedAt, documentPackage, witnessCount = 0, witnesses = [], printSignedAt }: { witnessCount?: number; witnesses?: { position: number; signedAt: unknown }[]; contractId?: number; signingMethod?: string | null; documentPackage?: string | null; borrowerSignedAt?: string | null; lenderSignedAt?: string | null; guarantorSignedAt?: string | null; printSignedAt?: string | null }) {
   const templateUrl = contractId ? `/api/contracts/${contractId}/document` : '/templates/contracts/loan-agreement.pdf'
   const needsElectronicSignatures = signingMethod === 'E_SIGNATURE'
   const signaturesComplete = contractDocumentSignaturesComplete({ borrowerSignedAt, lenderSignedAt, guarantorSignedAt, documentPackage, witnessCount, witnesses }, 'LOAN')
@@ -10,7 +10,7 @@ export function LoanAgreementTemplate({ contractId, signingMethod, borrowerSigne
       <h3 className="m-0 text-sm font-semibold">{needsElectronicSignatures && signaturesComplete ? 'สัญญาที่ลงนามแล้ว' : contractId ? 'เอกสารสัญญาเงินกู้ที่กรอกข้อมูลแล้ว' : 'แม่แบบเอกสารสัญญาเงินกู้'}</h3>
       <p className="mb-0 mt-1 text-xs leading-5 text-slate-500">{needsElectronicSignatures
         ? signaturesComplete ? 'แทรกลายมือชื่อของผู้กู้ ผู้ให้กู้ และพยานที่กำหนดลงในเอกสารแล้ว' : 'รอผู้กู้ ผู้ให้กู้ และพยานที่กำหนดลงนามครบก่อนเปิดหรือดาวน์โหลดเอกสารฉบับลงนาม'
-        : contractId ? 'ดึงข้อมูลจากสัญญาที่บันทึก · ช่องที่ไม่มีข้อมูลจะเว้นไว้ · เอกสารนี้ยังไม่มีลายมือชื่อ' : 'แบบฟอร์มต้นฉบับที่แนบมา · ยังไม่ได้กรอกข้อมูลผู้กู้ ผู้ให้กู้ หรือยอดเงิน'}</p>
+        : contractId ? printSignedAt ? `บันทึกว่าลงนามบนกระดาษแล้วเมื่อ ${new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'long' }).format(new Date(printSignedAt))} · PDF นี้เป็นแบบพิมพ์ ไม่มีภาพสแกนลายมือชื่อ` : 'ดึงข้อมูลจากสัญญาที่บันทึก · ช่องที่ไม่มีข้อมูลจะเว้นไว้ · รอลงนามบนเอกสารกระดาษ' : 'แบบฟอร์มต้นฉบับที่แนบมา · ยังไม่ได้กรอกข้อมูลผู้กู้ ผู้ให้กู้ หรือยอดเงิน'}</p>
     </div>
     {canOpenDocument && <div className="flex flex-wrap gap-2">
       <a href={templateUrl} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">{needsElectronicSignatures ? 'เปิด PDF / พิมพ์ฉบับลงนาม' : contractId ? 'เปิด PDF / พิมพ์สัญญา' : 'เปิด PDF / พิมพ์แบบฟอร์ม'}</a>

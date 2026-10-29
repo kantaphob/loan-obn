@@ -18,7 +18,10 @@ const sqlite = databaseUrl.startsWith('file:')
 const adapter = sqlite ? new PrismaBetterSqlite3({ url: databaseUrl }) : new PrismaPg({ connectionString: databaseUrl })
 
 // Recreate a cached development client when newly generated models are added.
-const schemaVersion = 'postgresql-v5-persuader-shares'
+// Bump this whenever generated Prisma model fields change. The dev server keeps
+// a global client across hot reloads, and checking only model delegates would
+// otherwise keep an outdated LoanContract delegate after schema changes.
+const schemaVersion = 'postgresql-v7-payroll-records'
 const basePrisma = globalForPrisma.schemaVersion === schemaVersion && globalForPrisma.databaseUrl === databaseUrl && globalForPrisma.prisma && 'interestRate' in globalForPrisma.prisma && 'loanStatus' in globalForPrisma.prisma && 'borrower' in globalForPrisma.prisma && 'lender' in globalForPrisma.prisma && 'loanContract' in globalForPrisma.prisma && 'ledgerSlip' in globalForPrisma.prisma && 'contractRevision' in globalForPrisma.prisma && 'landDevelopment' in globalForPrisma.prisma && 'landDevelopmentCost' in globalForPrisma.prisma && 'buildingBoqItem' in globalForPrisma.prisma && 'tradeReceivable' in globalForPrisma.prisma && 'persuader' in globalForPrisma.prisma && 'persuaderShareEvent' in globalForPrisma.prisma && 'persuaderSharePayment' in globalForPrisma.prisma
   ? globalForPrisma.prisma
   : (sqlite ? new SQLiteClient({ adapter }) as unknown as PrismaClient : new PrismaClient({ adapter }))

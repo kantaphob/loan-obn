@@ -23,6 +23,16 @@ an interrupted export. Synchronization failures are logged; the committed databa
 remains authoritative and startup/manual synchronization repairs the snapshots.
 Database backups remain in `private/backups`; JSON exports do not replace backups.
 
+Loan payment slips remain stored in PostgreSQL and are also mirrored to the local
+iCloud Drive folder configured by `LOAN_BORROWER_FILES_DIR`. Files are organized as
+`BR-xxxxx/PAYIN` or `BR-xxxxx/PAYOUT`; each borrower's `DOC` folder contains a
+generated `ledger-slips-index.csv` and generated agreement PDFs named
+`CT-xxxxxx-loan.pdf`, `CT-xxxxxx-guarantee.pdf`, or
+`CT-xxxxxx-collateral.pdf`. PDFs are mirrored when a saved contract document is
+opened or printed; draft previews are not saved. The database-backed viewing route
+continues to serve existing links. Startup and `npm run storage:sync` repair missing
+copies from PostgreSQL; a failed mirror does not undo a committed ledger entry.
+
 Successful API mutations create an automatic PostgreSQL archive at
 `private/backups/automatic/ProgressSQL-latest.tar` and refresh one dated snapshot
 per day. Borrower card and QR images stored outside PostgreSQL are embedded in the

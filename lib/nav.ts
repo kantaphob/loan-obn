@@ -82,6 +82,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: WalletCards,
       },
       { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: Banknote },
+      { label: "เงินเดือนและรายได้ประจำ", href: "/dashboard/payroll", icon: Banknote },
       {
         label: "จ่ายเงินตามสัญญา",
         href: "/dashboard/ap",

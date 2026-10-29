@@ -5,6 +5,7 @@ import { createLoanAgreementPdf } from '@/lib/loan-agreement-pdf'
 import { createGuaranteeAgreementPdf } from '@/lib/guarantee-agreement-pdf'
 import { createCollateralAgreementPdf } from '@/lib/collateral-agreement-pdf'
 import { archiveGoogleContractPdf, reportGoogleSyncError } from '@/lib/google-integration'
+import { writeBorrowerContractPdf } from '@/lib/borrower-slip-files.mjs'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser()
@@ -14,13 +15,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(id) || id <= 0) return Response.json({ message: 'เลขสัญญาไม่ถูกต้อง' }, { status: 400 })
   const contract = await prisma.loanContract.findUnique({ where: { id }, include: { witnesses: true, documentSignatures: true, ledgerEntries: { where: { kind: 'DISBURSEMENT', voidedAt: null }, select: { id: true } }, borrower: { include: { province: true } }, lender: true } })
   if (!contract) return Response.json({ message: 'ไม่พบสัญญา' }, { status: 404 })
-  if (contract.documentChoice !== 'CREATE') return Response.json({ message: 'รายการนี้เลือกไม่ทำสัญญา' }, { status: 400 })
-  const document = new URL(request.url).searchParams.get('document') ?? 'loan'
+  const search = new URL(request.url).searchParams
+  const preview = search.get('preview') === '1'
+  if (contract.documentChoice !== 'CREATE' && !(preview && contract.documentChoice === 'NONE' && !['CLOSED', 'REJECTED'].includes(contract.status))) return Response.json({ message: 'รายการนี้เลือกไม่ทำสัญญา' }, { status: 400 })
+  const document = search.get('document') ?? 'loan'
   if (!['loan', 'guarantee', 'collateral'].includes(document)) return Response.json({ message: 'ชนิดเอกสารไม่ถูกต้อง' }, { status: 400 })
   if (document === 'guarantee' && (!contract.documentPackage || contract.documentPackage === 'LOAN' || !contract.guarantorName || !contract.guarantorAge || !contract.guarantorHouseNumber || !contract.guarantorSubdistrict || !contract.guarantorDistrict || !contract.guarantorProvince)) return Response.json({ message: 'ชุดเอกสารนี้ไม่มีข้อมูลสัญญาค้ำประกันครบถ้วน' }, { status: 400 })
   if (document === 'collateral' && contract.documentPackage !== 'LOAN_GUARANTEE_COLLATERAL') return Response.json({ message: 'ชุดเอกสารนี้ไม่มีสัญญาหลักประกัน' }, { status: 400 })
   const documentStage = document === 'guarantee' ? 'GUARANTEE' : 'LOAN'
-  if (contract.signingMethod === 'E_SIGNATURE' && (document === 'collateral' ? !contractSignaturesComplete(contract) : !contractDocumentSignaturesComplete(contract, documentStage))) {
+  if (!preview && contract.signingMethod === 'E_SIGNATURE' && (document === 'collateral' ? !contractSignaturesComplete(contract) : !contractDocumentSignaturesComplete(contract, documentStage))) {
     return Response.json({ message: 'ต้องให้ผู้ลงนามและพยานของเอกสารฉบับนี้ลงนามครบก่อนเปิดเอกสารฉบับลงนาม' }, { status: 409 })
   }
   try {
@@ -51,8 +54,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const collateralSignatures = contract.documentSignatures.filter(signature => signature.documentStage === 'COLLATERAL')
     const collateralDetails = (() => { try { return JSON.parse(contract.collateralAgreementData || '{"assetAccount":"BOTH"}') as Record<string, string> } catch { return { assetAccount: 'BOTH' } } })()
     const pdf = document === 'loan'
-      ? await createLoanAgreementPdf({ ...contract, code, address: borrower.address, houseNumber: borrower.houseNumber,
-        birthDate: borrower.birthDate, borrowerNationalId: borrower.nationalId, lenderNationalId: contract.lender.nationalId, lenderAddress: contract.lender.address, province: borrower.province?.nameTh ?? '', district: district?.nameTh ?? '', subdistrict: subdistrict?.nameTh ?? '', fundsReceived: contract.ledgerEntries.length > 0 })
+      ? await createLoanAgreementPdf({ ...contract, code, createdAt: preview ? new Date() : contract.documentCreatedAt ?? contract.createdAt,
+        signingMethod: preview ? 'PRINT' : contract.signingMethod, witnessCount: preview ? 2 : contract.witnessCount, preview,
+        address: borrower.address, houseNumber: borrower.houseNumber,
+        birthDate: borrower.birthDate, borrowerNationalId: borrower.nationalId, lenderNationalId: contract.lender.nationalId, lenderAddress: contract.lender.address, province: borrower.province?.nameTh ?? '', district: district?.nameTh ?? '', subdistrict: subdistrict?.nameTh ?? '', fundsReceived: contract.ledgerEntries.length > 0 || contract.paidAt !== null || contract.legacyReceivedSatang > 0 })
       : document === 'guarantee'
         ? await createGuaranteeAgreementPdf(guarantorContract!)
         : await createCollateralAgreementPdf({
@@ -69,12 +74,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             custodianSignature: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN') ? { name: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN')!.name, signatureData: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN')!.signatureData, signedAt: collateralSignatures.find(signature => signature.signer === 'CUSTODIAN')!.signedAt } : undefined,
             collateralWitnesses: collateralSignatures.filter(signature => signature.signer.startsWith('WITNESS_')).map(signature => ({ name: signature.name, signatureData: signature.signatureData, signedAt: signature.signedAt })),
           })
-    try { await archiveGoogleContractPdf({ contractCode: code, documentType: document as 'loan' | 'guarantee' | 'collateral', createdAt: contract.createdAt, bytes: pdf }) }
-    catch (error) { reportGoogleSyncError(`contract-document:${code}:${document}`, error) }
-    const download = new URL(request.url).searchParams.get('download') === '1'
+    if (!preview) {
+      try {
+        writeBorrowerContractPdf({
+          borrowerCode: contract.borrower.borrowerId || `BR-${String(contract.borrowerId).padStart(5, '0')}`,
+          contractId: contract.id,
+          documentType: document,
+          fileData: pdf,
+        })
+      } catch (error) { console.error(`Local contract PDF archive failed for ${code}:${document}:`, error) }
+      try { await archiveGoogleContractPdf({ contractCode: code, documentType: document as 'loan' | 'guarantee' | 'collateral', createdAt: contract.documentCreatedAt ?? contract.createdAt, bytes: pdf }) }
+      catch (error) { reportGoogleSyncError(`contract-document:${code}:${document}`, error) }
+    }
+    const download = search.get('download') === '1'
     return new Response(Buffer.from(pdf), { headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${code}-${document}.pdf"`,
+      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${preview ? `${code}-draft` : code}-${document}.pdf"`,
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
     } })

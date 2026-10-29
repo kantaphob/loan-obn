@@ -9,6 +9,8 @@ import { assertUniqueLedgerProof, slipDigest } from '@/lib/ledger-proof'
 
 import { slipFileName } from '@/lib/slip-name'
 import { readRepaymentSlip } from '@/lib/repayment-slip'
+import { getDatabaseUrl } from '@/lib/database-config'
+import { syncBorrowerSlipFiles } from '@/lib/borrower-slip-files.mjs'
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth/current-user'
@@ -174,6 +176,8 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
     revalidatePath('/dashboard/capital'); revalidatePath('/dashboard'); revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true } })
     if (saved) {
+      try { await syncBorrowerSlipFiles(getDatabaseUrl()) }
+      catch (storageError) { console.error('Ledger saved; borrower slip archive sync failed', storageError) }
       try {
         await syncGoogleLedger(saved.id)
         if (saved.contractId) {
@@ -247,6 +251,8 @@ export async function editLedger(input: {
       await assertBankLoanLedgerUnlinked(tx, entry.id)
       await assertAccountingDateOpen(tx, entry.occurredOn, input.occurredOn)
       if (entry._count.revisions !== input.expectedRevision) throw new Error('รายการถูกแก้ไขโดยคำขออื่นแล้ว กรุณาโหลดข้อมูลใหม่')
+      const payroll = await tx.payrollRecord.findUnique({ where: { ledgerEntryId: entry.id } })
+      if (payroll && (amountSatang !== payroll.netSatang || input.direction !== 'IN' || input.categoryCode !== entry.categoryCode)) throw new Error('รายการนี้เชื่อมเงินเดือนแล้ว ยอดสุทธิ ประเภทและหมวดต้องตรงเดิม หากผิดให้ยกเลิกแล้วบันทึกใหม่')
       await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: input.channelCode, excludeId: input.id })
       const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
       if (!channel?.isActive) throw new Error('กรุณาเลือกช่องทางที่เปิดใช้งาน')

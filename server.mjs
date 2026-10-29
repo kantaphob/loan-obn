@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import { syncRecordFiles } from './lib/record-files.mjs'
+import { syncBorrowerSlipFiles } from './lib/borrower-slip-files.mjs'
 import { createServer } from 'node:http'
 import next from 'next'
 import { WebSocket, WebSocketServer } from 'ws'
@@ -17,6 +18,11 @@ const handleUpgrade = app.getUpgradeHandler()
 
 const recordDatabaseUrl = process.env.DATABASE_URL ?? 'file:./private/database/ProgressSQL.db'
 await syncRecordFiles(recordDatabaseUrl)
+try {
+  await syncBorrowerSlipFiles(recordDatabaseUrl)
+} catch (error) {
+  console.error('Borrower slip archive sync failed; PostgreSQL remains available:', error instanceof Error ? error.message : 'unknown error')
+}
 const server = createServer((request, response) => {
   return handle(request, response)
 })

@@ -322,6 +322,10 @@ model LoanContract {
   documentChoice    String
   signingMethod     String?
   documentPackage   String?
+  documentCreatedAt DateTime?
+  documentCreatedBy String?
+  printSignedAt     DateTime?
+  printSignedBy     String?
   witnessCount      Int      @default(2)
   guaranteeWitnessCount Int   @default(2)
   interestMethod    String
@@ -431,6 +435,7 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  payrollReceipt PayrollRecord?
   accountScope String @default("GENERAL")
   principalReceivedSatang Float?
   interestReceivedSatang Float?
@@ -645,6 +650,7 @@ model AccountingMonthLock {
 
 // Imported daily cashbook kept separate from the loan ledger.
 model HistoricalCashEntry {
+  payrollReceipt PayrollRecord?
   id Int @id @default(autoincrement())
   requestKey String @unique
   accountCode String
@@ -1369,4 +1375,26 @@ model Persuader {
   updatedAt DateTime @updatedAt
 
   @@map("persuader")
+}
+
+model PayrollRecord {
+  id Int @id @default(autoincrement())
+  month String
+  employer String
+  amountsJson String
+  grossSatang Float
+  deductionSatang Float
+  netSatang Float
+  note String @default("")
+  ledgerEntryId Int? @unique
+  ledgerEntry LedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  historicalEntryId Int? @unique
+  historicalEntry HistoricalCashEntry? @relation(fields: [historicalEntryId], references: [id], onDelete: Restrict)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([month, employer])
+  @@index([month])
+  @@map("payroll_record")
 }

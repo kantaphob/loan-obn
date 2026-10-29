@@ -80,6 +80,11 @@ export async function createLoanAgreementPdf(data: LoanAgreementData) {
   const heading = 'หนังสือสัญญาเงินกู้ตามกฎหมายใหม่'
   draw(heading, (width - font.widthOfTextAtSize(heading, 21)) / 2, y, 21)
   y -= 30
+  if (data.preview) {
+    const previewLabel = 'ร่างตรวจทาน · ยังไม่ลงนาม'
+    draw(previewLabel, (width - font.widthOfTextAtSize(previewLabel, 11)) / 2, y, 11)
+    y -= 22
+  }
   draw(`ลำดับที่ ${data.code}`, margin, y, 11)
   const headerX = width / 2
   const headerWidth = width - margin - headerX
@@ -126,7 +131,7 @@ export async function createLoanAgreementPdf(data: LoanAgreementData) {
   }
   const pages = pdf.getPages()
   pages.forEach((current, index) => {
-    current.drawText(`${data.code}${data.preview ? '  |  ตัวอย่างเอกสาร' : ''}  |  หน้า ${index + 1}/${pages.length}`, { x: margin, y: 25, size: 9, font, color: rgb(0.4, 0.4, 0.4) })
+    current.drawText(`${data.code}${data.preview ? '  |  ร่างตรวจทาน · ยังไม่ลงนาม' : ''}  |  หน้า ${index + 1}/${pages.length}`, { x: margin, y: 25, size: 9, font, color: rgb(0.4, 0.4, 0.4) })
   })
   pdf.setTitle(`สัญญากู้ยืมเงิน ${data.code}`)
   pdf.setSubject('เอกสารสัญญาจากข้อความแม่แบบและข้อมูลเงินกู้สำหรับเตรียมลงนาม')

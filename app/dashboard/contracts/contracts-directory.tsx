@@ -7,7 +7,7 @@ import { ClipboardCopy, FileSignature, Plus, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CreateContractModal } from './create-contract-modal'
-import { listContracts } from './actions'
+import { createLoanDocumentForExistingContract, listContracts, markPrintedContractSigned } from './actions'
 import { contractCode, contractSignaturesComplete, formatContractDate } from '@/lib/contracts'
 import { lenderCode } from '@/lib/lender'
 import { bangkokToday } from '@/lib/ledger'
@@ -31,6 +31,12 @@ export function ContractsDirectory() {
   const [page, setPage] = useState(1)
   const [viewing, setViewing] = useState<Awaited<ReturnType<typeof listContracts>>[number] | null>(null)
   const [signing, setSigning] = useState<Awaited<ReturnType<typeof listContracts>>[number] | null>(null)
+  const [documentDraft, setDocumentDraft] = useState<Awaited<ReturnType<typeof listContracts>>[number] | null>(null)
+  const [documentDraftUrl, setDocumentDraftUrl] = useState('')
+  const [documentPreviewLoading, setDocumentPreviewLoading] = useState(false)
+  const [documentActionPending, setDocumentActionPending] = useState(false)
+  const [documentActionError, setDocumentActionError] = useState('')
+  const [printedSigning, setPrintedSigning] = useState<Awaited<ReturnType<typeof listContracts>>[number] | null>(null)
   const [legacyImporting, setLegacyImporting] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -39,20 +45,22 @@ export function ContractsDirectory() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
-  async function saved(code: string, contractId: number, signingMethod: string | null, limitApprovalRequired: boolean) {
+  useEffect(() => () => { if (documentDraftUrl) URL.revokeObjectURL(documentDraftUrl) }, [documentDraftUrl])
+  async function saved(code: string, contractId: number, signingMethod: string | null, limitApprovalRequired: boolean, pdfSaved: boolean | null) {
     setCreating(false)
-    setNotice(`บันทึกสัญญา ${code} สำเร็จ · ${limitApprovalRequired ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงิน'}`)
+    const pdfNotice = pdfSaved === null ? '' : pdfSaved ? ' · บันทึก PDF ใน DOC แล้ว' : ' · บันทึกสัญญาแล้ว แต่บันทึก PDF ไม่สำเร็จ'
+    setNotice(`บันทึกสัญญา ${code} สำเร็จ · ${limitApprovalRequired ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงิน'}${pdfNotice}`)
     setQuery(''); setAppliedQuery(''); setStatus(''); setPage(1)
     try {
       const values = await listContracts()
       setRows(values)
       setLoadError('')
-      toast({ title: 'บันทึกสัญญาเรียบร้อยแล้ว', description: `สัญญา ${code} · ${limitApprovalRequired ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงินจริง'}`, variant: 'success' })
+      toast({ title: 'บันทึกสัญญาเรียบร้อยแล้ว', description: `สัญญา ${code} · ${limitApprovalRequired ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงินจริง'}${pdfNotice}`, variant: pdfSaved === false ? 'warning' : 'success' })
       if (signingMethod === 'E_SIGNATURE') setSigning(values.find(row => row.id === contractId) ?? null)
     }
     catch {
       setLoadError('บันทึกแล้ว แต่โหลดรายการไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ')
-      toast({ title: 'บันทึกสัญญาเรียบร้อยแล้ว', description: `สัญญา ${code} ${limitApprovalRequired ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงินจริง'} แต่โหลดรายการกลับมาไม่สำเร็จ`, variant: 'success' })
+      toast({ title: 'บันทึกสัญญาเรียบร้อยแล้ว', description: `สัญญา ${code} ${limitApprovalRequired ? 'รออนุมัติวงเงินก่อนจ่ายเงินจริง' : 'รอจ่ายเงินจริง'} แต่โหลดรายการกลับมาไม่สำเร็จ${pdfNotice}`, variant: pdfSaved === false ? 'warning' : 'success' })
     }
   }
   async function importedLegacy(count: number) {
@@ -118,11 +126,18 @@ export function ContractsDirectory() {
     return { label: row.legacySourceCode ? legacyStatusLabel(row) : 'รอรับชำระคืน', tone: 'sky', style: 'border-sky-200 bg-sky-50 text-sky-800' }
   }
   const signingLabel = (row: Awaited<ReturnType<typeof listContracts>>[number]) => {
-    if (row.legacySourceCode) return 'รายการย้อนหลัง · ไม่มีเอกสาร'
-    if (row.documentChoice !== 'CREATE') return 'ไม่ทำสัญญา'
-    if (row.signingMethod !== 'E_SIGNATURE') return 'ทำสัญญา · พิมพ์เซ็น'
+    if (row.documentChoice !== 'CREATE') return row.legacySourceCode ? 'รายการย้อนหลัง · ไม่มีเอกสาร' : 'ไม่ทำสัญญา'
+    if (row.signingMethod === 'PRINT') return row.printSignedAt ? `พิมพ์เซ็น · ลงนามแล้ว ${date(row.printSignedAt)}` : 'พิมพ์เซ็น · รอลงนาม'
+    if (row.signingMethod !== 'E_SIGNATURE') return 'ทำสัญญ'
     return contractSignaturesComplete(row) ? 'ทำสัญญา · ลงนามครบ' : 'ทำสัญญา · รอลงนาม'
   }
+  const signingCell = (row: Awaited<ReturnType<typeof listContracts>>[number]) => <div className="flex min-w-36 flex-col items-start gap-2">
+    <span>{signingLabel(row)}</span>
+    {row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">ดู/พิมพ์</a>}
+    {row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}
+    {row.documentChoice === 'NONE' && !['CLOSED', 'REJECTED'].includes(row.status) && <Button onClick={() => void beginExistingDocument(row)}>สร้างสัญญา</Button>}
+    {row.documentChoice === 'CREATE' && row.signingMethod === 'PRINT' && !row.printSignedAt && <Button onClick={() => { setPrintedSigning(row); setDocumentActionError('') }}>บันทึกว่าลงนามแล้ว</Button>}
+  </div>
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
@@ -139,6 +154,48 @@ export function ContractsDirectory() {
     setAppliedQuery(query.trim()); setPage(1)
   }
 
+  async function beginExistingDocument(row: Awaited<ReturnType<typeof listContracts>>[number]) {
+    setDocumentDraft(row); setDocumentDraftUrl(''); setDocumentActionError(''); setDocumentPreviewLoading(true)
+    try {
+      const response = await fetch(`/api/contracts/${row.id}/document?preview=1`)
+      if (!response.ok) {
+        const result = await response.json().catch(() => null) as { message?: string } | null
+        throw new Error(result?.message || 'โหลดตัวอย่างเอกสารไม่สำเร็จ')
+      }
+      setDocumentDraftUrl(URL.createObjectURL(await response.blob()))
+    } catch (error) {
+      setDocumentActionError(error instanceof Error ? error.message : 'โหลดตัวอย่างเอกสารไม่สำเร็จ')
+    } finally { setDocumentPreviewLoading(false) }
+  }
+
+  async function confirmExistingDocument() {
+    if (!documentDraft || documentActionPending || !documentDraftUrl) return
+    setDocumentActionPending(true); setDocumentActionError('')
+    try {
+      const result = await createLoanDocumentForExistingContract(documentDraft.id)
+      if (result.error) throw new Error(result.error)
+      setRows(await listContracts())
+      toast({ title: 'สร้างเอกสารสัญญาแล้ว', description: `${contractCode(documentDraft.id)} · สถานะรอลงนาม${result.pdfSaved ? ' · บันทึก PDF ใน DOC แล้ว' : ' · สร้างเอกสารแล้ว แต่บันทึก PDF ไม่สำเร็จ'}`, variant: result.pdfSaved ? 'success' : 'warning' })
+      setDocumentDraft(null); setDocumentDraftUrl('')
+    } catch (error) {
+      setDocumentActionError(error instanceof Error ? error.message : 'สร้างเอกสารไม่สำเร็จ')
+    } finally { setDocumentActionPending(false) }
+  }
+
+  async function confirmPrintedSigning() {
+    if (!printedSigning || documentActionPending) return
+    setDocumentActionPending(true); setDocumentActionError('')
+    try {
+      const result = await markPrintedContractSigned(printedSigning.id)
+      if (result.error) throw new Error(result.error)
+      setRows(await listContracts())
+      toast({ title: 'บันทึกการลงนามแล้ว', description: `${contractCode(printedSigning.id)} · บันทึกวันที่และผู้ดำเนินการแล้ว`, variant: 'success' })
+      setPrintedSigning(null)
+    } catch (error) {
+      setDocumentActionError(error instanceof Error ? error.message : 'บันทึกการลงนามไม่สำเร็จ')
+    } finally { setDocumentActionPending(false) }
+  }
+
   return <div className="borrower-workspace space-y-6">
     {creating && <CreateContractModal onClose={() => setCreating(false)} onSaved={saved} />}
     {legacyImporting && <Modal open title="นำเข้ารายการกู้ย้อนหลัง (ไม่มีเอกสาร)" className="max-w-6xl" onClose={() => setLegacyImporting(false)}><LegacyLoanImportModal onClose={() => setLegacyImporting(false)} onImported={count => void importedLegacy(count)} /></Modal>}
@@ -147,6 +204,17 @@ export function ContractsDirectory() {
       setRows(values)
       setSigning(values.find(row => row.id === signing.id) ?? null)
     }} />}
+    <Modal open={Boolean(documentDraft)} title={documentDraft ? `ตรวจร่างสัญญา ${contractCode(documentDraft.id)}` : 'ตรวจร่างสัญญา'} description="ตรวจ PDF ก่อนเพิ่มเอกสารให้รายการเดิม · ยังไม่เปลี่ยนข้อมูลสัญญาจนกว่าจะยืนยัน" onClose={() => { if (!documentActionPending) { setDocumentDraft(null); setDocumentDraftUrl(''); setDocumentActionError('') } }} className="!h-[calc(100dvh-2rem)] !max-w-6xl">
+      {documentDraft && <div className="flex h-[calc(100%-5rem)] min-h-0 flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><span className="font-medium text-amber-950">สร้างเฉพาะหนังสือสัญญาเงินกู้ 3.1 จากข้อมูลรายการนี้</span><span className="text-amber-900">ยังไม่มีลายมือชื่อ</span></div>
+        {documentPreviewLoading ? <div className="grid min-h-0 flex-1 place-items-center text-sm text-slate-600">กำลังสร้าง PDF ตัวอย่าง…</div> : documentDraftUrl ? <iframe src={`${documentDraftUrl}#view=FitH`} title="ตัวอย่างสัญญาเงินกู้ก่อนเพิ่มเอกสาร" className="min-h-0 flex-1 rounded-xl border border-slate-200 bg-white" /> : <div role="alert" className="grid min-h-0 flex-1 place-items-center text-sm text-red-700">{documentActionError || 'ยังแสดงตัวอย่างไม่ได้'}</div>}
+        {documentActionError && !documentPreviewLoading && documentDraftUrl && <p role="alert" className="mb-0 text-sm text-red-700">{documentActionError}</p>}
+        <div className="flex flex-wrap justify-between gap-2"><div className="flex gap-2">{documentDraftUrl && <a href={documentDraftUrl} download={`${contractCode(documentDraft.id)}-ร่างตรวจทาน.pdf`} className="action-button action-button--secondary">ดาวน์โหลดร่างตรวจทาน</a>}</div><div className="flex gap-2"><Button onClick={() => { setDocumentDraft(null); setDocumentDraftUrl(''); setDocumentActionError('') }} disabled={documentActionPending}>ยกเลิก</Button><Button variant="primary" onClick={() => void confirmExistingDocument()} disabled={!documentDraftUrl || documentPreviewLoading || documentActionPending}>{documentActionPending ? 'กำลังบันทึก…' : 'ยืนยันสร้างเอกสาร'}</Button></div></div>
+      </div>}
+    </Modal>
+    <Modal open={Boolean(printedSigning)} title="บันทึกการลงนามบนเอกสารกระดาษ" description={printedSigning ? `สัญญา ${contractCode(printedSigning.id)}` : undefined} onClose={() => { if (!documentActionPending) { setPrintedSigning(null); setDocumentActionError('') } }}>
+      {printedSigning && <div className="space-y-4 text-sm"><p className="mb-0 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-950">ยืนยันเมื่อคู่สัญญาลงนามบนเอกสารจริงแล้ว ระบบจะบันทึกวันที่และผู้บันทึก การทำรายการนี้ไม่ได้แนบไฟล์สแกนโดยอัตโนมัติ</p>{documentActionError && <p role="alert" className="mb-0 text-red-700">{documentActionError}</p>}<div className="flex justify-end gap-2"><Button onClick={() => { setPrintedSigning(null); setDocumentActionError('') }} disabled={documentActionPending}>กลับ</Button><Button variant="primary" onClick={() => void confirmPrintedSigning()} disabled={documentActionPending}>{documentActionPending ? 'กำลังบันทึก…' : 'ยืนยันว่าลงนามแล้ว'}</Button></div></div>}
+    </Modal>
     {notice && <p role="status" className="text-sm text-emerald-800">{notice}</p>}
     {loadError && <p role="alert" className="text-sm text-red-700">{loadError}</p>}
     {loading && <DataLoading compact label="กำลังโหลดสัญญา…" />}
@@ -183,8 +251,8 @@ export function ContractsDirectory() {
           <caption className="sr-only">รายการสัญญาสินเชื่อ</caption>
           <thead><tr>{['จัดการ', 'เลขสัญญา', 'วันที่ทำสัญญา', 'รหัสผู้กู้', 'ชื่อผู้กู้', 'รหัสผู้ให้กู้', 'วงเงินสัญญา', 'สถานะ', 'สัญญาและการลงนาม', 'วันที่จ่ายเงิน', 'วันที่ปิดยอด'].map(label => <th scope="col" key={label} className="px-4 py-4 font-medium">{label}</th>)}</tr></thead>
           <tbody>{visibleRows.map(row => <tr key={row.id} data-contract-status={contractStatus(row).tone}>
-            <td className="border-b px-4 py-3"><div className="flex flex-wrap items-center gap-2"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button><Button aria-label={`คัดลอกข้อความสัญญา ${contractCode(row.id)}`} title="คัดลอกข้อความสัญญาเพื่อส่งต่อ" onClick={() => void copyContractMessage(row)}><ClipboardCopy size={17} aria-hidden="true" /></Button>{row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">พิมพ์สัญญา</a>}{row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}</div></td>
-            {[<span key="code">{contractCode(row.id)}{row.legacySourceCode && <span className="mt-1 block text-[10px] text-slate-500">เลขเดิม {row.legacySourceCode}</span>}</span>, row.legacySourceCode && row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : date(row.createdAt), row.borrowerCode, <span key="borrower">{row.borrowerName}{row.legacySourceCode && legacyBorrowerName(row) && <span className="mt-1 block text-[10px] text-slate-500">ชื่อเดิม {legacyBorrowerName(row)}</span>}</span>, lenderCode(row.lenderId), money(row.principalSatang), <span key="status" className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-5 ${contractStatus(row).style}`}>{contractStatus(row).label}</span>, signingLabel(row), row.paidAt ? date(row.paidAt) : '—', row.closedDate ? date(row.closedDate) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
+            <td className="border-b px-4 py-3"><div className="flex flex-wrap items-center gap-2"><Button onClick={() => setViewing(row)}>ดูสัญญา</Button><Button aria-label={`คัดลอกข้อความสัญญา ${contractCode(row.id)}`} title="คัดลอกข้อความสัญญาเพื่อส่งต่อ" onClick={() => void copyContractMessage(row)}><ClipboardCopy size={17} aria-hidden="true" /></Button></div></td>
+            {[<span key="code">{contractCode(row.id)}{row.legacySourceCode && <span className="mt-1 block text-[10px] text-slate-500">เลขเดิม {row.legacySourceCode}</span>}</span>, date(row.documentCreatedAt ?? (row.legacySourceCode && row.scheduledDisbursementDate ? row.scheduledDisbursementDate : row.createdAt)), row.borrowerCode, <span key="borrower">{row.borrowerName}{row.legacySourceCode && legacyBorrowerName(row) && <span className="mt-1 block text-[10px] text-slate-500">ชื่อเดิม {legacyBorrowerName(row)}</span>}</span>, lenderCode(row.lenderId), money(row.principalSatang), <span key="status" className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-5 ${contractStatus(row).style}`}>{contractStatus(row).label}</span>, signingCell(row), row.paidAt ? date(row.paidAt) : '—', row.closedDate ? date(row.closedDate) : '—'].map((value, index) => <td key={index} className="border-b px-4 py-4">{value}</td>)}
           </tr>)}{!matches.length && !loading && !loadError && <tr><td colSpan={11} className="!p-0">
             <div className="borrower-empty" role="status">
               <span className="borrower-empty-icon"><FileSignature size={30} aria-hidden="true" /></span>
@@ -214,7 +282,9 @@ export function ContractsDirectory() {
         ['พยานสัญญาเงินกู้ 3.1', viewing.documentChoice === 'CREATE' ? viewing.witnessCount === 0 ? 'ไม่มีพยาน' : `${viewing.witnessCount} คน` : '—'],
         ...(viewing.documentPackage !== 'LOAN' ? [['พยานสัญญาค้ำประกัน 3.2', viewing.documentChoice === 'CREATE' ? viewing.guaranteeWitnessCount === 0 ? 'ไม่มีพยาน' : `${viewing.guaranteeWitnessCount} คน` : '—']] : []),
         ['เอกสาร', viewing.documentChoice === 'CREATE' ? 'ทำสัญญา' : 'ไม่ทำสัญญา'],
+        ...(viewing.documentCreatedAt ? [['วันที่จัดทำเอกสาร', date(viewing.documentCreatedAt)], ['รหัสผู้จัดทำเอกสาร', viewing.documentCreatedBy || '—']] : []),
         ['วิธีลงนาม', viewing.signingMethod === 'PRINT' ? 'พิมพ์เซ็น' : viewing.signingMethod === 'E_SIGNATURE' ? 'e-signature' : '—'],
+        ...(viewing.printSignedAt ? [['ลงนามบนเอกสารกระดาษเมื่อ', date(viewing.printSignedAt)], ['รหัสผู้บันทึกการลงนาม', viewing.printSignedBy || '—']] : []),
         ['ชุดเอกสาร', ({ LOAN: 'สัญญาเงินกู้', LOAN_GUARANTEE: 'สัญญาเงินกู้ & สัญญาค้ำเงินกู้', LOAN_GUARANTEE_COLLATERAL: 'สัญญาเงินกู้ & สัญญาค้ำเงินกู้ & ข้อตกลงหลักประกัน (จำนอง/จำนำ)' } as Record<string, string>)[viewing.documentPackage ?? ''] || '—'],
         ['วิธีจ่ายและคำนวณยอดในระบบ', viewing.interestMethod === 'INTEREST_UPFRONT' ? 'หักดอกเบี้ย 1 เดือนก่อนจ่าย · คืนเงินต้น' : 'รับเงินต้นเต็มจำนวน · คืนเงินต้นพร้อมดอกเบี้ย 1 เดือน'],
         ['กำหนดจ่ายเงิน', formatContractDate(viewing.scheduledDisbursementDate)], ['ครบกำหนดรับชำระ', formatContractDate(viewing.repaymentDueDate)],
@@ -226,7 +296,7 @@ export function ContractsDirectory() {
         ['ยอดรับเงินจริง', money(viewing.netSatang) + ' บาท'], ['ยอดชำระเงินกู้', money(viewing.repaymentSatang) + ' บาท'],
         ...(viewing.signingMethod === 'E_SIGNATURE' ? [['ผู้กู้ลงนามเมื่อ', viewing.borrowerSignedAt ? date(viewing.borrowerSignedAt) : 'ยังไม่ลงนาม'], ['ผู้ให้กู้ลงนามเมื่อ', viewing.lenderSignedAt ? date(viewing.lenderSignedAt) : 'ยังไม่ลงนาม']] : []),
       ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="ml-0 mt-1">{value}</dd></div>)}</dl>}
-      {viewing?.documentChoice === 'CREATE' && <LoanAgreementTemplate contractId={viewing.id} witnessCount={viewing.witnessCount} witnesses={viewing.witnesses} signingMethod={viewing.signingMethod} borrowerSignedAt={viewing.borrowerSignedAt} lenderSignedAt={viewing.lenderSignedAt} guarantorSignedAt={viewing.guarantorSignedAt} documentPackage={viewing.documentPackage} />}
+      {viewing?.documentChoice === 'CREATE' && <LoanAgreementTemplate contractId={viewing.id} witnessCount={viewing.witnessCount} witnesses={viewing.witnesses} signingMethod={viewing.signingMethod} borrowerSignedAt={viewing.borrowerSignedAt} lenderSignedAt={viewing.lenderSignedAt} guarantorSignedAt={viewing.guarantorSignedAt} documentPackage={viewing.documentPackage} printSignedAt={viewing.printSignedAt} />}
       {viewing?.documentChoice === 'CREATE' && viewing.documentPackage !== 'LOAN' && <GuaranteeAgreementTemplate contractId={viewing.id} signingMethod={viewing.signingMethod} borrowerSignedAt={viewing.borrowerSignedAt} lenderSignedAt={viewing.lenderSignedAt} guarantorSignedAt={viewing.guarantorSignedAt} witnessCount={viewing.guaranteeWitnessCount} witnesses={viewing.witnesses} documentSignatures={viewing.documentSignatures} />}
       {viewing?.documentChoice === 'CREATE' && viewing.documentPackage === 'LOAN_GUARANTEE_COLLATERAL' && <CollateralAgreementTemplate contractId={viewing.id} signingMethod={viewing.signingMethod} signaturesComplete={contractSignaturesComplete(viewing)} />}
     </Modal>

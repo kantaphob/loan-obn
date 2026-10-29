@@ -8,10 +8,42 @@ import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
 import { publishCreditBureauChanged } from '@/lib/realtime'
-import { collateralAgreementSigners, type ContractDocumentStage, type ContractDocumentSigner } from '@/lib/contracts'
+import { collateralAgreementSigners, contractCode, type ContractDocumentStage, type ContractDocumentSigner } from '@/lib/contracts'
 import { parseLegacyLoanCsv, type LegacyLoanRow } from '@/lib/legacy-loans'
 import { syncGoogleContract } from '@/lib/google-sync'
+import { reportGoogleSyncError } from '@/lib/google-integration'
+import { createLoanAgreementPdf } from '@/lib/loan-agreement-pdf'
+import { writeBorrowerContractPdf } from '@/lib/borrower-slip-files.mjs'
 import { referralPercentBasisPoints, referralShareFromPrincipalBasisPoints, DEFAULT_REFERRAL_SHARE_PERCENT } from '@/lib/referral-share'
+
+async function saveLoanAgreementCopy(contractId: number) {
+  const contract = await prisma.loanContract.findUnique({
+    where: { id: contractId },
+    include: {
+      witnesses: true,
+      ledgerEntries: { where: { kind: 'DISBURSEMENT', voidedAt: null }, select: { id: true } },
+      borrower: { include: { province: true } }, lender: true,
+    },
+  })
+  if (!contract || contract.documentChoice !== 'CREATE') return false
+  const borrower = contract.borrower
+  const [district, subdistrict] = await Promise.all([
+    borrower.districtId ? prisma.district.findUnique({ where: { id: borrower.districtId }, select: { nameTh: true } }) : null,
+    borrower.subdistrictId ? prisma.subdistrict.findUnique({ where: { id: borrower.subdistrictId }, select: { nameTh: true } }) : null,
+  ])
+  const pdf = await createLoanAgreementPdf({
+    ...contract, code: contractCode(contract.id), createdAt: contract.documentCreatedAt ?? contract.createdAt,
+    address: borrower.address, houseNumber: borrower.houseNumber, birthDate: borrower.birthDate,
+    borrowerNationalId: borrower.nationalId, lenderNationalId: contract.lender.nationalId, lenderAddress: contract.lender.address,
+    province: borrower.province?.nameTh ?? '', district: district?.nameTh ?? '', subdistrict: subdistrict?.nameTh ?? '',
+    fundsReceived: contract.ledgerEntries.length > 0 || contract.paidAt !== null || contract.legacyReceivedSatang > 0,
+  })
+  writeBorrowerContractPdf({
+    borrowerCode: borrower.borrowerId || `BR-${String(contract.borrowerId).padStart(5, '0')}`,
+    contractId: contract.id, documentType: 'loan', fileData: pdf,
+  })
+  return true
+}
 
 export async function searchContractBorrowers(query: string) {
   const user = await getCurrentUser()
@@ -189,6 +221,8 @@ export async function saveContract(input: import('@/lib/contracts').ContractDraf
         witnessCount: input.documentChoice === 'CREATE' ? input.witnessCount ?? 2 : 2,
         guaranteeWitnessCount: input.documentChoice === 'CREATE' && needsGuarantor ? input.guaranteeWitnessCount ?? 2 : 0,
         documentPackage: input.documentChoice === 'CREATE' ? input.documentPackage : null,
+        documentCreatedAt: input.documentChoice === 'CREATE' ? new Date() : null,
+        documentCreatedBy: input.documentChoice === 'CREATE' ? user.id : null,
         interestMethod, interestRateCode: null,
         interestPercent: percent, internalInterestPercent, ...amounts,
         penaltyMaxDays: 30,
@@ -211,13 +245,68 @@ export async function saveContract(input: import('@/lib/contracts').ContractDraf
         createdBy: user.id, scheduledDisbursementDate: input.scheduledDisbursementDate, repaymentDueDate: input.repaymentDueDate,
       } })
     })
-    await syncGoogleContract(contract.id)
+    let pdfSaved: boolean | null = null
+    if (contract.documentChoice === 'CREATE') {
+      try { pdfSaved = await saveLoanAgreementCopy(contract.id) }
+      catch (error) { console.error(`Local contract PDF archive failed for ${contractCode(contract.id)}:`, error); pdfSaved = false }
+    }
+    try { await syncGoogleContract(contract.id) }
+    catch (error) { reportGoogleSyncError(`contract:${contractCode(contract.id)}`, error) }
     publishCreditBureauChanged()
-    return { code: contractCode(contract.id), id: contract.id, limitApprovalRequired: contract.limitApprovalRequired }
+    return { code: contractCode(contract.id), id: contract.id, limitApprovalRequired: contract.limitApprovalRequired, pdfSaved }
   } catch (error) {
     console.error('Save contract failed:', error)
     // Validation messages are safe; database details stay on the server.
     return { error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง' }
+  }
+}
+
+export async function createLoanDocumentForExistingContract(contractId: number) {
+  const user = await getCurrentUser()
+  if (!user || user.status !== 'ACTIVE' || user.role === 'REVIEWER') return { error: 'ไม่มีสิทธิ์สร้างเอกสารสัญญา' }
+  if (!Number.isSafeInteger(contractId) || contractId <= 0) return { error: 'เลขสัญญาไม่ถูกต้อง' }
+  try {
+    const now = new Date()
+    await prisma.$transaction(async tx => {
+      const contract = await tx.loanContract.findUnique({ where: { id: contractId } })
+      if (!contract) throw new Error('ไม่พบสัญญา')
+      if (contract.documentChoice !== 'NONE') throw new Error('รายการนี้มีการกำหนดเอกสารไว้แล้ว')
+      if (['CLOSED', 'REJECTED'].includes(contract.status)) throw new Error('สร้างเอกสารให้รายการที่ปิดยอดหรือไม่อนุมัติไม่ได้')
+      await tx.loanContract.update({ where: { id: contractId }, data: {
+        documentChoice: 'CREATE', signingMethod: 'PRINT', documentPackage: 'LOAN', witnessCount: 2, guaranteeWitnessCount: 0,
+        documentCreatedAt: now, documentCreatedBy: user.id, printSignedAt: null, printSignedBy: null,
+      } })
+    })
+    let pdfSaved = false
+    try { pdfSaved = await saveLoanAgreementCopy(contractId) }
+    catch (error) { console.error(`Local contract PDF archive failed for ${contractCode(contractId)}:`, error) }
+    // The contract update is the primary operation. A Google sync queue outage
+    // must not make the UI report that document creation failed after commit.
+    try { await syncGoogleContract(contractId) }
+    catch (error) { reportGoogleSyncError(`contract-document:${contractId}`, error) }
+    revalidatePath('/dashboard/contracts')
+    return { success: true, pdfSaved }
+  } catch (error) {
+    return { error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'สร้างเอกสารไม่สำเร็จ กรุณาลองอีกครั้ง' }
+  }
+}
+
+export async function markPrintedContractSigned(contractId: number) {
+  const user = await getCurrentUser()
+  if (!user || user.status !== 'ACTIVE' || user.role === 'REVIEWER') return { error: 'ไม่มีสิทธิ์บันทึกการลงนาม' }
+  if (!Number.isSafeInteger(contractId) || contractId <= 0) return { error: 'เลขสัญญาไม่ถูกต้อง' }
+  try {
+    await prisma.$transaction(async tx => {
+      const contract = await tx.loanContract.findUnique({ where: { id: contractId } })
+      if (!contract) throw new Error('ไม่พบสัญญา')
+      if (contract.documentChoice !== 'CREATE' || contract.signingMethod !== 'PRINT') throw new Error('รายการนี้ไม่ได้ใช้เอกสารแบบพิมพ์เซ็น')
+      if (contract.printSignedAt) throw new Error('บันทึกการลงนามรายการนี้แล้ว')
+      await tx.loanContract.update({ where: { id: contractId }, data: { printSignedAt: new Date(), printSignedBy: user.id } })
+    })
+    revalidatePath('/dashboard/contracts')
+    return { success: true }
+  } catch (error) {
+    return { error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกการลงนามไม่สำเร็จ กรุณาลองอีกครั้ง' }
   }
 }
 
@@ -340,6 +429,8 @@ export async function listContracts() {
     witnesses: row.witnesses.map(witness => ({ ...witness, signedAt: witness.signedAt.toISOString() })),
     documentSignatures: row.documentSignatures.map(signature => ({ ...signature, signedAt: signature.signedAt.toISOString() })),
     createdAt: row.createdAt.toISOString(),
+    documentCreatedAt: row.documentCreatedAt?.toISOString() ?? null,
+    printSignedAt: row.printSignedAt?.toISOString() ?? null,
     paidAt: row.paidAt?.toISOString() ?? null,
     borrowerSignedAt: row.borrowerSignedAt?.toISOString() ?? null,
     lenderSignedAt: row.lenderSignedAt?.toISOString() ?? null,
@@ -350,13 +441,13 @@ export async function listContracts() {
 type ContractSigner = ContractDocumentSigner
 
 function termsHash(contract: {
-  id: number; borrowerCode: string; borrowerName: string; lenderName: string
+  id: number; borrowerCode: string; borrowerName: string; lenderName: string; documentCreatedAt: Date | null
   documentChoice: string; signingMethod: string | null; documentPackage: string | null
   interestMethod: string; interestRateCode: string | null; interestPercent: number; createdAt: Date; witnessCount: number; guaranteeWitnessCount: number; scheduledDisbursementDate: string | null; repaymentDueDate: string | null; collateralDescription: string | null; collateralAgreementData: string | null
   guarantorName: string | null; guarantorAge: number | null; guarantorHouseNumber: string | null; guarantorSoi: string | null; guarantorRoad: string | null; guarantorSubdistrict: string | null; guarantorDistrict: string | null; guarantorProvince: string | null; guarantorPostcode: string | null; guaranteeCollateralDescription: string | null
   principalSatang: number; interestSatang: number; netSatang: number; repaymentSatang: number
 }) {
-  const terms = [contract.id, contract.createdAt.toISOString(), contract.borrowerCode, contract.borrowerName, contract.lenderName,
+  const terms = [contract.id, (contract.documentCreatedAt ?? contract.createdAt).toISOString(), contract.borrowerCode, contract.borrowerName, contract.lenderName,
     contract.documentChoice, contract.signingMethod, contract.documentPackage, contract.interestMethod, contract.interestRateCode, contract.interestPercent,
     contract.principalSatang, contract.interestSatang, contract.netSatang, contract.repaymentSatang]
   if (contract.collateralDescription) terms.push(`collateral:${contract.collateralDescription}`)
