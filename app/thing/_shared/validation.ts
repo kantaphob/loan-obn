@@ -142,6 +142,13 @@ export function validateAssetData(data: AssetData) {
     for (const item of home.items) {
       id(item.id); [item.room, item.name, item.size, item.shop, item.notes].forEach(text)
       if (!item.name.trim() || item.room && !home.rooms.includes(item.room)) fail('กรุณาระบุชื่อสินค้าและเลือกห้องที่มีอยู่')
+      if (item.purchaseStatus !== undefined && !['planned', 'purchased'].includes(item.purchaseStatus)) fail('สถานะการซื้อไม่ถูกต้อง')
+      if (item.referencePrice !== undefined) amount(item.referencePrice)
+      if (item.referenceShop !== undefined) text(item.referenceShop)
+      if (item.referenceOn !== undefined) { date(item.referenceOn, true); if (item.referenceOn > today()) fail('วันที่เช็กราคาต้องไม่เป็นอนาคต') }
+      if (item.referenceUrl !== undefined) { text(item.referenceUrl); if (item.referenceUrl && !/^https?:\/\//i.test(item.referenceUrl)) fail('ลิงก์อ้างอิงต้องเป็น http หรือ https') }
+      if (item.purchaseStatus === 'planned' && (item.price !== 0 || item.purchasedOn || item.warrantyStart || item.warrantyUntil || item.receipt)) fail('รายการวางแผนยังไม่มีราคาซื้อจริง วันที่ซื้อ ประกัน หรือใบเสร็จ')
+      if (item.purchaseStatus === 'purchased' && (!item.purchasedOn || item.purchasedOn > today())) fail('ระบุวันที่ซื้อจริงไม่เกินวันนี้')
       amount(item.quantity, true); amount(item.price); date(item.purchasedOn, true); date(item.warrantyUntil, true)
       date(item.warrantyStart, true); amount(item.warrantyMonths)
       if (!Number.isInteger(item.warrantyMonths) || item.warrantyMonths > 1200) fail('ระยะประกันไม่ถูกต้อง')
@@ -153,7 +160,11 @@ export function validateAssetData(data: AssetData) {
         const dataUrl = item.receipt.dataUrl
         if (!item.receipt.name.trim() || item.receipt.name.length > 240 || !['application/pdf', 'image/jpeg', 'image/png'].includes(item.receipt.mimeType) || typeof dataUrl !== 'string' || dataUrl.length > 7_100_000 || !new RegExp(`^data:${item.receipt.mimeType};base64,[A-Za-z0-9+/]+={0,2}$`).test(dataUrl)) fail('ไฟล์ใบเสร็จหรือเอกสารแนบไม่ถูกต้อง หรือมีขนาดเกิน 5 MB')
       }
-      if (item.status !== undefined && !['active', 'repair', 'removed', 'sold', 'retired'].includes(item.status)) fail('สถานะอุปกรณ์ไม่ถูกต้อง')
+      if (item.status !== undefined && !['active', 'damaged', 'waiting_repair', 'repair', 'removed', 'sold', 'retired'].includes(item.status)) fail('สถานะอุปกรณ์ไม่ถูกต้อง')
+      if (item.workOrderId && !(home.buildingChangeOrders ?? []).some(order => order.id === item.workOrderId && order.lines.some(line => line.sourceItemId === item.id))) fail('ไม่พบใบงานเพิ่ม–ลดที่เชื่อมกับอุปกรณ์')
+      if (item.fixedInstallation !== undefined && typeof item.fixedInstallation !== 'boolean') fail('ข้อมูลการติดตั้งถาวรไม่ถูกต้อง')
+      if (item.receivedOn !== undefined) { date(item.receivedOn, true); if (item.receivedOn > today() || item.receivedOn && item.purchaseStatus === 'planned') fail('วันรับมอบต้องเป็นของที่รับแล้วและไม่เป็นอนาคต') }
+      if (item.purchaseStatus === 'planned' && item.status && item.status !== 'active') fail('รายการยังไม่ซื้อ ไม่สามารถระบุว่าเสียหรือซ่อมได้')
       if (item.includedInMainCost !== undefined && typeof item.includedInMainCost !== 'boolean') fail('การรวมราคาสินทรัพย์ไม่ถูกต้อง')
       if (item.boqId && !home.boq.some(b => b.id === item.boqId)) fail('ไม่พบรายการ BOQ ของอุปกรณ์')
       if (item.events !== undefined) {
@@ -209,7 +220,17 @@ export function validateAssetData(data: AssetData) {
         orderIds.add(order.id); orderNumbers.add(order.number)
         if (!Array.isArray(order.lines) || order.lines.length < 1 || order.lines.length > 1000) fail('ใบงานต้องมีรายการอย่างน้อย 1 รายการ')
         const lineIds = new Set<string>()
-        for (const line of order.lines) { id(line.id); text(line.description); amount(line.amount, true); if (lineIds.has(line.id) || !line.description.trim() || !['add', 'deduct'].includes(line.kind)) fail('รายการเพิ่ม-ลดงานไม่ถูกต้อง'); lineIds.add(line.id) }
+        for (const line of order.lines) {
+          if (line.estimateCategory !== undefined && !['1','2','3','4','5','6','7'].includes(line.estimateCategory)) fail('หมวดใบประมาณราคาไม่ถูกต้อง')
+          if (line.quantity !== undefined) amount(line.quantity, true)
+          if (line.unit !== undefined) text(line.unit)
+          if (line.estimateNotes !== undefined) text(line.estimateNotes)
+          if (line.materialRate !== undefined) amount(line.materialRate)
+          if (line.laborRate !== undefined) amount(line.laborRate)
+          if (line.materialRate !== undefined && line.laborRate !== undefined) {
+            if (!line.quantity || Math.abs(line.amount - Math.round(line.quantity * (line.materialRate + line.laborRate) * 100) / 100) > 0.01) fail('ยอดวัสดุและค่าแรงไม่ตรงกับยอดรวมใบงาน')
+          }
+          id(line.id); text(line.description); amount(line.amount, line.pricingStatus !== 'pending'); if (line.pricingStatus !== undefined && !['pending', 'quoted'].includes(line.pricingStatus)) fail('สถานะราคาใบงานไม่ถูกต้อง'); if (order.status === 'approved' && line.pricingStatus === 'pending') fail('ใบงานยังรอตรวจสัญญาหรือเสนอราคา อนุมัติไม่ได้'); if (line.sourceItemId && !home.items.some(item => item.id === line.sourceItemId)) fail('ไม่พบอุปกรณ์ต้นทางของใบงาน'); if (lineIds.has(line.id) || !line.description.trim() || !['add', 'deduct'].includes(line.kind)) fail('รายการเพิ่ม-ลดงานไม่ถูกต้อง'); lineIds.add(line.id) }
         if (order.payments !== undefined) {
           if (!Array.isArray(order.payments) || order.payments.length > 10000) fail('ประวัติรับ–จ่ายใบงานไม่ถูกต้อง')
           let paidOut = 0; let refunded = 0

@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/lib/auth/current-user'
 import { BackupManager } from './backup-manager'
 
 export default function BackupsPage() {
-  return <Suspense fallback={<DataLoading label="กำลังโหลดข้อมูลสำรอง…" />}><BackupsContent /></Suspense>
+  return <Suspense fallback={<PageContainer><DataLoading label="กำลังโหลดข้อมูลสำรอง…" /></PageContainer>}><BackupsContent /></Suspense>
 }
 
 async function BackupsContent() {

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
 import { CarFront, ChevronDown, FileText, Gauge, History, Package, Pencil, Plus, ShieldCheck, Trash2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -102,6 +103,7 @@ export function VehicleManager({ asset, canWrite, busy, channels, onSave, onReco
   }
 
   return <section className="mt-4 border-t border-slate-100 pt-3" aria-label={`รายการยานพาหนะ ${asset.name}`}>
+    <div className="mb-3 flex justify-end"><Link href={`/dashboard/recurring?asset=${encodeURIComponent(asset.id)}`} className="text-xs text-blue-700 underline">ดู พ.ร.บ. / ประกัน / รายการประจำของรถคันนี้ ↗</Link></div>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-slate-600 shadow-sm"><CarFront size={17} /></span><div className="min-w-0"><p className="m-0 truncate text-xs font-medium text-slate-700">{asset.vehicleDetails?.plateNumber ? `ทะเบียน ${asset.vehicleDetails.plateNumber}${asset.vehicleDetails.plateProvince ? ` · ${asset.vehicleDetails.plateProvince}` : ''}` : 'ยังไม่ระบุทะเบียน'}<span className="ml-2 font-normal text-slate-500">· {(asset.vehicleDetails?.odometerKm ?? 0).toLocaleString('th-TH')} กม.</span></p><p className="mb-0 mt-1 truncate text-[11px] text-slate-500">ซื้อ {asset.purchasePrice > 0 ? `฿${money(asset.purchasePrice)}` : '—'} · ประเมิน {latest ? `฿${money(latest.amount)}` : '—'} · {records.length} รายการ</p></div></div><Button aria-expanded={expanded} disabled={busy} onClick={() => setExpanded(value => !value)}>{expanded ? 'ซ่อนรายละเอียด' : 'จัดการรถ'}<ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} /></Button></div>
     {expanded ? <>
     <div className="grid gap-3 lg:grid-cols-[1fr_1.2fr]">

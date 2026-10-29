@@ -1,5 +1,5 @@
-import { DataLoading } from '@/components/ui/data-loading'
+import { RouteLoading } from '@/components/ui/route-loading'
 
 export default function Loading() {
-  return <DataLoading />
+  return <RouteLoading />
 }

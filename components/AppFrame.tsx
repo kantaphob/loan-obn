@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { WorkspaceMotion } from "@/components/dashboard/workspace-motion";
 import { WorkspaceBar } from "@/components/dashboard/workspace-bar";
 
 export default function AppFrame({
@@ -19,7 +20,7 @@ export default function AppFrame({
       {sidebar && <div className="dashboard-sidebar relative z-10 max-[760px]:w-full"><Sidebar /></div>}
       <main className="relative z-10 flex h-full min-h-0 w-0 min-w-0 flex-1 flex-col max-[760px]:w-full">
         <WorkspaceBar />
-        <div className="workspace-content">{children}</div>
+        <div className="workspace-content"><WorkspaceMotion>{children}</WorkspaceMotion></div>
       </main>
     </div>
   );

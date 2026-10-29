@@ -1,4 +1,4 @@
-import { DataLoading } from '@/components/ui/data-loading'
+import { DashboardSkeleton } from './dashboard-skeleton'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/lib/auth/current-user'
 import { getDashboardAssets } from '@/lib/dashboard-assets'
 import { propertyStatuses } from '@/app/thing/_shared/model'
 import { getDashboardOperations } from '@/lib/dashboard-operations'
+import { AnimatedMoney, DashboardMotion } from './dashboard-motion'
 import './summary.css'
 
 const number = (n: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(n)
@@ -18,7 +19,7 @@ const money = (satang: number) => `฿${new Intl.NumberFormat('th-TH', { minimum
 const colors = ['#245fbd', '#087e60', '#6899dd', '#36a889', '#d68b35', '#ba3b51']
 
 export default function DashboardPage() {
-  return <Suspense fallback={<PageContainer><DataLoading label="กำลังโหลดภาพรวม…" /></PageContainer>}><DashboardContent /></Suspense>
+  return <Suspense fallback={<DashboardSkeleton />}><DashboardContent /></Suspense>
 }
 
 async function DashboardContent() {
@@ -41,28 +42,28 @@ async function DashboardContent() {
   const shownOutgoing = s.cashAvailable ? s.allOutgoing : ledgerCash?.outgoing ?? 0
   const shownNet = shownIncoming - shownOutgoing
   const metrics = [
-    { label: s.cashAvailable ? 'รับรวม' : 'รับตามบัญชีหลัก', value: money(shownIncoming), href: '/dashboard/ledger' },
-    { label: s.cashAvailable ? 'จ่ายรวม' : 'จ่ายตามบัญชีหลัก', value: money(shownOutgoing), href: '/dashboard/accounting' },
-    { label: s.cashAvailable ? 'รับหักจ่ายสะสม' : 'รับหักจ่ายบัญชีหลัก', value: money(shownNet), href: '/dashboard/accounting' },
-    { label: 'เงินจ่ายปล่อยกู้จริง', value: money(s.actualDisbursement), href: '/dashboard/capital' },
-    { label: 'เงินรับคืนรวม', value: money(s.totalLoanReceived), href: '/dashboard/capital' },
-    { label: 'เงินต้นคงค้าง', value: money(s.principalOutstanding), href: '/dashboard/capital' },
-    { label: 'เงินต้นรับคืนแล้ว', value: money(s.principalReturned), href: '/dashboard/capital' },
-    { label: 'ดอกเบี้ยตามสัญญาคงค้าง', value: money(s.interestOutstanding), href: '/dashboard/capital' },
+    { label: s.cashAvailable ? 'รับ' : 'รับตามบัญชีหลัก', value: shownIncoming, href: '/dashboard/ledger' },
+    { label: s.cashAvailable ? 'จ่าย' : 'จ่ายตามบัญชีหลัก', value: shownOutgoing, href: '/dashboard/accounting' },
+    { label: s.cashAvailable ? 'สุทธิ' : 'สุทธิตามบัญชีหลัก', value: shownNet, href: '/dashboard/accounting' },
+    { label: 'เงินจ่ายปล่อยกู้จริง', value: s.actualDisbursement, href: '/dashboard/capital' },
+    { label: 'เงินรับคืนรวม', value: s.totalLoanReceived, href: '/dashboard/capital' },
+    { label: 'เงินต้นคงค้าง', value: s.principalOutstanding, href: '/dashboard/capital' },
+    { label: 'เงินต้นรับคืนแล้ว', value: s.principalReturned, href: '/dashboard/capital' },
+    { label: 'ดอกเบี้ยตามสัญญาคงค้าง', value: s.interestOutstanding, href: '/dashboard/capital' },
   ]
   const segments = s.statuses.map((row, i) => { const from = s.statuses.slice(0, i).reduce((sum, r) => sum + r.count, 0) / s.totalContracts * 100; const offset = from + row.count / s.totalContracts * 100; return `${colors[i % colors.length]} ${from}% ${offset}%` })
-  return <PageContainer><div className="dash-dashboard">
+  return <PageContainer><DashboardMotion>
     <Header title="ภาพรวมธุรกิจ" description={`ณ ${s.today}`} />
     <div className="dash-section-label">สถานะวันนี้ <span>ข้อมูล ณ {s.today}</span></div>
     <div className="dash-today-grid">{[
-      {label:'เงินสดพร้อมปล่อยกู้',value:money(s.lendingCashAvailable),note:'เฉพาะบัญชีสินเชื่อ',href:'/dashboard/capital',tone:'blue'},
-      {label:'รอจ่ายเงินกู้',value:money(s.pendingPrincipal),note:`${s.pendingCount} สัญญา · เงินพร้อมปล่อยต่ำกว่ายอดรอจ่าย ${money(liquidityGap)}`,href:'/dashboard/ap',tone:'amber'},
-      {label:'ครบกำหนดใน 7 วัน',value:money(dueAmount),note:`${s.dueSoon.length} สัญญา`,href:'/dashboard/repayments',tone:'green'},
-      {label:'เกินกำหนดสินเชื่อ',value:money(s.overdueAmount),note:`${s.overdueCount} สัญญา`,href:'/dashboard/repayments',tone:'red'},
-    ].map(item=><Card key={item.label} className={`dash-today-card tone-${item.tone}`}><Link href={item.href}><span>{item.label}</span><strong>{item.value}</strong><small>{item.note}</small></Link></Card>)}</div>
+      {label:'เงินสดพร้อมปล่อยกู้',value:s.lendingCashAvailable,note:'เฉพาะบัญชีสินเชื่อ',href:'/dashboard/capital',tone:'blue'},
+      {label:'รอจ่ายเงินกู้',value:s.pendingPrincipal,note:`${s.pendingCount} สัญญา · เงินพร้อมปล่อยต่ำกว่ายอดรอจ่าย ${money(liquidityGap)}`,href:'/dashboard/ap',tone:'amber'},
+      {label:'ครบกำหนดใน 7 วัน',value:dueAmount,note:`${s.dueSoon.length} สัญญา`,href:'/dashboard/repayments',tone:'green'},
+      {label:'เกินกำหนดสินเชื่อ',value:s.overdueAmount,note:`${s.overdueCount} สัญญา`,href:'/dashboard/repayments',tone:'red'},
+    ].map(item=><Card key={item.label} className={`dash-today-card tone-${item.tone}`}><Link href={item.href}><span>{item.label}</span><strong><AnimatedMoney satang={item.value} /></strong><small>{item.note}</small></Link></Card>)}</div>
     {(operations.receivables.length>0 || operations.payables.length>0) && <div className="dash-action-inline"><Link href="/dashboard/receivables">ลูกหนี้ค้างรับนอกสินเชื่อ <strong>{money(receivableTotal)}</strong> · {operations.receivables.filter(r=>r.overdue).length} รายการเกินกำหนด</Link>{operations.payables.length>0 && <Link href="/dashboard/ap">เจ้าหนี้ค้างจ่าย <strong>{money(operations.payables.reduce((n,r)=>n+r.remaining,0))}</strong></Link>}</div>}
 
-    <div className="dash-section-label">ยอดรับ–จ่ายทั้งหมด <span>ตั้งแต่เริ่มบันทึกถึงวันนี้</span></div><div className="dash-cash-grid">{metrics.slice(0,3).map((m,i) => <Card key={m.label} className={`dash-metric dash-cash-card dash-cash-${i}`}><div className="dash-metric-value"><div className="dash-metric-top"><span className="dash-kicker">{m.label}</span><span className="dash-icon"><Icon name={i===0?'wallet':i===1?'chart':'grid'} /></span></div><strong>{m.value}</strong><span className="dash-card-tag">{i===0?'เงินรับสะสม':i===1?'เงินจ่ายสะสม':'รับ − จ่ายสะสม'}</span></div></Card>)}</div>
+    <div className="dash-section-label">ยอดรับ–จ่ายทั้งหมด <span>ตั้งแต่เริ่มบันทึกถึงวันนี้</span></div><div className="dash-cash-grid">{metrics.slice(0,3).map((m,i) => <Card key={m.label} className={`dash-metric dash-cash-card dash-cash-${i}`}><div className="dash-metric-value"><div className="dash-metric-top"><span className="dash-kicker">{m.label}</span><span className="dash-icon"><Icon name={i===0?'wallet':i===1?'chart':'grid'} /></span></div><strong><AnimatedMoney satang={m.value} /></strong><span className="dash-card-tag">{i===0?'เงินรับสะสม':i===1?'เงินจ่ายสะสม':'รับ − จ่ายสะสม'}</span></div></Card>)}</div>
     {!s.cashAvailable && historicalCash && historicalCash.periodCount > 0 && <Card as="section" className="dash-panel dash-history-summary"><div className="dash-heading"><h2>ประวัติรับ–จ่ายเดิม · แสดงแยกจากบัญชีหลัก</h2><span>{number(historicalCash.periodCount)} รายการ</span></div><div className="dash-history-totals"><div><span>รับ</span><strong>{money(historicalCash.incoming)}</strong></div><div><span>จ่าย</span><strong>{money(historicalCash.outgoing)}</strong></div><div><span>สุทธิ</span><strong>{money(historicalCash.incoming-historicalCash.outgoing)}</strong></div></div></Card>}
     {!s.cashAvailable && <p className={'dash-warning'}>แสดงยอดบัญชีหลักและประวัติเดิมแยกกัน เนื่องจากมีข้อมูลหลายแหล่งในปีเดียวกัน ยังไม่รวมเป็นยอดเดียว</p>}
     {s.unrecordedDisbursementCount > 0 && <p className={'dash-warning'}>พบ {number(s.unrecordedDisbursementCount)} สัญญาที่ระบุว่าจ่ายแล้ว แต่ไม่มีรายการบันทึกการจ่ายจริง รวมยอดสุทธิตามสัญญา {money(s.unrecordedDisbursementAmount)}</p>}
@@ -100,11 +101,11 @@ async function DashboardContent() {
 
     </div>
     <div className="dash-loan-section"><div className="dash-section-label">พอร์ตสินเชื่อ <span>หน่วย: บาท</span></div>
-    <div className="dash-loan-grid">{metrics.slice(3).map((m,i) => <Card key={m.label} className="dash-metric dash-loan-card"><div className="dash-metric-value"><span className="dash-loan-index">{String(i+1).padStart(2,'0')}</span><span className="dash-kicker">{m.label}</span><strong>{m.value}</strong></div></Card>)}</div>
+    <div className="dash-loan-grid">{metrics.slice(3).map((m,i) => <Card key={m.label} className="dash-metric dash-loan-card"><div className="dash-metric-value"><span className="dash-loan-index">{String(i+1).padStart(2,'0')}</span><span className="dash-kicker">{m.label}</span><strong><AnimatedMoney satang={m.value} /></strong></div></Card>)}</div>
     <div className="dash-section-label">เงินทุน <span>ตามรายการบัญชีทุนที่บันทึก</span></div>
 
     <div className="dash-funding-grid">
-      <Card as="section" className="dash-panel dash-funding-main"><div className="dash-heading"><h2>เงินทุนของกิจการสุทธิ</h2></div><p className="dash-pending-value">{money(s.funding.opening+s.funding.added-s.funding.withdrawn)}</p><dl className="dash-funding-list"><div><dt>ทุนเริ่มต้น</dt><dd>{money(s.funding.opening)}</dd></div><div><dt>เติมทุน</dt><dd>{money(s.funding.added)}</dd></div><div><dt>ถอนทุน</dt><dd>{money(s.funding.withdrawn)}</dd></div></dl></Card>
+      <Card as="section" className="dash-panel dash-funding-main"><div className="dash-heading"><h2>เงินทุนของกิจการสุทธิ</h2></div><p className="dash-pending-value"><AnimatedMoney satang={s.funding.opening+s.funding.added-s.funding.withdrawn} /></p><dl className="dash-funding-list"><div><dt>ทุนเริ่มต้น</dt><dd>{money(s.funding.opening)}</dd></div><div><dt>เติมทุน</dt><dd>{money(s.funding.added)}</dd></div><div><dt>ถอนทุน</dt><dd>{money(s.funding.withdrawn)}</dd></div></dl></Card>
       {[s.funding.borrowed,s.funding.repaid,s.funding.interestPaid,s.funding.profitDistributed].some(value => value>0) && <Card as="section" className="dash-panel"><div className="dash-heading"><h2>เงินทุนจากผู้ให้ทุน</h2></div><p className="dash-pending-value">{money(s.funding.borrowed-s.funding.repaid)}</p><dl className="dash-funding-list"><div><dt>รับทุนสะสม</dt><dd>{money(s.funding.borrowed)}</dd></div><div><dt>คืนเงินต้นผู้ให้ทุน</dt><dd>{money(s.funding.repaid)}</dd></div><div><dt>ดอกเบี้ยจ่ายผู้ให้ทุน</dt><dd>{money(s.funding.interestPaid)}</dd></div><div><dt>ส่วนแบ่งกำไรที่จ่าย</dt><dd>{money(s.funding.profitDistributed)}</dd></div></dl></Card>}
       <Card as="section" className="dash-panel"><div className="dash-heading"><h2>ลูกหนี้ค้างรับนอกสินเชื่อ</h2><Link href="/dashboard/receivables">เปิดทะเบียน ↗</Link></div><p className="dash-pending-value">{money(receivableTotal)}</p><p className="dash-muted">{operations.receivables.length} รายการค้างรับ · {operations.receivables.filter(r=>r.overdue).length} รายการเกินกำหนด</p>{operations.receivables.map(row=><div className="dash-open-item" key={row.id}><span>#{row.id} · ครบกำหนด {row.dueDate || 'ยังไม่ระบุ'}</span><strong>{money(row.remaining)}</strong></div>)}</Card>
     </div>
@@ -117,7 +118,7 @@ async function DashboardContent() {
       ['เงินต้นยกเว้น',s.principalWaived],
     ].map(([label,value])=><Card key={label} className="dash-metric dash-loan-card"><div className="dash-metric-value"><span className="dash-kicker">{label}</span><strong>{money(value as number)}</strong></div></Card>)}</div>
     <div className="dash-graphic-grid">
-      <Card as="section" className="dash-panel dash-recovery"><div className="dash-heading"><h2>สัดส่วนเงินต้นรับคืน</h2><span>รับคืน / เงินต้นตามสัญญาที่จ่ายแล้ว</span></div><div className="dash-recovery-content"><div className="dash-recovery-ring" style={{background:`conic-gradient(#245fbd ${returnedPercent}%, #ffffff55 0)`}}><strong>{returnedPercent.toFixed(1)}%</strong></div><div><span className="dash-kicker">รับคืนแล้ว</span><p className="dash-pending-value">{money(s.principalReturned)}</p><span className="dash-muted">คงค้าง {money(s.principalOutstanding)} · ยกเว้น {money(s.principalWaived)}</span></div></div></Card>
+      <Card as="section" className="dash-panel dash-recovery"><div className="dash-heading"><h2>สัดส่วนเงินต้นรับคืน</h2><span>รับคืน / เงินต้นตามสัญญาที่จ่ายแล้ว</span></div><div className="dash-recovery-content"><div className="dash-recovery-ring" style={{background:`conic-gradient(#245fbd ${returnedPercent}%, #ffffff55 0)`}}><strong>{returnedPercent.toFixed(1)}%</strong></div><div><span className="dash-kicker">รับคืนแล้ว</span><p className="dash-pending-value"><AnimatedMoney satang={s.principalReturned} /></p><span className="dash-muted">คงค้าง {money(s.principalOutstanding)} · ยกเว้น {money(s.principalWaived)}</span></div></div></Card>
       <Card as="section" className={'dash-panel dash-status-panel dash-loan-section'}><div className={'dash-heading'}><h2>สถานะสัญญา</h2><span>{number(s.totalContracts)} สัญญา</span></div><div className={'dash-donut'} role="img" aria-label={`สัญญารวม ${s.totalContracts} รายการ`} style={{ background: segments.length ? `conic-gradient(${segments.join(',')})` : '#e2e8f0' }}><div><strong>{number(s.totalContracts)}</strong><small>สัญญาทั้งหมด</small></div></div><ul className={'dash-statuses'}>{s.statuses.map((r,i) => <li key={r.code}><i style={{ background: colors[i % colors.length] }} /><span>{r.label}</span><strong>{number(r.count)}</strong><small>{(r.count / s.totalContracts * 100).toFixed(1)}%</small></li>)}</ul>{!s.totalContracts && <p className={'dash-muted'}>ยังไม่มีข้อมูลสัญญา</p>}</Card>
 
     </div>
@@ -161,5 +162,5 @@ async function DashboardContent() {
       <Card as="section" className="dash-panel"><div className="dash-heading"><h2>งานพัฒนาทรัพย์สิน</h2><span>{assets.projects.length} งาน</span></div>{assets.projects.length?<div className="dash-tableWrap"><table><thead><tr><th>งาน / สถานะ</th><th>งบ</th><th>ต้นทุนบันทึก</th><th>จ่ายสุทธิ</th><th>ค้างต้นทุน</th></tr></thead><tbody>{assets.projects.map(row=><tr key={row.id}><td><strong>{row.name}</strong><small className="dash-project-sub">{({planned:'วางแผน',in_progress:'กำลังดำเนินการ',completed:'เสร็จแล้ว',approved:'อนุมัติแล้ว'} as Record<string,string>)[row.status] ?? row.status} · {row.asset}</small></td><td>{money(Math.round(row.budget*100))}</td><td>{money(Math.round(row.actual*100))}</td><td>{money(Math.round(row.paid*100))}</td><td>{money(Math.round(Math.max(0,row.actual-row.paid)*100))}</td></tr>)}</tbody><tfoot><tr><th>รวม</th><td>{money(Math.round(assets.projects.reduce((n,r)=>n+r.budget,0)*100))}</td><td>{money(Math.round(assets.projects.reduce((n,r)=>n+r.actual,0)*100))}</td><td>{money(Math.round(assets.projects.reduce((n,r)=>n+r.paid,0)*100))}</td><td>{money(Math.round(assets.projects.reduce((n,r)=>n+Math.max(0,r.actual-r.paid),0)*100))}</td></tr></tfoot></table></div>:<p className="dash-empty">ยังไม่มีงานพัฒนาในทรัพย์สินที่ถืออยู่</p>}</Card>
     </div></div>}
     <Card as="section" className="dash-panel dash-recent"><div className="dash-heading"><h2>รายการเงินจริงล่าสุด</h2><Link href="/dashboard/ledger">บัญชีรับ–จ่าย ↗</Link></div><div className="dash-tableWrap"><table><thead><tr><th>วันที่ / เลขรายการ</th><th>หมวด</th><th>สัญญา</th><th>รับ</th><th>จ่าย</th></tr></thead><tbody>{operations.recent.map(row=><tr key={row.id}><td>{row.occurredOn} · #{row.id}</td><td>{row.categoryName}</td><td>{row.contractId ? `CT-${String(row.contractId).padStart(6,'0')}` : '—'}</td><td>{row.direction==='IN'?money(row.amountSatang):'—'}</td><td>{row.direction==='OUT'?money(row.amountSatang):'—'}</td></tr>)}</tbody></table></div>{!operations.recent.length&&<p className="dash-empty">ยังไม่มีรายการบัญชี</p>}</Card>
-  </div></PageContainer>
+  </DashboardMotion></PageContainer>
 }

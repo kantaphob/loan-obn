@@ -14,7 +14,7 @@ export function payrollReceiptWindow(month: string) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error('งวดเดือนไม่ถูกต้อง')
   const [year, number] = month.split('-').map(Number)
   const end = Date.UTC(year, number, 0)
-  return { startOn: new Date(end - 5 * 86400000).toISOString().slice(0, 10), endOn: new Date(end + 5 * 86400000).toISOString().slice(0, 10) }
+  return { startOn: new Date(end - 3 * 86400000).toISOString().slice(0, 10), endOn: new Date(end).toISOString().slice(0, 10) }
 }
 export function payrollTotals(values: PayrollValues, customItems: PayrollItem[] = [], hiddenFields: string[] = []) {
   const amount = (value: string) => {

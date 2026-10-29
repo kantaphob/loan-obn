@@ -147,3 +147,29 @@
 .dash-funding-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); }
 
 .dash-project-sub { display:block;font-size:9px;color:var(--workspace-muted,#718198);margin-top:5px; }.dash-tableWrap tfoot { font-weight:600; }
+
+/* Animate once when a card or chart enters view. Content remains visible without JS. */
+.dash-animated-money { display:inline-grid;max-width:100%;font-variant-numeric:tabular-nums; }
+.dash-animated-money > [aria-hidden] { grid-area:1/1; }
+.dash-money-size { visibility:hidden; }
+.dash-money-exact { position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
+.dash-motion-enter { animation:dash-card-in 420ms cubic-bezier(.2,.7,.2,1) var(--dash-motion-delay,0ms) backwards; }
+.dash-scroll-pending { opacity:0;transform:translateY(22px); }
+.dash-motion-scroll { animation:dash-scroll-in 560ms cubic-bezier(.16,1,.3,1) var(--dash-motion-delay,0ms) backwards; }
+.dash-motion-chart { animation:dash-chart-in 750ms cubic-bezier(.2,.7,.2,1) both; }
+.dash-motion-bar { transform-origin:left center;animation:dash-bar-in 650ms cubic-bezier(.2,.7,.2,1) both; }
+.dash-motion-ring { animation:dash-ring-in 650ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes dash-card-in { from { opacity:0;transform:translateY(12px); } to { opacity:1;transform:translateY(0); } }
+@keyframes dash-scroll-in { from { opacity:0;transform:translateY(22px); } to { opacity:1;transform:translateY(0); } }
+@keyframes dash-chart-in { from { clip-path:inset(0 100% 0 0);opacity:.4; } to { clip-path:inset(0);opacity:1; } }
+@keyframes dash-bar-in { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@keyframes dash-ring-in { from { opacity:0;transform:scale(.94); } to { opacity:1;transform:scale(1); } }
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+  .dash-today-card { transition:translate 180ms ease,box-shadow 180ms ease; }
+  .dash-today-card:hover { translate:0 -3px;box-shadow:0 7px 20px #1f375414; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .dash-motion-enter,.dash-motion-scroll,.dash-motion-chart,.dash-motion-bar,.dash-motion-ring { animation:none; }
+  .dash-scroll-pending { opacity:1;transform:none; }
+  .dash-today-card { transition:none; }
+}

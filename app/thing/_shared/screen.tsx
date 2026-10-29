@@ -1,3 +1,5 @@
+import { PageContainer } from '@/components/ui/page-container'
+import { DataLoading } from '@/components/ui/data-loading'
 import { Suspense } from 'react'
 import { connection } from 'next/server'
 import AppFrame from '@/components/AppFrame'
@@ -9,7 +11,7 @@ import './thing.css'
 
 
 export function AssetScreen({ section = 'assets', tab = 'overview' }: { section?: 'assets' | 'debts' | 'history' | 'basic-assets' | 'archived-assets'; tab?: string }) {
-  return <Suspense fallback={<p className="p-8" role="status">กำลังโหลดสินทรัพย์…</p>}><Content section={section} tab={tab} /></Suspense>
+  return <Suspense fallback={<AppFrame><PageContainer><DataLoading label="กำลังโหลดสินทรัพย์…" /></PageContainer></AppFrame>}><Content section={section} tab={tab} /></Suspense>
 }
 
 async function Content({ section, tab }: { section: 'assets' | 'debts' | 'history' | 'basic-assets' | 'archived-assets'; tab: string }) {

@@ -80,7 +80,7 @@ export function Sidebar() {
                   <ChevronDown size={13} className={`transition-transform ${isClosed ? "-rotate-90" : ""}`} />
                 </button>
               )}
-              {(!isClosed || collapsed) && (
+              <div className="sidebar-group-motion" data-open={!isClosed || collapsed} inert={isClosed && !collapsed}>
                 <ul className={`space-y-1 ${collapsed ? "" : "ml-2 border-l border-black/10 pl-2"}`}>
                   {group.items.map(({ href, label, icon: Icon }) => {
                     const currentHref = `${pathname}${typeof window === "undefined" ? "" : window.location.search}`;
@@ -105,7 +105,7 @@ export function Sidebar() {
                     );
                   })}
                 </ul>
-              )}
+              </div>
             </section>
           );
         })}

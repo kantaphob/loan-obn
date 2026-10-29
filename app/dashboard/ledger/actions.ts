@@ -228,7 +228,7 @@ export async function voidLedger(id: number, reason: string) {
       await syncGoogleContract(saved.contractId)
       publishCreditBureauChanged()
     }
-    revalidatePath('/dashboard/persuaders/shares')
+    revalidatePath('/dashboard/recurring'); revalidatePath('/dashboard/payroll'); revalidatePath('/dashboard/persuaders/shares')
     revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     return { success: true }
   } catch (error) { return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'ยกเลิกไม่สำเร็จ กรุณาลองใหม่' } }
@@ -251,8 +251,10 @@ export async function editLedger(input: {
       await assertBankLoanLedgerUnlinked(tx, entry.id)
       await assertAccountingDateOpen(tx, entry.occurredOn, input.occurredOn)
       if (entry._count.revisions !== input.expectedRevision) throw new Error('รายการถูกแก้ไขโดยคำขออื่นแล้ว กรุณาโหลดข้อมูลใหม่')
+      const recurring = await tx.recurringPayment.findUnique({ where: { ledgerEntryId: entry.id } })
+      if (recurring && (amountSatang !== entry.amountSatang || input.direction !== entry.direction || input.categoryCode !== entry.categoryCode)) throw new Error('รายการนี้เชื่อมกับรายการประจำแล้ว หากยอดหรือประเภทผิดให้ยกเลิกแล้วบันทึกใหม่')
       const payroll = await tx.payrollRecord.findUnique({ where: { ledgerEntryId: entry.id } })
-      if (payroll && (amountSatang !== payroll.netSatang || input.direction !== 'IN' || input.categoryCode !== entry.categoryCode)) throw new Error('รายการนี้เชื่อมเงินเดือนแล้ว ยอดสุทธิ ประเภทและหมวดต้องตรงเดิม หากผิดให้ยกเลิกแล้วบันทึกใหม่')
+      if (payroll && (amountSatang !== entry.amountSatang || input.direction !== 'IN' || input.categoryCode !== entry.categoryCode)) throw new Error('รายการนี้เชื่อมเงินเดือนแล้ว ยอดสุทธิ ประเภทและหมวดต้องตรงเดิม หากผิดให้ยกเลิกแล้วบันทึกใหม่')
       await assertUniqueLedgerProof(tx, { reference: input.reference, channelCode: input.channelCode, excludeId: input.id })
       const channel = await tx.paymentChannel.findUnique({ where: { code: input.channelCode } })
       if (!channel?.isActive) throw new Error('กรุณาเลือกช่องทางที่เปิดใช้งาน')

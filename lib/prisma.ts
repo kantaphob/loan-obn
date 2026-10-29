@@ -21,7 +21,7 @@ const adapter = sqlite ? new PrismaBetterSqlite3({ url: databaseUrl }) : new Pri
 // Bump this whenever generated Prisma model fields change. The dev server keeps
 // a global client across hot reloads, and checking only model delegates would
 // otherwise keep an outdated LoanContract delegate after schema changes.
-const schemaVersion = 'postgresql-v7-payroll-records'
+const schemaVersion = 'postgresql-v9-recurring-vehicle-link'
 const basePrisma = globalForPrisma.schemaVersion === schemaVersion && globalForPrisma.databaseUrl === databaseUrl && globalForPrisma.prisma && 'interestRate' in globalForPrisma.prisma && 'loanStatus' in globalForPrisma.prisma && 'borrower' in globalForPrisma.prisma && 'lender' in globalForPrisma.prisma && 'loanContract' in globalForPrisma.prisma && 'ledgerSlip' in globalForPrisma.prisma && 'contractRevision' in globalForPrisma.prisma && 'landDevelopment' in globalForPrisma.prisma && 'landDevelopmentCost' in globalForPrisma.prisma && 'buildingBoqItem' in globalForPrisma.prisma && 'tradeReceivable' in globalForPrisma.prisma && 'persuader' in globalForPrisma.prisma && 'persuaderShareEvent' in globalForPrisma.prisma && 'persuaderSharePayment' in globalForPrisma.prisma
   ? globalForPrisma.prisma
   : (sqlite ? new SQLiteClient({ adapter }) as unknown as PrismaClient : new PrismaClient({ adapter }))

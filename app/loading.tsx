@@ -1,6 +1,6 @@
 import AppFrame from '@/components/AppFrame'
-import { DataLoading } from '@/components/ui/data-loading'
+import { RouteLoading } from '@/components/ui/route-loading'
 
 export default function Loading() {
-  return <AppFrame><DataLoading /></AppFrame>
+  return <AppFrame><RouteLoading /></AppFrame>
 }

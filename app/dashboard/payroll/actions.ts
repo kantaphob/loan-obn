@@ -7,6 +7,7 @@ import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
 import { assertUniqueLedgerProof } from '@/lib/ledger-proof'
 import { validLedgerDate } from '@/lib/ledger'
 import { parsePayrollDetails, payrollReceiptWindow, validatePayroll, type PayrollInput } from '@/lib/payroll'
+import { lockCashForMatching } from '@/lib/cash-matching'
 
 async function operator(write = false) {
   const user = await getCurrentUser()
@@ -28,7 +29,7 @@ export async function getPayroll() {
   ])
   return {
     canWrite: user.role !== 'REVIEWER', channels,
-    records: records.map(r => ({ id: r.id, month: r.month, employer: r.employer, ...parsePayrollDetails(r.amountsJson), gross: r.grossSatang, deductions: r.deductionSatang, net: r.netSatang, note: r.note, receipt: r.historicalEntry ? { source: 'HISTORICAL', id: r.historicalEntry.id, date: r.historicalEntry.occurredOn } : r.ledgerEntry && !r.ledgerEntry.voidedAt ? { source: 'LEDGER', id: r.ledgerEntry.id, date: r.ledgerEntry.occurredOn } : null, voided: Boolean(r.ledgerEntry?.voidedAt) })),
+    records: records.map(r => ({ id: r.id, month: r.month, employer: r.employer, ...parsePayrollDetails(r.amountsJson), gross: r.grossSatang, deductions: r.deductionSatang, net: r.netSatang, note: r.note, receipt: r.historicalEntry ? { source: 'HISTORICAL', id: r.historicalEntry.id, date: r.historicalEntry.occurredOn, amount: r.historicalEntry.amountSatang } : r.ledgerEntry && !r.ledgerEntry.voidedAt ? { source: 'LEDGER', id: r.ledgerEntry.id, date: r.ledgerEntry.occurredOn, amount: r.ledgerEntry.amountSatang } : null, voided: Boolean(r.ledgerEntry?.voidedAt) })),
   }
 }
 export async function getPayrollCandidates(recordId: number) {
@@ -38,8 +39,8 @@ export async function getPayrollCandidates(recordId: number) {
   const window = payrollReceiptWindow(record.month)
   const occurredOn = { gte: window.startOn, lte: window.endOn }
   const [ledger, historical] = await Promise.all([
-    prisma.ledgerEntry.findMany({ where: { occurredOn, voidedAt: null, accountScope: 'GENERAL', direction: 'IN', kind: 'GENERAL', payrollReceipt: null }, select: { id: true, occurredOn: true, categoryName: true, reference: true, amountSatang: true }, orderBy: { occurredOn: 'desc' } }),
-    prisma.historicalCashEntry.findMany({ where: { occurredOn, direction: 'IN', payrollReceipt: null }, select: { id: true, occurredOn: true, description: true, amountSatang: true }, orderBy: { occurredOn: 'desc' } }),
+    prisma.ledgerEntry.findMany({ where: { occurredOn, voidedAt: null, accountScope: 'GENERAL', direction: 'IN', kind: 'GENERAL', contractId: null, payableId: null, receivableId: null, recurringPayment: null, payrollReceipt: null }, select: { id: true, occurredOn: true, categoryName: true, reference: true, amountSatang: true }, orderBy: { occurredOn: 'desc' } }),
+    prisma.historicalCashEntry.findMany({ where: { occurredOn, direction: 'IN', recurringPayment: null, payrollReceipt: null }, select: { id: true, occurredOn: true, description: true, amountSatang: true }, orderBy: { occurredOn: 'desc' } }),
   ])
   return [...ledger.map(e => ({ key: `LEDGER:${e.id}`, date: e.occurredOn, amount: e.amountSatang, label: `${e.categoryName} ${e.reference}` })), ...historical.map(e => ({ key: `HISTORICAL:${e.id}`, date: e.occurredOn, amount: e.amountSatang, label: e.description }))].map(e => ({ ...e, difference: e.amount - record.netSatang })).sort((a, b) => Number(a.difference !== 0) - Number(b.difference !== 0) || a.date.localeCompare(b.date))
 }
@@ -62,7 +63,7 @@ export async function savePayroll(input: PayrollInput) {
     return { success: true }
   } catch (error) { return failure(error) }
 }
-export async function receivePayroll(input: { id: number; existingKey?: string; occurredOn: string; channelCode: string; reference: string }) {
+export async function receivePayroll(input: { id: number; existingKey?: string; occurredOn: string; channelCode: string; reference: string; acceptDifference?: boolean }) {
   try {
     const user = await operator(true)
     if (!Number.isSafeInteger(input.id) || input.id <= 0) throw new Error('ไม่พบรายการเงินเดือน')
@@ -73,18 +74,27 @@ export async function receivePayroll(input: { id: number; existingKey?: string; 
       if (record.netSatang <= 0) throw new Error('ยอดสุทธิเป็นศูนย์ จึงไม่มีเงินรับเข้าบัญชี')
       const claim = await tx.payrollRecord.updateMany({ where: { id: record.id, updatedAt: record.updatedAt }, data: { updatedAt: new Date(Math.max(Date.now(), record.updatedAt.getTime() + 1)) } })
       if (claim.count !== 1) throw new Error('มีการบันทึกรายการนี้แล้ว กรุณาโหลดข้อมูลล่าสุด')
+      const differenceNote = (actual: number) => {
+        const difference = actual - record.netSatang
+        if (Math.abs(difference) > 100) throw new Error('ยอดต่างเกิน 1 บาท กรุณาตรวจรายละเอียดเงินเดือนก่อนจับคู่')
+        if (difference !== 0 && input.acceptDifference !== true) throw new Error('กรุณายืนยันรับทราบส่วนต่างก่อนจับคู่')
+        return difference === 0 ? record.note : record.note + '\nยืนยันจับคู่ส่วนต่าง ' + (difference / 100).toFixed(2) + ' บาท; สุทธิตามงวด ' + (record.netSatang / 100).toFixed(2) + ' บาท; รับจริง ' + (actual / 100).toFixed(2) + ' บาท; ผู้บันทึก ' + user.id + '; ' + new Date().toISOString()
+      }
       if (input.existingKey) {
         const match = /^(LEDGER|HISTORICAL):(\d+)$/.exec(input.existingKey)
         if (!match) throw new Error('กรุณาเลือกรายการรับเงินเดิม')
         const id = Number(match[2])
+        await lockCashForMatching(tx, match[1] as 'LEDGER' | 'HISTORICAL', id)
+        const recurring = await tx.recurringPayment.findUnique({ where: match[1] === 'LEDGER' ? { ledgerEntryId: id } : { historicalEntryId: id }, select: { id: true } })
+        if (recurring) throw new Error('รายการนี้จับคู่กับรายการประจำแล้ว ไม่สามารถนับซ้ำเป็นเงินเดือนได้')
         if (match[1] === 'LEDGER') {
           const entry = await tx.ledgerEntry.findUnique({ where: { id } })
-          if (!entry || entry.voidedAt || entry.direction !== 'IN' || entry.accountScope !== 'GENERAL' || entry.kind !== 'GENERAL' || entry.amountSatang !== record.netSatang) throw new Error('รายการเดิมต้องเป็นรายรับทั่วไปที่ยังใช้งาน และยอดตรงกับเงินรับสุทธิ')
-          await tx.payrollRecord.update({ where: { id: record.id }, data: { ledgerEntryId: id, historicalEntryId: null } })
+          if (!entry || entry.voidedAt || entry.direction !== 'IN' || entry.accountScope !== 'GENERAL' || entry.kind !== 'GENERAL') throw new Error('รายการเดิมต้องเป็นรายรับทั่วไปที่ยังใช้งาน และยอดตรงกับเงินรับสุทธิ')
+          await tx.payrollRecord.update({ where: { id: record.id }, data: { ledgerEntryId: id, historicalEntryId: null, note: differenceNote(entry.amountSatang) } })
         } else {
           const entry = await tx.historicalCashEntry.findUnique({ where: { id } })
           if (!entry || entry.direction !== 'IN' || entry.amountSatang !== record.netSatang) throw new Error('ยอดรับย้อนหลังไม่ตรงกับเงินรับสุทธิ')
-          await tx.payrollRecord.update({ where: { id: record.id }, data: { historicalEntryId: id, ledgerEntryId: null } })
+          await tx.payrollRecord.update({ where: { id: record.id }, data: { historicalEntryId: id, ledgerEntryId: null, note: differenceNote(entry.amountSatang) } })
         }
       } else {
         if (!validLedgerDate(input.occurredOn)) throw new Error('กรุณาระบุวันรับเงินจริงที่ไม่อยู่ในอนาคต')

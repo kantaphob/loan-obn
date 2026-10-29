@@ -48,10 +48,10 @@ export function contractPaymentStages(contract: ContractorContract, asOf?: strin
   return stages
 }
 export type ContractorPayment = { id: string; contractId: string; stageId: string; date: string; amount: number; reference: string; notes: string; ledgerEntryId: number }
-export type HomeItem = { id: string; room: string; name: string; size: string; quantity: number; price: number; shop: string; purchasedOn: string; warrantyStart: string; warrantyMonths: number; warrantyUntil: string; notes: string; receipt?: { name: string; mimeType: 'application/pdf' | 'image/jpeg' | 'image/png'; dataUrl: string }; serial?: string; status?: 'active' | 'repair' | 'removed' | 'sold' | 'retired'; includedInMainCost?: boolean; boqId?: string; events?: { date: string; from: string; to: string; status: string }[] }
+export type HomeItem = { workOrderId?: string; purchaseStatus?: 'planned' | 'purchased'; referencePrice?: number; referenceShop?: string; referenceUrl?: string; referenceOn?: string; id: string; room: string; name: string; size: string; quantity: number; price: number; shop: string; purchasedOn: string; warrantyStart: string; warrantyMonths: number; warrantyUntil: string; notes: string; receipt?: { name: string; mimeType: 'application/pdf' | 'image/jpeg' | 'image/png'; dataUrl: string }; serial?: string; fixedInstallation?: boolean; receivedOn?: string; status?: 'active' | 'damaged' | 'waiting_repair' | 'repair' | 'removed' | 'sold' | 'retired'; includedInMainCost?: boolean; boqId?: string; events?: { date: string; from: string; to: string; status: string }[] }
 export type BoqItem = { id: string; category: string; subcategory?: string; name: string; spec: string; quantity: number; unit: string; price: number; labor: number; paid: number; vendor: string; reference: string; materialTotal?: number; laborRate?: number; boqTotal?: number; note?: string; ledgerEntryId?: number; scope?: 'construction' | 'builtin'; room?: string; replacesId?: string; cancelled?: boolean }
 export type BuildingBoqVersion = { id: string; version: number; createdOn: string; managementFee: number; agreedTotal?: number; items: BoqItem[] }
-export type BuildingChangeOrderLine = { id: string; kind: 'add' | 'deduct'; description: string; amount: number }
+export type BuildingChangeOrderLine = { id: string; kind: 'add' | 'deduct'; description: string; amount: number; sourceItemId?: string; estimateCategory?: string; quantity?: number; unit?: string; materialRate?: number; laborRate?: number; estimateNotes?: string; pricingStatus?: 'pending' | 'quoted' }
 export type BuildingChangeOrder = { id: string; number: number; baseVersion: number; title: string; date: string; status: 'draft' | 'approved'; reference: string; notes: string; lines: BuildingChangeOrderLine[]; payments?: BuildingProjectPayment[] }
 export type Valuation = { id: string; date: string; landValue: number; buildingValue: number; source: string; notes: string }
 export type BuildingWorkType = 'construction' | 'repair' | 'improvement' | 'decoration' | 'built_in' | 'equipment'
@@ -186,7 +186,7 @@ export function ghbPayments(text: string) {
 
 export function assetCosts(home: Home) {
   const boq = roundMoney(home.boq.filter(row => !row.cancelled && row.scope !== 'builtin').reduce((sum, row) => sum + row.quantity * row.price + row.labor, 0))
-  const inventory = home.items.filter(row => !['removed', 'sold', 'retired'].includes(row.status ?? '') && !row.includedInMainCost && !(home.costSource === 'boq' && row.boqId && home.boq.some(b => b.id === row.boqId && !b.cancelled))).reduce((sum, row) => sum + row.quantity * row.price, 0)
+  const inventory = home.items.filter(row => row.purchaseStatus !== 'planned' && !['removed', 'sold', 'retired'].includes(row.status ?? '') && !row.includedInMainCost && !(home.costSource === 'boq' && row.boqId && home.boq.some(b => b.id === row.boqId && !b.cancelled))).reduce((sum, row) => sum + row.quantity * row.price, 0)
   const capitalWork = (home.buildingWorks ?? []).filter(row => row.treatment === 'capital').reduce((sum, row) => sum + row.amount, 0)
   const completedProjects = (home.buildingProjects ?? []).filter(project => project.status === 'completed').reduce((sum, project) => sum + project.actualCost, 0)
   const additions = roundMoney(inventory + capitalWork + completedProjects)

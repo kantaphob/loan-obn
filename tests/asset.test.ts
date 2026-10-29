@@ -415,3 +415,69 @@ test('BOQ PDF summary reads amounts on separate baselines and agreed price above
   assert.equal(imported.managementFee,179112.9);assert.equal(imported.agreedTotal,1970000)
   assert.equal(readContractBoqSummary(['not a summary'],summary,'bad.pdf'),null)
 })
+
+test('planned equipment preserves reference prices without cost or warranty until actual purchase', () => {
+  const data = initialData()
+  const home = newHome('Planning house', 'house')
+  home.purchasePrice = 100000
+  home.items = [{ id: 'planned-item', name: 'Filter', room: '', size: 'Model A', quantity: 2, price: 0, shop: '', purchasedOn: '', warrantyStart: '', warrantyUntil: '', warrantyMonths: 0, notes: '', purchaseStatus: 'planned', referencePrice: 5000, referenceShop: 'Online A', referenceOn: '2026-01-01', referenceUrl: 'https://example.com/item' }]
+  data.homes = [home]; data.loans = []; data.properties = []
+  validateAssetData(data)
+  assert.equal(assetCosts(home).total, 100000)
+  home.items[0].price = 4200
+  assert.throws(() => validateAssetData(data), /วางแผน/)
+  home.items[0] = { ...home.items[0], purchaseStatus: 'purchased', purchasedOn: '2026-02-01', warrantyStart: '2026-02-01', shop: 'Actual B' }
+  validateAssetData(data)
+  assert.equal(assetCosts(home).total, 108400)
+  assert.equal(home.items.length, 1)
+  assert.equal(home.items[0].referencePrice, 5000)
+  assert.equal(home.items[0].referenceShop, 'Online A')
+  assert.equal(data.loans.length, 0)
+  home.items[0].includedInMainCost = true
+  assert.equal(assetCosts(home).total, 100000, 'purchases already included in the main cost are not added again')
+})
+
+test('equipment condition and fixed installation preserve room history and BOQ receipts do not duplicate costs', async () => {
+ const { equipmentBoqReport } = await import('../app/thing/asset/equipment-report')
+ const data = initialData(); const home = newHome('Fixed equipment', 'house')
+ home.rooms = ['Room A','Room B']; home.purchasePrice=100000
+ home.boq=[{id:'wiring',category:'Electrical',name:'Wiring',spec:'',quantity:1,unit:'set',price:5000,labor:1000,paid:0,vendor:'',reference:''}]
+ home.items=[{id:'light',name:'Light',room:'Room A',size:'',quantity:1,price:4500,shop:'Builder',purchasedOn:'2026-01-01',warrantyStart:'',warrantyUntil:'',warrantyMonths:0,notes:'',purchaseStatus:'purchased',fixedInstallation:true,status:'waiting_repair',includedInMainCost:true,boqId:'wiring',receivedOn:'2026-01-01'}]
+ data.homes=[home];data.properties=[];data.loans=[]
+ validateAssetData(data)
+ assert.equal(assetCosts(home).total,100000)
+ assert.equal(equipmentBoqReport(home)[0].difference,-500)
+ const moved=structuredClone(data);moved.homes[0].items[0].room='Room B'
+ assert.throws(()=>validateHistory(moved,data),/ติดตั้งถาวร/)
+ moved.homes[0].items[0].fixedInstallation=false
+ validateHistory(moved,data)
+ for(const status of ['damaged','waiting_repair','repair','retired'] as const){ home.items[0].status=status;validateAssetData(data) }
+ home.items[0].receivedOn='';home.items[0].purchaseStatus='planned';home.items[0].price=0;home.items[0].purchasedOn=''
+ assert.throws(()=>validateAssetData(data),/ยังไม่ซื้อ/)
+})
+
+test('electrical scope can move to pending change order without fabricated prices, cost or approval', () => {
+ const data=initialData();const home=newHome('Electrical scope','house');home.purchasePrice=1800000;home.rooms=['Bedroom']
+ home.items=[{id:'switch-plan',room:'Bedroom',name:'Switch',size:'',quantity:2,price:0,shop:'',purchasedOn:'',warrantyStart:'',warrantyMonths:0,warrantyUntil:'',notes:'',purchaseStatus:'planned',referencePrice:150,workOrderId:'electrical-order',fixedInstallation:true}]
+ home.buildingChangeOrders=[{id:'electrical-order',number:1,baseVersion:1,title:'Electrical scope review',date:'2026-01-01',status:'draft',reference:'',notes:'',lines:[{id:'switch-line',kind:'add',description:'Bedroom switch',amount:0,pricingStatus:'pending',sourceItemId:'switch-plan'}]}]
+ data.homes=[home];data.loans=[];data.properties=[]
+ validateAssetData(data)
+ assert.equal(assetCosts(home).total,1800000)
+ home.buildingChangeOrders[0].status='approved'
+ assert.throws(()=>validateAssetData(data),/อนุมัติไม่ได้/)
+ home.buildingChangeOrders[0].status='draft'
+ home.items[0].workOrderId='missing-order'
+ assert.throws(()=>validateAssetData(data),/ใบงาน/)
+})
+
+test('estimate categories and material/labor breakdown preserve exact change-order totals', () => {
+ const data=initialData(); const home=newHome('Estimate','house'); data.homes=[home];data.loans=[];data.properties=[]
+ home.buildingChangeOrders=[{id:'estimate-order',number:1,baseVersion:1,title:'Electrical estimate',date:'2026-01-01',status:'draft',reference:'',notes:'',lines:[{id:'estimate-line',kind:'add',description:'Switch',amount:600,estimateCategory:'6',quantity:5,unit:'point',materialRate:100,laborRate:20,pricingStatus:'quoted'}]}]
+ validateAssetData(data)
+ const line=home.buildingChangeOrders[0].lines[0]
+ line.amount=500
+ assert.throws(()=>validateAssetData(data),/ยอดวัสดุและค่าแรง/)
+ line.laborRate=0;validateAssetData(data)
+ line.estimateCategory='8'
+ assert.throws(()=>validateAssetData(data),/หมวดใบประมาณราคา/)
+})

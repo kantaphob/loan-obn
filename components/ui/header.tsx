@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from 'react'
 import { Layers3 } from 'lucide-react'
 
 export type HeaderProps = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
-  title: string
+  title: ReactNode
   description?: ReactNode
   eyebrow?: string
   actions?: ReactNode

@@ -198,3 +198,21 @@
 .workspace-theme.dashboard-shell .asset-button { background: #245fbd; border-color: #245fbd; border-radius: 7px; padding: 7px 11px; }
 .workspace-theme.dashboard-shell .asset-button.secondary { background: #fff; color: #405873; border-color: #ced9e7; }
 .workspace-theme.dashboard-shell .asset-tabs button[aria-current] { color: #245fbd; border-bottom-color: #245fbd; }
+
+/* Short, interruptible menu motion; route wrappers preserve local page state. */
+.workspace-route-motion { height: 100%; min-height: 0; min-width: 0; }
+.workspace-route-motion > div:has(> .dashboard-page-container) { height: 100%; min-height: 0; }
+.sidebar-group-motion { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows 180ms ease, opacity 150ms ease; }
+.sidebar-group-motion > ul { min-height: 0; overflow: hidden; }
+.sidebar-group-motion[data-open='false'] { grid-template-rows: 0fr; opacity: 0; }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel nav a { transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease; }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel nav a svg { transition: transform 150ms ease; }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel nav a:hover svg { transform: translateX(2px); }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel nav a[aria-current='page'] { animation: sidebar-selection 180ms ease-out; }
+@keyframes sidebar-selection { from { box-shadow: inset 0 0 #245fbd; } to { box-shadow: inset 3px 0 #245fbd; } }
+@media(prefers-reduced-motion:reduce) {
+  .sidebar-group-motion, .workspace-theme.dashboard-shell .liquid-sidebar-panel,
+  .workspace-theme.dashboard-shell .liquid-sidebar-panel nav a,
+  .workspace-theme.dashboard-shell .liquid-sidebar-panel nav a svg { transition: none; animation: none; }
+  .workspace-theme.dashboard-shell .liquid-sidebar-panel nav a:hover svg { transform: none; }
+}

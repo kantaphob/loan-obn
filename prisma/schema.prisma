@@ -435,6 +435,7 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  recurringPayment RecurringPayment?
   payrollReceipt PayrollRecord?
   accountScope String @default("GENERAL")
   principalReceivedSatang Float?
@@ -650,6 +651,7 @@ model AccountingMonthLock {
 
 // Imported daily cashbook kept separate from the loan ledger.
 model HistoricalCashEntry {
+  recurringPayment RecurringPayment?
   payrollReceipt PayrollRecord?
   id Int @id @default(autoincrement())
   requestKey String @unique
@@ -737,6 +739,7 @@ model AccountingAdjustment {
 
 // Relational asset register. Composite keys keep each workspace isolated.
 model Asset {
+  recurringItems RecurringItem[]
   operatorId String
   id String
   workspace AssetWorkspaceState @relation(fields: [operatorId], references: [operatorId], onDelete: Restrict)
@@ -1397,4 +1400,45 @@ model PayrollRecord {
   @@unique([month, employer])
   @@index([month])
   @@map("payroll_record")
+}
+
+model RecurringItem {
+  assetOperatorId String?
+  assetId String?
+  asset Asset? @relation(fields: [assetOperatorId, assetId], references: [operatorId, id], onDelete: Restrict)
+  id Int @id @default(autoincrement())
+  name String
+  direction String
+  amountSatang Float
+  frequency String
+  dueDay Int?
+  dueMonth Int?
+  startMonth String
+  isActive Boolean @default(true)
+  note String @default("")
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payments RecurringPayment[]
+
+  @@unique([name, direction, frequency])
+  @@map("recurring_item")
+}
+
+model RecurringPayment {
+  id Int @id @default(autoincrement())
+  itemId Int
+  item RecurringItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  period String
+  expectedSatang Float
+  itemName String
+  ledgerEntryId Int? @unique
+  ledgerEntry LedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  historicalEntryId Int? @unique
+  historicalEntry HistoricalCashEntry? @relation(fields: [historicalEntryId], references: [id], onDelete: Restrict)
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@unique([itemId, period])
+  @@map("recurring_payment")
 }
