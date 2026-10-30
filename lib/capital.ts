@@ -80,3 +80,21 @@ export function isLendingCashEntry(entry: LendingCashEntry) {
 export function lendingCapitalCash(entries: LendingCashEntry[], _assetIds: ReadonlySet<number> = new Set(), asOf = bangkokToday()) {
   return capitalCash(entries.filter(entry => isLendingCashEntry(entry) && !_assetIds.has(entry.id ?? -1)), asOf)
 }
+
+/** Allocate each actual receipt in date/id order, preserving same-day payments and waivers. */
+export function capitalRepaymentAllocations(contract: CapitalContract, entries: Entry[], asOf = bangkokToday()) {
+  const valid = entries.filter(entry => !entry.voidedAt && entry.occurredOn <= asOf)
+  const history = valid.filter(entry => entry.kind !== 'REPAYMENT')
+  const allocations = new Map<number, { principal: number; interest: number; penalty: number }>()
+  for (const entry of valid.filter(entry => entry.kind === 'REPAYMENT').sort((a, b) => a.occurredOn.localeCompare(b.occurredOn) || (a.id ?? 0) - (b.id ?? 0))) {
+    const before = capitalPosition(contract, history, entry.occurredOn)
+    history.push(entry)
+    const after = capitalPosition(contract, history, entry.occurredOn)
+    if (after && entry.id !== undefined) allocations.set(entry.id, {
+      principal: after.principalReceived - (before?.principalReceived ?? 0),
+      interest: after.interestReceived - (before?.interestReceived ?? 0),
+      penalty: after.penaltyReceived - (before?.penaltyReceived ?? 0),
+    })
+  }
+  return allocations
+}

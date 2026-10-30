@@ -174,9 +174,9 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
       }
     })
     revalidatePath('/dashboard/capital'); revalidatePath('/dashboard'); revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
-    const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true } })
+    const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true, contract: { select: { borrowerCode: true } } } })
     if (saved) {
-      try { await syncBorrowerSlipFiles(getDatabaseUrl()) }
+      try { if (slip && saved.contract?.borrowerCode) await syncBorrowerSlipFiles(getDatabaseUrl(), undefined, saved.contract.borrowerCode) }
       catch (storageError) { console.error('Ledger saved; borrower slip archive sync failed', storageError) }
       try {
         await syncGoogleLedger(saved.id)

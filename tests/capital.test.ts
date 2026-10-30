@@ -74,3 +74,10 @@ test('lending account accepts contract cash and explicitly sourced funds only', 
   assert.equal(cash.outgoing, 50000)
   assert.equal(cash.balance, 75000)
 })
+test('receipt allocations preserve same-day order and never count settlement waiver as principal received', async () => {
+  const { capitalRepaymentAllocations } = await import('../lib/capital')
+  const entries = [{ ...payment, id: 1, amountSatang: 5000 }, { ...payment, id: 2, amountSatang: 45000, settlementWaivedSatang: 60000 }]
+  const result = capitalRepaymentAllocations(contract, entries, '2026-10-03')
+  assert.deepEqual(result.get(1), { principal: 0, interest: 5000, penalty: 0 })
+  assert.deepEqual(result.get(2), { principal: 40000, interest: 5000, penalty: 0 })
+})

@@ -128,3 +128,20 @@
 .workspace-theme .repayment-table .repayment-contract-number > strong { font-size:15px; }
 .workspace-theme .repayment-upfront-received { margin-top:8px; padding:8px 10px; border:1px solid #bcdccc; border-radius:8px; background:#edf8f1; color:#166541; font-size:12px; font-weight:600; }
 .workspace-theme .repayment-upfront-received span { display:block; margin-top:4px; color:#526b60; font-size:11px; font-weight:400; }
+
+/* Keep the collection queue visible before secondary reporting details. */
+.workspace-theme .repayment-workspace .repayment-metric { padding:12px 14px; box-shadow:none; }
+.repayment-workspace .repayment-metrics { gap:10px; }
+.repayment-workspace .repayment-metric-value { margin-top:5px; font-size:24px; line-height:1.25; }
+.repayment-workspace .repayment-metric-detail { border:0; padding-top:0; margin-top:5px; }
+.repayment-workspace .repayment-directory-heading { padding:12px 16px; gap:8px; }
+.repayment-workspace .repayment-tabs { padding:0 16px 8px; }
+.repayment-search { padding:10px 16px; }
+.repayment-aging { border:1px solid #d7e1ed; border-radius:12px; padding:12px 16px; }
+.repayment-aging summary { cursor:pointer; font-size:13px; font-weight:500; }
+.repayment-aging > div { margin-top:12px; }
+@media(max-width:540px) {
+  .repayment-workspace .repayment-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .repayment-workspace .repayment-metric-value { font-size:20px; }
+  .repayment-workspace .repayment-metric-detail { display:none; }
+}

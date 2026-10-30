@@ -7,7 +7,9 @@ export function validateHistory(next: AssetData, previous: AssetData, options: {
     if (!updatedHome) continue
     for (const item of home.items) {
       const updated = updatedHome.items.find(row => row.id === item.id)
-      if (item.fixedInstallation && updated?.fixedInstallation && item.room !== updated.room) throw new Error('อุปกรณ์ติดตั้งถาวร ย้ายห้องไม่ได้ ต้องยืนยันถอดการติดตั้งก่อน')
+      const priorRoom = home.roomDefinitions?.find(room => room.name === item.room)
+      const renamedSameRoom = priorRoom && updatedHome.roomDefinitions?.some(room => room.id === priorRoom.id && room.name === updated?.room)
+      if (item.fixedInstallation && updated?.fixedInstallation && item.room !== updated.room && !renamedSameRoom && priorRoom?.kind !== 'group') throw new Error('อุปกรณ์ติดตั้งถาวร ย้ายห้องไม่ได้ ต้องยืนยันถอดการติดตั้งก่อน')
     }
     for (const payment of home.vehicleFinancing?.payments ?? []) if (JSON.stringify(updatedHome.vehicleFinancing?.payments?.find(row => row.id === payment.id)) !== JSON.stringify(payment)) throw new Error('รายการค่างวดรถที่ลงบัญชีแล้วแก้หรือลบไม่ได้')
     for (const payment of home.vehicleFinancing?.downPayments ?? []) if (JSON.stringify(updatedHome.vehicleFinancing?.downPayments?.find(row => row.id === payment.id)) !== JSON.stringify(payment)) throw new Error('รายการจ่ายเงินดาวน์รถที่ลงบัญชีแล้วแก้หรือลบไม่ได้')

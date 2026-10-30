@@ -478,6 +478,54 @@ test('estimate categories and material/labor breakdown preserve exact change-ord
  line.amount=500
  assert.throws(()=>validateAssetData(data),/ยอดวัสดุและค่าแรง/)
  line.laborRate=0;validateAssetData(data)
- line.estimateCategory='8'
+ line.estimateCategory='10';validateAssetData(data)
+ line.estimateCategory='11'
  assert.throws(()=>validateAssetData(data),/หมวดใบประมาณราคา/)
+})
+
+test('house hierarchy counts real rooms once, preserves assets on rename, and rejects invalid links', async () => {
+ const { houseRooms, roomSubtree, roomPatch } = await import('../app/thing/asset/house-rooms')
+ const data = initialData(); const home = newHome('Hierarchy','house'); data.homes=[home]; data.loans=[]; data.properties=[]
+ home.rooms=['Bedroom','Bathroom','Bathroom group','CCTV']
+ home.roomDefinitions=[{id:'br',code:'BLD-BR01',name:'Bedroom',kind:'room'},{id:'ba',code:'BLD-BA01',name:'Bathroom',kind:'room',parentId:'br'},{id:'group',code:'BLD-G01',name:'Bathroom group',kind:'group'},{id:'sys',code:'BLD-SY01',name:'CCTV',kind:'system'}]
+ home.items=[{id:'tap',room:'Bathroom',name:'Tap',size:'',quantity:1,price:0,shop:'',purchasedOn:'',warrantyStart:'',warrantyMonths:0,warrantyUntil:'',notes:'',purchaseStatus:'planned',fixedInstallation:true}]
+ validateAssetData(data)
+ assert.equal(houseRooms(home).filter(room=>room.kind==='room').length,2)
+ assert.deepEqual(roomSubtree(houseRooms(home),'br').map(room=>room.name),['Bedroom','Bathroom'])
+ const next=structuredClone(data)
+ Object.assign(next.homes[0],roomPatch(home,home.roomDefinitions.map(room=>room.id==='ba'?{...room,name:'Ensuite'}:room)))
+ validateAssetData(next);validateHistory(next,data)
+ assert.equal(next.homes[0].items[0].room,'Ensuite');assert.equal(next.homes[0].items.length,1)
+ assert.equal(assetCosts(home).total,assetCosts(next.homes[0]).total)
+ assert.throws(()=>roomPatch(home,home.roomDefinitions!.filter(room=>room.id!=='ba')),/ย้ายรายการก่อนลบ/)
+ const cycle=structuredClone(data);cycle.homes[0].roomDefinitions![0].parentId='ba'
+ assert.throws(()=>validateAssetData(cycle),/วนซ้ำ/)
+ const duplicate=structuredClone(data);duplicate.homes[0].roomDefinitions![1].code='BLD-BR01'
+ assert.throws(()=>validateAssetData(duplicate),/ซ้ำ/)
+})
+
+test('damage and repair histories preserve purchase cost and reject planned or invalid events', () => {
+ const data=initialData();const home=newHome('Repair','house');data.homes=[home];data.loans=[];data.properties=[]
+ home.items=[{id:'fan',room:'',name:'Fan',size:'',quantity:1,price:1000,shop:'',purchaseStatus:'purchased',purchasedOn:'2026-01-01',warrantyStart:'',warrantyMonths:0,warrantyUntil:'',notes:'',status:'damaged',repairs:[{id:'dmg',code:'DMG-001',kind:'damage',status:'reported',date:'2026-01-02',symptom:'Stopped',cost:0,vendor:'',notes:''},{id:'rep',code:'REP-001',kind:'repair',status:'resolved',relatedId:'dmg',date:'2026-01-03',symptom:'Motor replaced',cost:300,vendor:'Workshop',notes:''}]}]
+ validateAssetData(data);assert.equal(assetCosts(home).total,1000)
+ home.items[0].repairs![1].relatedId='missing';assert.throws(()=>validateAssetData(data),/ต้นทาง/)
+ home.items[0].repairs![1].relatedId='dmg';home.items[0].repairs![1].cost=-1;assert.throws(()=>validateAssetData(data))
+})
+
+test('outside-contract BOQ scope stays separate from main construction cost', () => {
+ const home=newHome('Scope','house');home.costSource='boq'
+ const base={id:'included',name:'Contract',category:'หมวดงานโครงสร้าง',spec:'',quantity:1,unit:'งาน',price:1000,labor:100,paid:0,vendor:'',reference:''}
+ home.boq=[{...base,contractScope:'included'},{...base,id:'outside',name:'Outside',price:500,contractScope:'excluded'}]
+ assert.equal(assetCosts(home).main,1100)
+ assert.equal(assetCosts(home).total,1100)
+})
+
+test('construction categories recognize legacy headings and ten new category codes', async () => {
+ const { constructionCategoryCode, estimateCategory, estimateCategories }=await import('../app/thing/asset/estimate-categories')
+ assert.equal(estimateCategories.length,10)
+ assert.equal(constructionCategoryCode('หมวดงานหลังคา'),'2')
+ assert.equal(constructionCategoryCode('หมวดงานสุขภัณฑ์ / ระบบสุขาภิบาล'),'4')
+ assert.equal(constructionCategoryCode('BLD-A10'),'10')
+ const home=newHome('IoT','house');home.items=[{id:'iot',name:'SONOFF MINIR4',size:'',room:'',quantity:1,price:0,shop:'',purchasedOn:'',warrantyStart:'',warrantyMonths:0,warrantyUntil:'',notes:''}]
+ assert.equal(estimateCategory({id:'line',sourceItemId:'iot',kind:'add',description:'IoT',amount:0},home),'9')
 })

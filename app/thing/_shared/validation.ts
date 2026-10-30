@@ -139,6 +139,23 @@ export function validateAssetData(data: AssetData) {
     for (const key of ['rooms', 'items', 'boq'] as const) if (!Array.isArray(home[key]) || home[key].length > 10000) fail('รายการมากเกินไป')
     home.rooms.forEach(r => { text(r); if (!r.trim()) fail('ชื่อห้องว่าง') })
     if (new Set(home.rooms).size !== home.rooms.length) fail('ชื่อห้องซ้ำ')
+    if (home.roomDefinitions !== undefined) {
+      if (!Array.isArray(home.roomDefinitions) || home.roomDefinitions.length > 10000) fail('โครงสร้างห้องไม่ถูกต้อง')
+      const roomIds = new Set<string>(); const codes = new Set<string>(); const names = new Set<string>()
+      for (const room of home.roomDefinitions) {
+        id(room.id); text(room.code); text(room.name)
+        if (!room.code.trim() || !room.name.trim() || !home.rooms.includes(room.name) || roomIds.has(room.id) || codes.has(room.code) || names.has(room.name) || !['room','area','system','group','zone'].includes(room.kind)) fail('รหัส ชื่อ หรือประเภทห้องไม่ถูกต้องหรือซ้ำ')
+        roomIds.add(room.id); codes.add(room.code); names.add(room.name)
+      }
+      for (const room of home.roomDefinitions) {
+        const visited = new Set([room.id]); let parent = room.parentId
+        while (parent) {
+          if (visited.has(parent) || !roomIds.has(parent)) fail('ความสัมพันธ์ห้องวนซ้ำหรือไม่พบห้องหลัก')
+          visited.add(parent); parent = home.roomDefinitions.find(row => row.id === parent)?.parentId
+        }
+      }
+    }
+    const incidentCodes = new Set<string>()
     for (const item of home.items) {
       id(item.id); [item.room, item.name, item.size, item.shop, item.notes].forEach(text)
       if (!item.name.trim() || item.room && !home.rooms.includes(item.room)) fail('กรุณาระบุชื่อสินค้าและเลือกห้องที่มีอยู่')
@@ -154,6 +171,16 @@ export function validateAssetData(data: AssetData) {
       if (!Number.isInteger(item.warrantyMonths) || item.warrantyMonths > 1200) fail('ระยะประกันไม่ถูกต้อง')
       if (item.warrantyStart && item.warrantyUntil && item.warrantyUntil < item.warrantyStart) fail('วันสิ้นสุดประกันต้องไม่ก่อนวันเริ่มประกัน')
       if (item.purchasedOn && item.warrantyUntil && item.warrantyUntil < item.purchasedOn) fail('วันหมดประกันต้องไม่ก่อนวันซื้อ')
+      for (const value of [item.category, item.brand, item.specifications]) if (value !== undefined) text(value)
+      if (item.repairs !== undefined) {
+        if (!Array.isArray(item.repairs) || item.repairs.length > 10000) fail('ประวัติซ่อมไม่ถูกต้อง')
+        const repairs = new Set<string>()
+        for (const repair of item.repairs) {
+          id(repair.id); text(repair.code); if (incidentCodes.has(repair.code)) fail('รหัสแจ้งเสียหรืองานซ่อมซ้ำ'); incidentCodes.add(repair.code); if (!repair.code.trim() || !['damage','repair'].includes(repair.kind) || !['reported','waiting_repair','repair','resolved','discarded'].includes(repair.status)) fail('รหัสหรือสถานะประวัติเสียและซ่อมไม่ถูกต้อง'); if (repair.relatedId && !item.repairs.some(row => row.id === repair.relatedId && row.kind === 'damage')) fail('ไม่พบเหตุแจ้งเสียต้นทาง'); date(repair.date); amount(repair.cost); text(repair.symptom); text(repair.vendor); text(repair.notes)
+          if (!repair.symptom.trim() || repair.date > today() || Boolean(item.purchasedOn && repair.date < item.purchasedOn) || repairs.has(repair.id) || item.purchaseStatus === 'planned') fail('ประวัติซ่อมต้องมีอาการ วันที่ไม่เกินวันนี้ และเป็นสินค้าที่ซื้อแล้ว')
+          repairs.add(repair.id)
+        }
+      }
       if (item.serial !== undefined) text(item.serial)
       if (item.receipt !== undefined) {
         text(item.receipt.name)
@@ -178,6 +205,13 @@ export function validateAssetData(data: AssetData) {
       amount(item.quantity, true); [item.price, item.labor, item.paid].forEach(n => amount(n))
       for (const amountValue of [item.materialTotal, item.laborRate, item.boqTotal]) if (amountValue !== undefined) amount(amountValue)
       if (item.ledgerEntryId !== undefined && (!Number.isSafeInteger(item.ledgerEntryId) || item.ledgerEntryId < 1)) fail('เลขรายการบัญชีไม่ถูกต้อง')
+      if (item.contractScope !== undefined && !['included','excluded','pending'].includes(item.contractScope)) fail('ขอบเขตสัญญา BOQ ไม่ถูกต้อง')
+      if (item.progress !== undefined && !['not_started','in_progress','completed','accepted'].includes(item.progress)) fail('ความคืบหน้า BOQ ไม่ถูกต้อง')
+      if (item.budget !== undefined) amount(item.budget)
+      if (item.evidence !== undefined) {
+        const file = item.evidence
+        if (!file.name || file.name.length > 240 || !['application/pdf','image/jpeg','image/png'].includes(file.mimeType) || typeof file.dataUrl !== 'string' || file.dataUrl.length > 7_100_000 || !new RegExp(`^data:${file.mimeType};base64,[A-Za-z0-9+/]+={0,2}$`).test(file.dataUrl)) fail('หลักฐาน BOQ ไม่ถูกต้อง')
+      }
       if (item.scope !== undefined && !['construction', 'builtin'].includes(item.scope)) fail('ประเภท BOQ ไม่ถูกต้อง')
       if (item.room && !home.rooms.includes(item.room)) fail('ห้องใน BOQ ไม่ถูกต้อง')
       if (item.cancelled !== undefined && typeof item.cancelled !== 'boolean') fail('สถานะ BOQ ไม่ถูกต้อง')
@@ -221,16 +255,23 @@ export function validateAssetData(data: AssetData) {
         if (!Array.isArray(order.lines) || order.lines.length < 1 || order.lines.length > 1000) fail('ใบงานต้องมีรายการอย่างน้อย 1 รายการ')
         const lineIds = new Set<string>()
         for (const line of order.lines) {
-          if (line.estimateCategory !== undefined && !['1','2','3','4','5','6','7'].includes(line.estimateCategory)) fail('หมวดใบประมาณราคาไม่ถูกต้อง')
+          if (line.estimateCategory !== undefined && !['1','2','3','4','5','6','7','8','9','10'].includes(line.estimateCategory)) fail('หมวดใบประมาณราคาไม่ถูกต้อง')
           if (line.quantity !== undefined) amount(line.quantity, true)
           if (line.unit !== undefined) text(line.unit)
           if (line.estimateNotes !== undefined) text(line.estimateNotes)
           if (line.materialRate !== undefined) amount(line.materialRate)
           if (line.laborRate !== undefined) amount(line.laborRate)
+          if (line.sourceBoqItemId !== undefined) id(line.sourceBoqItemId)
+          if (line.sourceBoqName !== undefined) text(line.sourceBoqName)
+          if (line.referenceAmount !== undefined) amount(line.referenceAmount)
+          if (line.referenceQuantity !== undefined) amount(line.referenceQuantity, true)
+          if (line.referenceUnit !== undefined) text(line.referenceUnit)
+          if (line.referenceMaterialRate !== undefined) amount(line.referenceMaterialRate)
+          if (line.referenceLaborRate !== undefined) amount(line.referenceLaborRate)
           if (line.materialRate !== undefined && line.laborRate !== undefined) {
             if (!line.quantity || Math.abs(line.amount - Math.round(line.quantity * (line.materialRate + line.laborRate) * 100) / 100) > 0.01) fail('ยอดวัสดุและค่าแรงไม่ตรงกับยอดรวมใบงาน')
           }
-          id(line.id); text(line.description); amount(line.amount, line.pricingStatus !== 'pending'); if (line.pricingStatus !== undefined && !['pending', 'quoted'].includes(line.pricingStatus)) fail('สถานะราคาใบงานไม่ถูกต้อง'); if (order.status === 'approved' && line.pricingStatus === 'pending') fail('ใบงานยังรอตรวจสัญญาหรือเสนอราคา อนุมัติไม่ได้'); if (line.sourceItemId && !home.items.some(item => item.id === line.sourceItemId)) fail('ไม่พบอุปกรณ์ต้นทางของใบงาน'); if (lineIds.has(line.id) || !line.description.trim() || !['add', 'deduct'].includes(line.kind)) fail('รายการเพิ่ม-ลดงานไม่ถูกต้อง'); lineIds.add(line.id) }
+          id(line.id); text(line.description); amount(line.amount, line.pricingStatus !== 'pending'); if (line.pricingStatus !== undefined && !['pending', 'quoted'].includes(line.pricingStatus)) fail('สถานะราคาใบงานไม่ถูกต้อง'); if (order.status === 'approved' && line.pricingStatus === 'pending') fail('ใบงานยังรอตรวจสัญญาหรือเสนอราคา อนุมัติไม่ได้'); if (line.sourceItemId && !home.items.some(item => item.id === line.sourceItemId)) fail('ไม่พบอุปกรณ์ต้นทางของใบงาน'); if (line.kind === 'replace' && (!line.sourceBoqItemId || !line.sourceBoqName?.trim() || line.referenceAmount === undefined || line.referenceQuantity === undefined || !line.referenceUnit?.trim())) fail('รายการเปลี่ยนแทนต้องอ้างอิงรายการ BOQ เดิม'); if (lineIds.has(line.id) || !line.description.trim() || !['add', 'deduct', 'replace'].includes(line.kind)) fail('รายการเพิ่ม-ลดงานไม่ถูกต้อง'); lineIds.add(line.id) }
         if (order.payments !== undefined) {
           if (!Array.isArray(order.payments) || order.payments.length > 10000) fail('ประวัติรับ–จ่ายใบงานไม่ถูกต้อง')
           let paidOut = 0; let refunded = 0

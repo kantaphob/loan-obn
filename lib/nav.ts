@@ -84,7 +84,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: Banknote },
       { label: "เงินเดือนและรายได้ประจำ", href: "/dashboard/payroll", icon: Banknote },
       { label: "รายการรับ–จ่ายประจำ", href: "/dashboard/recurring", icon: Banknote },
-      {
+      
+      { label: "ปิดดุลบัญชี", href: "/dashboard/ac", icon: BanknoteX },
+    ],
+  },
+  {
+    title: "Finance",
+    items: [
+            {
         label: "จ่ายเงินตามสัญญา",
         href: "/dashboard/ap",
         icon: BanknoteArrowDown,
@@ -96,7 +103,6 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       { label: "สรุปยอดผู้กู้ต้องคืน", href: "/dashboard/repayments/summary", icon: ReceiptText },
       { label: "บัญชีทุนสินเชื่อ", href: "/dashboard/capital", icon: BanknoteCheck },
-      { label: "ปิดดุลบัญชี", href: "/dashboard/ac", icon: BanknoteX },
     ],
   },
   {

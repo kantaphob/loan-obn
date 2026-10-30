@@ -5,9 +5,6 @@ import { getCurrentUser } from '@/lib/auth/current-user'
 import { bangkokToday, contractLedgerBalance } from '@/lib/ledger'
 import { contractCode } from '@/lib/contracts'
 import { slipFileName } from '@/lib/slip-name'
-import { googleSyncStatus, processGoogleSyncQueue } from '@/lib/google-sync'
-import { isGoogleBridgeConfigured } from '@/lib/google-integration'
-import { revalidatePath } from 'next/cache'
 
 async function operator(write = false) {
   const user = await getCurrentUser()
@@ -18,14 +15,13 @@ async function operator(write = false) {
 export async function getReceivables(options: { q?: string; view?: string; page?: number } = {}) {
   const user = await operator()
   const today = bangkokToday()
-  const [contracts, entries, categories, channels, receivedToday, sync] = await Promise.all([
+  const [contracts, entries, categories, channels, receivedToday] = await Promise.all([
     prisma.loanContract.findMany({ select: { id: true, borrowerName: true, lenderName: true, netSatang: true, repaymentSatang: true, principalSatang: true, interestSatang: true, interestMethod: true, status: true, paidAt: true, repaymentDueDate: true, legacyReceivedSatang: true, legacySourceCode: true, penaltyMaxDays: true } }),
     // Running balances need the payment timeline, but never notes, slips or revisions.
     prisma.ledgerEntry.findMany({ where: { voidedAt: null, kind: { in: ['DISBURSEMENT', 'REPAYMENT'] } }, select: { id: true, contractId: true, kind: true, occurredOn: true, amountSatang: true, penaltyAssessed: true, penaltyWaivedSatang: true, settlementWaivedSatang: true } }),
     prisma.financialCategory.findMany({ where: { isActive: true, code: 'CONTRACT_REPAYMENT' } }),
     prisma.paymentChannel.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } }),
     prisma.ledgerEntry.aggregate({ where: { kind: 'REPAYMENT', voidedAt: null, occurredOn: today }, _sum: { amountSatang: true } }),
-    syncState(),
   ])
   const byContract = new Map<number, typeof entries>()
   for (const entry of entries) {
@@ -56,7 +52,7 @@ export async function getReceivables(options: { q?: string; view?: string; page?
   const page = Math.min(pageCount, Math.max(1, requested))
   const current = rows.slice((page - 1) * 20, page * 20)
   const ids = new Set(current.map(c => c.id))
-  return { canWrite: user.role !== 'REVIEWER', canSync: ['ADMIN', 'SUPER_ADMIN'].includes(user.role), today, categories, channels, contracts: current, entries: entries.filter(e => e.contractId !== null && ids.has(e.contractId)), summary, sync, page, pageCount, total: rows.length }
+  return { canWrite: user.role !== 'REVIEWER', today, categories, channels, contracts: current, entries: entries.filter(e => e.contractId !== null && ids.has(e.contractId)), summary, page, pageCount, total: rows.length }
 }
 
 export async function getRepaymentHistory(contractId: number) {
@@ -67,22 +63,3 @@ export async function getRepaymentHistory(contractId: number) {
   return entries.map(e => ({ ...e, createdAt: e.createdAt.toISOString(), voidedAt: e.voidedAt?.toISOString() ?? null, slip: e.slip ? { ...e.slip, displayName: slipFileName({ ...e, legacySourceCode: contract.legacySourceCode }, e.slip.mimeType) } : null }))
 }
 
-export async function retryReceivablesSync() {
-  const user = await operator(true)
-  if (!['ADMIN', 'SUPER_ADMIN'].includes(user.role)) throw new Error('ไม่มีสิทธิ์ลองซิงก์ข้อมูล')
-  if (!isGoogleBridgeConfigured()) throw new Error('ยังไม่ได้ตั้งค่าการเชื่อมต่อ Google')
-  await prisma.googleSyncJob.updateMany({ where: { status: 'FAILED' }, data: { status: 'PENDING', nextAttemptAt: new Date() } })
-  await processGoogleSyncQueue(3)
-  const state = await syncState()
-  revalidatePath('/dashboard/repayments')
-  return state
-}
-
-async function syncState() {
-  try {
-    const status = await googleSyncStatus()
-    return { configured: status.configured, pending: status.pending + status.failed, available: true }
-  } catch {
-    return { configured: isGoogleBridgeConfigured(), pending: 0, available: false }
-  }
-}
