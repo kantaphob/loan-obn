@@ -1,6 +1,7 @@
 'use server'
 
 import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
+import { lockCashForMatching } from '@/lib/cash-matching'
 import { assertBankLoanLedgerUnlinked } from '@/lib/bank-loan-ledger'
 
 import { loadPendingContractReview, assertReviewToken } from '@/lib/pending-contract-review'
@@ -196,9 +197,11 @@ export async function voidLedger(id: number, reason: string) {
     const user = await operator(true)
     if (!Number.isSafeInteger(id) || typeof reason !== 'string' || !reason.trim() || reason.length > 500) throw new Error('กรุณาระบุเหตุผลยกเลิกไม่เกิน 500 ตัวอักษร')
     await prisma.$transaction(async tx => {
+      await lockCashForMatching(tx, 'LEDGER', id)
       const entry = await tx.ledgerEntry.findUnique({ where: { id } })
       if (!entry || entry.voidedAt) throw new Error('ไม่พบรายการ หรือรายการถูกยกเลิกแล้ว')
       await assertBankLoanLedgerUnlinked(tx, entry.id)
+      if (await tx.reimbursementVoucher.findUnique({ where: { ledgerEntryId: entry.id } })) throw new Error('กรุณายกเลิกผ่านหน้าสำรองจ่ายและเบิกคืนก่อนแก้รายการนี้')
       await assertAccountingDateOpen(tx, entry.occurredOn)
       if (entry.contractId) {
         const others = await tx.ledgerEntry.findMany({ where: { contractId: entry.contractId, voidedAt: null, id: { not: id } } })
@@ -246,9 +249,11 @@ export async function editLedger(input: {
     if (typeof input.reason !== 'string' || !input.reason.trim() || input.reason.length > 500) throw new Error('กรุณาระบุเหตุผลแก้ไขไม่เกิน 500 ตัวอักษร')
     if (typeof input.reference !== 'string' || input.reference.length > 150 || typeof input.note !== 'string' || input.note.length > 1000) throw new Error('เลขอ้างอิงหรือหมายเหตุยาวเกินกำหนด')
     await prisma.$transaction(async tx => {
+      await lockCashForMatching(tx, 'LEDGER', input.id)
       const entry = await tx.ledgerEntry.findUnique({ where: { id: input.id }, include: { _count: { select: { revisions: true } } } })
       if (!entry || entry.voidedAt) throw new Error('ไม่พบรายการ หรือรายการถูกยกเลิกแล้ว')
       await assertBankLoanLedgerUnlinked(tx, entry.id)
+      if (await tx.reimbursementVoucher.findUnique({ where: { ledgerEntryId: entry.id } })) throw new Error('กรุณายกเลิกผ่านหน้าสำรองจ่ายและเบิกคืนก่อนแก้รายการนี้')
       await assertAccountingDateOpen(tx, entry.occurredOn, input.occurredOn)
       if (entry._count.revisions !== input.expectedRevision) throw new Error('รายการถูกแก้ไขโดยคำขออื่นแล้ว กรุณาโหลดข้อมูลใหม่')
       const recurring = await tx.recurringPayment.findUnique({ where: { ledgerEntryId: entry.id } })

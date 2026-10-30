@@ -632,3 +632,41 @@ body {
   .file-transfer-track > span { transition: none; }
 }
 
+
+/* Shared cash-entry actions: Property and the accounting ledger use one pattern. */
+:root {
+  --cash-income-text: #087c63;
+  --cash-income-surface: #effaf6;
+  --cash-income-border: #b7e8d8;
+  --cash-income-hover: #e1f6ef;
+  --cash-expense-text: #bd3155;
+  --cash-expense-surface: #fff3f5;
+  --cash-expense-border: #f3c8d2;
+  --cash-expense-hover: #ffe8ed;
+}
+.cash-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cash-actions .cash-action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+.cash-actions .cash-action--income { color: var(--cash-income-text); background: var(--cash-income-surface); border-color: var(--cash-income-border); }
+.cash-actions .cash-action--expense { color: var(--cash-expense-text); background: var(--cash-expense-surface); border-color: var(--cash-expense-border); }
+.cash-actions .cash-action--income:hover:not(:disabled) { background: var(--cash-income-hover); border-color: #82d5bd; }
+.cash-actions .cash-action--expense:hover:not(:disabled) { background: var(--cash-expense-hover); border-color: #eaa3b4; }
+.cash-actions .cash-action:focus-visible { outline: 3px solid #77a9e8; outline-offset: 3px; }
+.cash-actions .cash-action:disabled { opacity: .45; cursor: not-allowed; }
+.cash-actions .cash-action svg { flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .cash-actions .cash-action { transition: none; } }

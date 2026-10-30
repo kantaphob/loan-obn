@@ -83,6 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       { label: "บัญชีรับ–จ่าย", href: "/dashboard/ledger", icon: Banknote },
       { label: "เงินเดือนและรายได้ประจำ", href: "/dashboard/payroll", icon: Banknote },
+      { label: "สำรองจ่ายและเบิกคืน", href: "/dashboard/reimbursements", icon: ReceiptText },
       { label: "รายการรับ–จ่ายประจำ", href: "/dashboard/recurring", icon: Banknote },
       
       { label: "ปิดดุลบัญชี", href: "/dashboard/ac", icon: BanknoteX },

@@ -12,7 +12,7 @@ export function readLandFields(form: FormData): Pick<Home, 'purchasePrice' | 'pu
   const optionalNumber = (key: string) => text(key) === '' ? undefined : number(key)
   return {
     address: text('landAddress'), purchasePrice: number('landPurchasePrice'), purchasedOn: text('landPurchasedOn'), landValue: number('landCurrentValue'),
-    landDetails: { deedNumber: text('deedNumber'), areaSquareWa: Math.round((number('landAreaRai') * 400 + number('landAreaNgan') * 100 + number('landAreaWa')) * 100) / 100, valuationOn: text('landValuationOn'), valuationSource: text('landValuationSource'),
+    landDetails: { purchaseContractPrice: optionalNumber('landPurchaseContractPrice'), transferBuyerShare: optionalNumber('landTransferBuyerShare'), purchaseNotes: text('landPurchaseNotes'), deedNumber: text('deedNumber'), areaSquareWa: Math.round((number('landAreaRai') * 400 + number('landAreaNgan') * 100 + number('landAreaWa')) * 100) / 100, valuationOn: text('landValuationOn'), valuationSource: text('landValuationSource'),
       titleType: text('landTitleType'), parcelNo: text('landParcelNo'), surveyNo: text('landSurveyNo'), mapSheet: text('landMapSheet'), mapScale: text('landMapScale'), titleBook: text('landTitleBook'), titlePage: text('landTitlePage'),
       village: text('landVillage'), moo: text('landMoo'), subdistrict: text('landSubdistrict'), district: text('landDistrict'), province: text('landProvince'), postalCode: text('landPostalCode'), landOffice: text('landOffice'),
       latitude: optionalNumber('landLatitude'), longitude: optionalNumber('landLongitude'), landUse: text('landUse'), zoning: text('landZoning'), roadAccess: text('landRoadAccess'), utilitiesNotes: text('landUtilitiesNotes'), notes: text('landNotes'),
@@ -65,7 +65,7 @@ export function LandDetailsFields({ initial, busy, priceOnly = false }: { initia
     setPriceType('market_appraisal')
   }
   return <fieldset disabled={busy} className="space-y-4 rounded-xl border border-slate-300/30 p-4">
-    <legend className="px-1 text-sm font-semibold">รายละเอียดและราคาที่ดิน</legend>
+    <legend className="px-1 text-sm font-semibold">รายละเอียดและราคาที่ดิน</legend><input type="hidden" name="landPurchaseContractPrice" value={details?.purchaseContractPrice ?? ''} /><input type="hidden" name="landTransferBuyerShare" value={details?.transferBuyerShare ?? ''} /><input type="hidden" name="landPurchaseNotes" value={details?.purchaseNotes ?? ''} />
     {!priceOnly ? <label className="block text-xs font-medium">เลขโฉนด<input name="deedNumber" defaultValue={details?.deedNumber ?? ''} maxLength={3000} className={control} /></label> : null}
     {!priceOnly ? <details className="rounded-xl border border-slate-200 p-3">
       <summary className="cursor-pointer text-xs font-semibold">เอกสารสิทธิและที่ตั้งเพิ่มเติม</summary>

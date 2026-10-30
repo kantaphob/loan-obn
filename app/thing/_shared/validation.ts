@@ -1,5 +1,15 @@
 import { balance, contractPrice, contractPaymentStages, priceContractStages, roundMoney, today, propertyAssetIds, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData } from './model'
 
+function validateWorkPhotos(photos: unknown) {
+ if (photos === undefined) return
+ if (!Array.isArray(photos) || photos.length > 6) throw new Error('แนบรูปได้ไม่เกิน 6 รูปต่อรายการ')
+ const ids = new Set<string>()
+ for (const photo of photos) {
+  if (!photo || typeof photo !== 'object' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(photo.id) || ids.has(photo.id) || typeof photo.name !== 'string' || !photo.name.trim() || photo.name.length > 240 || !['image/jpeg','image/png'].includes(photo.mimeType) || !Number.isSafeInteger(photo.size) || photo.size < 1 || photo.size > 5 * 1024 * 1024) throw new Error('ข้อมูลรูปไม่ถูกต้อง รองรับ JPG / PNG ไม่เกิน 5 MB ต่อรูป')
+  ids.add(photo.id)
+ }
+}
+
 export function validateAssetData(data: AssetData) {
   const fail = (message: string): never => { throw new Error(message) }
   const text = (value: unknown) => typeof value === 'string' && value.length <= 3000 || fail('ข้อความไม่ถูกต้องหรือยาวเกินไป')
@@ -87,6 +97,9 @@ export function validateAssetData(data: AssetData) {
     if (home.landDetails !== undefined) {
       const land = home.landDetails
       if (!land || home.kind !== 'house') fail('รายละเอียดที่ดินใช้กับอสังหาริมทรัพย์เท่านั้น')
+      if (land.purchaseContractPrice !== undefined) amount(land.purchaseContractPrice)
+      if (land.transferBuyerShare !== undefined && (!Number.isFinite(land.transferBuyerShare) || land.transferBuyerShare < 0 || land.transferBuyerShare > 100)) fail('ส่วนแบ่งค่าโอนผู้ซื้อต้องอยู่ระหว่าง 0–100%')
+      if (land.purchaseNotes !== undefined) text(land.purchaseNotes)
       text(land.deedNumber); amount(land.areaSquareWa); date(land.valuationOn, true); text(land.valuationSource)
       for (const value of [land.titleType, land.parcelNo, land.surveyNo, land.mapSheet, land.mapScale, land.titleBook, land.titlePage, land.village, land.moo, land.subdistrict, land.district, land.province, land.postalCode, land.landOffice, land.landUse, land.zoning, land.roadAccess, land.utilitiesNotes, land.notes]) if (value !== undefined) text(value)
       if (land.latitude !== undefined && (!Number.isFinite(land.latitude) || land.latitude < -90 || land.latitude > 90)) fail('ละติจูดต้องอยู่ระหว่าง -90 ถึง 90')
@@ -157,6 +170,7 @@ export function validateAssetData(data: AssetData) {
     }
     const incidentCodes = new Set<string>()
     for (const item of home.items) {
+      validateWorkPhotos(item.photos)
       id(item.id); [item.room, item.name, item.size, item.shop, item.notes].forEach(text)
       if (!item.name.trim() || item.room && !home.rooms.includes(item.room)) fail('กรุณาระบุชื่อสินค้าและเลือกห้องที่มีอยู่')
       if (item.purchaseStatus !== undefined && !['planned', 'purchased'].includes(item.purchaseStatus)) fail('สถานะการซื้อไม่ถูกต้อง')
@@ -200,6 +214,7 @@ export function validateAssetData(data: AssetData) {
       }
     }
     for (const item of home.boq) {
+      validateWorkPhotos(item.photos)
       id(item.id); [item.category, item.subcategory ?? '', item.name, item.spec, item.unit, item.vendor, item.reference, item.note ?? ''].forEach(text)
       if (!item.name.trim()) fail('กรุณาระบุชื่อรายการ BOQ')
       amount(item.quantity, true); [item.price, item.labor, item.paid].forEach(n => amount(n))
@@ -235,6 +250,7 @@ export function validateAssetData(data: AssetData) {
         if (!Array.isArray(version.items) || version.items.length > 10000) fail('รายการในเวอร์ชัน BOQ ไม่ถูกต้อง')
         const itemIds = new Set<string>()
         for (const item of version.items) {
+          validateWorkPhotos(item.photos)
           text(item.id)
           if (!/^[a-zA-Z0-9-]{1,80}$/.test(item.id) || itemIds.has(item.id)) fail('รหัสรายการในเวอร์ชัน BOQ ซ้ำหรือไม่ถูกต้อง')
           itemIds.add(item.id); [item.category, item.subcategory ?? '', item.name, item.spec, item.unit, item.vendor, item.reference, item.note ?? ''].forEach(text)
@@ -255,6 +271,7 @@ export function validateAssetData(data: AssetData) {
         if (!Array.isArray(order.lines) || order.lines.length < 1 || order.lines.length > 1000) fail('ใบงานต้องมีรายการอย่างน้อย 1 รายการ')
         const lineIds = new Set<string>()
         for (const line of order.lines) {
+          validateWorkPhotos(line.photos)
           if (line.estimateCategory !== undefined && !['1','2','3','4','5','6','7','8','9','10'].includes(line.estimateCategory)) fail('หมวดใบประมาณราคาไม่ถูกต้อง')
           if (line.quantity !== undefined) amount(line.quantity, true)
           if (line.unit !== undefined) text(line.unit)

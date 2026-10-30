@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { CashActions } from '@/components/ui/cash-actions'
 import { Card } from '@/components/ui/card'
 import { contractCode, formatContractMoney as money } from '@/lib/contracts'
 import { LedgerYearNavigation } from './ledger-year-navigation'
@@ -44,7 +44,7 @@ export function CombinedLedgerWorkspace({ current, historical, params, year = 'a
       {[[ 'รับสะสมทุกปี', incoming, 'text-emerald-700'], ['จ่ายสะสมทุกปี', outgoing, 'text-rose-700'], ['รับสุทธิทุกปี', incoming - outgoing, 'text-blue-700']].map(([title, value, color]) => <Card key={String(title)} className="p-5"><p className="text-sm text-slate-500">{title}</p><p className={`mt-3 text-2xl font-semibold tabular-nums ${color}`}>{money(Number(value))}<span className="ml-1 text-xs font-normal">บาท</span></p><p className="mt-2 text-xs text-slate-400">{year === 'all' ? 'รายการปี 2025 และ 2026' : `รายการปี ${year}`}</p></Card>)}
     </div>
     <Card className="ledger-directory-card overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-5"><div><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{rows.length} รายการ</span></h2>{current.canWrite && <p className="mb-0 mt-1 text-xs text-slate-400">รายการใหม่จะบันทึกในบัญชีปี 2026</p>}</div>{current.canWrite && <div className="flex flex-wrap gap-2"><Link href="/dashboard/ledger?year=2026&create=1&direction=IN" className="ledger-create-action ledger-create-income"><ArrowDownLeft size={16} aria-hidden="true" />บันทึกรายรับ</Link><Link href="/dashboard/ledger?year=2026&create=1&direction=OUT" className="ledger-create-action ledger-create-expense"><ArrowUpRight size={16} aria-hidden="true" />บันทึกรายจ่าย</Link></div>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3 p-5"><div><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{rows.length} รายการ</span></h2>{current.canWrite && <p className="mb-0 mt-1 text-xs text-slate-400">รายการใหม่จะบันทึกในบัญชีปี 2026</p>}</div>{current.canWrite && <CashActions incomeHref="/dashboard/ledger?year=2026&create=1&direction=IN" expenseHref="/dashboard/ledger?year=2026&create=1&direction=OUT" />}</div>
       <form className="flex flex-wrap items-end gap-3 border-y border-slate-200/70 p-4" action="/dashboard/ledger">{year !== 'all' && <input type="hidden" name="year" value={year} />}
         <label className="min-w-48 flex-1 text-xs text-slate-500">ค้นหารายการ<div className="relative mt-1"><input name="q" defaultValue={queryValue(params.q)} className={field} placeholder="เลขรายการ หมวดหมู่ สัญญา หรือรายละเอียด" /></div></label>
         <label className="text-xs text-slate-500">ประเภท<select name="direction" defaultValue={direction} className={field}><option value="">รับและจ่าย</option><option value="IN">รับเงิน</option><option value="OUT">จ่ายเงิน</option></select></label>

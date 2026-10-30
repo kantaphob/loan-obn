@@ -1,12 +1,5 @@
 .ledger-directory-metrics > div { padding: 17px 20px; }
 .ledger-directory-metrics > div p:last-child { margin-top: 6px; font-size: 10px; }
-.ledger-create-action { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; border: 1px solid; border-radius: 11px; padding: 0 13px; font-size: 12px; font-weight: 600; text-decoration: none; transition: background .15s, border-color .15s, transform .15s; }
-.ledger-create-action:hover { transform: translateY(-1px); }
-.ledger-create-action:focus-visible { outline: 3px solid #77a9e8; outline-offset: 2px; }
-.ledger-create-income { color: #087c63; background: #effaf6; border-color: #b7e8d8; }
-.ledger-create-income:hover { background: #e1f6ef; border-color: #82d5bd; }
-.ledger-create-expense { color: #bd3155; background: #fff3f5; border-color: #f3c8d2; }
-.ledger-create-expense:hover { background: #ffe8ed; border-color: #eaa3b4; }
 .ledger-directory-metrics > div p.tabular-nums { font-size: 25px; margin-top: 10px; }
 .ledger-year-nav { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 9px 12px; border: 1px solid #e1e9f2; border-radius: 16px; background: linear-gradient(105deg, #fff 0%, #f5f9ff 100%); box-shadow: 0 5px 18px #4057740a; }
 .ledger-year-title { display: inline-flex; align-items: center; gap: 8px; margin-right: 5px; color: #71839b; font-size: 12px; }

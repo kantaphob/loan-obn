@@ -529,3 +529,29 @@ test('construction categories recognize legacy headings and ten new category cod
  const home=newHome('IoT','house');home.items=[{id:'iot',name:'SONOFF MINIR4',size:'',room:'',quantity:1,price:0,shop:'',purchasedOn:'',warrantyStart:'',warrantyMonths:0,warrantyUntil:'',notes:''}]
  assert.equal(estimateCategory({id:'line',sourceItemId:'iot',kind:'add',description:'IoT',amount:0},home),'9')
 })
+
+test('work photos remain separate from costs and reject unsafe or oversized metadata', async () => {
+ const { workPhotoPath }=await import('../lib/work-photo-files')
+ const data=initialData();const home=newHome('Photos','house');data.homes=[home];data.loans=[];data.properties=[]
+ const photo={id:'12345678-1234-1234-1234-123456789abc',name:'switch.png',mimeType:'image/png' as const,size:1000}
+ home.buildingChangeOrders=[{id:'photo-order',number:1,baseVersion:1,title:'Photo reference',date:'2026-01-01',status:'draft',reference:'',notes:'',lines:[{id:'photo-line',kind:'add',description:'Switch',amount:0,pricingStatus:'pending',photos:[photo]}]}]
+ validateAssetData(data)
+ assert.equal(assetCosts(home).total,0)
+ const copied=JSON.parse(JSON.stringify(data));assert.deepEqual(copied.homes[0].buildingChangeOrders[0].lines[0].photos,[photo])
+ assert.notEqual(workPhotoPath('owner-one',photo.id,'png'),workPhotoPath('owner-two',photo.id,'png'))
+ assert.throws(()=>workPhotoPath('owner','../../secret','png'),/รหัสรูป/)
+ const line=home.buildingChangeOrders[0].lines[0]
+ line.photos=[{...photo,size:5*1024*1024+1}];assert.throws(()=>validateAssetData(data),/ข้อมูลรูป/)
+ line.photos=[photo,photo];assert.throws(()=>validateAssetData(data),/ข้อมูลรูป/)
+ line.photos=[{...photo,mimeType:'image/svg+xml' as 'image/png'}];assert.throws(()=>validateAssetData(data),/ข้อมูลรูป/)
+ line.photos=Array.from({length:7},()=>photo);assert.throws(()=>validateAssetData(data),/ไม่เกิน 6/)
+})
+
+test('land purchase contract value and fee allocation do not replace actual acquisition cost', () => {
+ const data=initialData();const land=newHome('Land purchase','house');data.homes=[land];data.loans=[];data.properties=[]
+ land.purchasePrice=250000
+ land.landDetails={deedNumber:'1403',areaSquareWa:0,valuationOn:'',valuationSource:'',purchaseContractPrice:400000,transferBuyerShare:50,purchaseNotes:'Buyer and seller split fees equally'}
+ validateAssetData(data);assert.equal(assetCosts(land).total,250000)
+ land.landDetails.transferBuyerShare=101;assert.throws(()=>validateAssetData(data),/ส่วนแบ่งค่าโอน/)
+ land.landDetails.transferBuyerShare=50;land.landDetails.purchaseContractPrice=-1;assert.throws(()=>validateAssetData(data))
+})

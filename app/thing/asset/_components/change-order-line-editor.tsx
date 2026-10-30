@@ -1,6 +1,7 @@
 'use client'
 
 import { Trash2, ChevronDown } from 'lucide-react'
+import { WorkPhotoField } from './work-photos'
 import { Button } from '@/components/ui/button'
 import { money, type BoqItem, type BuildingChangeOrderLine, type Home } from '../../_shared/model'
 import { constructionCategoryCode, estimateCategories, estimateCategory } from '../estimate-categories'
@@ -8,7 +9,7 @@ import { constructionCategoryCode, estimateCategories, estimateCategory } from '
 const label = 'block min-w-0 text-sm font-medium text-slate-700'
 const field = 'mt-1.5 block min-h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
 
-export function ChangeOrderLineEditor({ line, index, home, boqItems, canDelete, disabled, onChange, onDelete }: { line: BuildingChangeOrderLine; index: number; home: Home; boqItems: BoqItem[]; canDelete: boolean; disabled: boolean; onChange: (patch: Partial<BuildingChangeOrderLine>) => void; onDelete: () => void }) {
+export function ChangeOrderLineEditor({ line, index, home, boqItems, canDelete, disabled, onChange, onDelete, onUploadingChange }: { line: BuildingChangeOrderLine; index: number; home: Home; boqItems: BoqItem[]; canDelete: boolean; disabled: boolean; onChange: (patch: Partial<BuildingChangeOrderLine>) => void; onDelete: () => void; onUploadingChange: (uploading: boolean) => void }) {
  const item = home.items.find(item => item.id === line.sourceItemId)
  const sourceBoqItem = boqItems.find(row => row.id === line.sourceBoqItemId)
  const category = line.estimateCategory || estimateCategory(line, home)
@@ -38,6 +39,7 @@ export function ChangeOrderLineEditor({ line, index, home, boqItems, canDelete, 
    </div>{item?.referencePrice !== undefined && <p className="mb-0 mt-3 text-sm text-slate-600">ราคาที่หาไว้ {money(item.referencePrice)} บาท/ชิ้น · ใช้เปรียบเทียบ ยังไม่ใช่ราคาเสนอ</p>}</div>
    <div className="grid gap-4 sm:grid-cols-2"><label className={label}>สถานะราคา<select className={field} value={line.pricingStatus ?? 'quoted'} onChange={event => onChange({ pricingStatus: event.target.value as 'pending' | 'quoted' })}><option value="pending">รอตรวจสัญญา / เสนอราคา</option><option value="quoted">มีราคาเสนอแล้ว</option></select></label><label className={label}>{line.kind === 'replace' ? 'ราคารายการใหม่รวม (บาท)' : 'ยอดรวมรายการ (บาท)'}<input className={`${field} ${calculated ? 'bg-blue-50' : ''}`} readOnly={calculated} required={!pending} type="number" min={pending ? 0 : 0.01} step="0.01" value={line.amount || ''} onChange={event => onChange({ amount: Number(event.target.value) })} /><span className="mt-1.5 block text-xs font-normal leading-5 text-slate-500">{calculated ? 'คำนวณจากจำนวน × (ค่าวัสดุ + ค่าแรงต่อหน่วย)' : 'กรอกยอดเสนอรวมได้ หากยังไม่ได้แยกวัสดุและค่าแรง'}</span></label></div>
    {line.kind === 'replace' && sourceBoqItem ? <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm"><div className="flex justify-between gap-3"><span>ยอดเดิมใน BOQ</span><strong>{money(line.referenceAmount ?? 0)} บาท</strong></div><div className="mt-1 flex justify-between gap-3"><span>ยอดรายการใหม่</span><strong>{money(line.amount)} บาท</strong></div><div className="mt-2 flex justify-between gap-3 border-t border-slate-200 pt-2 font-semibold"><span>ส่วนต่าง {replacementDelta >= 0 ? 'เพิ่ม' : 'ลด'}</span><strong className={replacementDelta >= 0 ? 'text-orange-700' : 'text-emerald-700'}>{replacementDelta > 0 ? '+' : ''}{money(replacementDelta)} บาท</strong></div></div> : null}
+   <WorkPhotoField photos={line.photos} title={item?.name || line.description || 'รายการงาน'} disabled={disabled} onUploadingChange={onUploadingChange} onChange={photos => onChange({ photos })} />
    <label className={label}>หมายเหตุ / เงื่อนไข<textarea className={field} rows={2} value={line.estimateNotes ?? ''} onChange={event => onChange({ estimateNotes: event.target.value })} placeholder="เช่น รอตรวจว่ารวมในสัญญาช่างหรือไม่" /></label>
    <div className="flex justify-end border-t border-slate-100 pt-3"><Button type="button" disabled={!canDelete || disabled} className="text-rose-700" onClick={onDelete} aria-label={`ลบรายการที่ ${index + 1}`}><Trash2 size={16} />ลบรายการนี้</Button></div>
   </fieldset>

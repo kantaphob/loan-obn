@@ -251,6 +251,10 @@ model Borrower {
 
 // Lenders are separate from borrowers; one person can fund and/or sign contracts.
 model Lender {
+  advanceClaims ExpenseClaim[] @relation("ExpenseClaimant")
+  repayClaims ExpenseClaim[] @relation("ExpensePayer")
+  reimbursementPaid ReimbursementVoucher[] @relation("VoucherPayer")
+  reimbursementReceived ReimbursementVoucher[] @relation("VoucherPayee")
   contracts LoanContract[]
   titleTh String @default("")
   middleNameTh String @default("")
@@ -435,6 +439,7 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  reimbursementVoucher ReimbursementVoucher?
   recurringPayment RecurringPayment?
   payrollReceipt PayrollRecord?
   accountScope String @default("GENERAL")
@@ -651,6 +656,7 @@ model AccountingMonthLock {
 
 // Imported daily cashbook kept separate from the loan ledger.
 model HistoricalCashEntry {
+  reimbursementVoucher ReimbursementVoucher?
   recurringPayment RecurringPayment?
   payrollReceipt PayrollRecord?
   id Int @id @default(autoincrement())
@@ -1441,4 +1447,117 @@ model RecurringPayment {
 
   @@unique([itemId, period])
   @@map("recurring_payment")
+}
+
+model ExpenseClaim {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  requestHash String
+  claimantId Int
+  claimant Lender @relation("ExpenseClaimant", fields: [claimantId], references: [id], onDelete: Restrict)
+  payerId Int
+  payer Lender @relation("ExpensePayer", fields: [payerId], references: [id], onDelete: Restrict)
+  spentOn String
+  claimantName String
+  payerName String
+  title String
+  itemsJson String
+  amountSatang Float
+  note String @default("")
+  pdfData Bytes
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  voidedAt DateTime?
+  voidedBy String?
+  voidReason String?
+  allocations ReimbursementAllocation[]
+  files ReimbursementFile[]
+  events ReimbursementEvent[]
+
+  @@index([claimantId, payerId, spentOn])
+  @@map("expense_claim")
+}
+
+model ReimbursementVoucher {
+  id Int @id @default(autoincrement())
+  requestKey String @unique
+  requestHash String
+  payerId Int
+  payer Lender @relation("VoucherPayer", fields: [payerId], references: [id], onDelete: Restrict)
+  payeeId Int
+  payee Lender @relation("VoucherPayee", fields: [payeeId], references: [id], onDelete: Restrict)
+  payerName String
+  payeeName String
+  paidOn String
+  amountSatang Float
+  channelName String
+  reference String
+  note String @default("")
+  createdLedger Boolean @default(false)
+  ledgerEntryId Int? @unique
+  ledgerEntry LedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: Restrict)
+  historicalEntryId Int? @unique
+  historicalEntry HistoricalCashEntry? @relation(fields: [historicalEntryId], references: [id], onDelete: Restrict)
+  snapshotJson String
+  pdfData Bytes
+  createdBy String
+  createdAt DateTime @default(now())
+  voidedAt DateTime?
+  voidedBy String?
+  voidReason String?
+  allocations ReimbursementAllocation[]
+  files ReimbursementFile[]
+  events ReimbursementEvent[]
+
+  @@index([payeeId, paidOn])
+  @@map("reimbursement_voucher")
+}
+
+model ReimbursementAllocation {
+  id Int @id @default(autoincrement())
+  voucherId Int
+  voucher ReimbursementVoucher @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+  claimId Int
+  claim ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Restrict)
+  amountSatang Float
+
+  @@unique([voucherId, claimId])
+  @@index([claimId])
+  @@map("reimbursement_allocation")
+}
+
+model ReimbursementFile {
+  id Int @id @default(autoincrement())
+  claimId Int?
+  claim ExpenseClaim? @relation(fields: [claimId], references: [id], onDelete: Restrict)
+  voucherId Int?
+  voucher ReimbursementVoucher? @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+  originalName String
+  mimeType String
+  sizeBytes Int
+  fileData Bytes
+  sha256 String
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([claimId])
+  @@index([voucherId])
+  @@map("reimbursement_file")
+}
+
+model ReimbursementEvent {
+  id Int @id @default(autoincrement())
+  claimId Int?
+  claim ExpenseClaim? @relation(fields: [claimId], references: [id], onDelete: Restrict)
+  voucherId Int?
+  voucher ReimbursementVoucher? @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+  action String
+  reason String
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([claimId])
+  @@index([voucherId])
+  @@map("reimbursement_event")
 }

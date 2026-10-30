@@ -37,6 +37,7 @@ export function contractLedgerBalance(contract: BalanceContract, entries: Balanc
   const legacyReceivedSatang = disbursed ? contract.legacyReceivedSatang ?? 0 : 0
   let baseRemaining = disbursed ? Math.max(0, contract.repaymentSatang - legacyReceivedSatang) : 0
   let penaltyRemaining = 0, penaltyAccrued = 0, penaltyAccruedDays = 0, penaltyWaived = 0, penaltyPaid = 0, received = legacyReceivedSatang, settlementWaived = 0, invalid = false
+  const repaymentBreakdown: { id: number; penaltyPaidSatang: number; contractPaidSatang: number; excessPaymentSatang: number; excessSettlementWaiverSatang: number }[] = []
   let cursor = penaltyStart ?? asOf
   const accrue = (until: string) => {
     if (!disbursed || !contract.repaymentDueDate || until <= cursor) return
@@ -57,10 +58,14 @@ export function contractLedgerBalance(contract: BalanceContract, entries: Balanc
     const feePayment = e.penaltyAssessed === false ? 0 : Math.min(penaltyRemaining, e.amountSatang)
     penaltyRemaining -= feePayment; penaltyPaid += feePayment
     const basePayment = e.amountSatang - feePayment
-    if (basePayment > baseRemaining) invalid = true
+    const contractPaidSatang = Math.min(basePayment, baseRemaining)
+    const excessPaymentSatang = Math.max(0, basePayment - baseRemaining)
+    if (excessPaymentSatang > 0) invalid = true
     baseRemaining = Math.max(0, baseRemaining - basePayment)
     const settlement = e.settlementWaivedSatang ?? 0
-    if (settlement > baseRemaining || settlement < 0) invalid = true
+    const excessSettlementWaiverSatang = Math.max(0, settlement - baseRemaining)
+    if (excessSettlementWaiverSatang > 0 || settlement < 0) invalid = true
+    if (e.id !== undefined) repaymentBreakdown.push({ id: e.id, penaltyPaidSatang: feePayment, contractPaidSatang, excessPaymentSatang, excessSettlementWaiverSatang })
     baseRemaining = Math.max(0, baseRemaining - settlement); settlementWaived += settlement
     // Historical payments retain their original allocation; fully settled contracts stay settled.
     if (e.penaltyAssessed === false && baseRemaining === 0) { penaltyRemaining = 0; penaltyAccrued = penaltyPaid + penaltyWaived }
@@ -68,5 +73,5 @@ export function contractLedgerBalance(contract: BalanceContract, entries: Balanc
   }
   accrue(asOf)
   const overdueDays = disbursed && penaltyStart && asOf > penaltyStart ? Math.round((Date.parse(asOf) - Date.parse(penaltyStart)) / 86400000) : 0
-  return { disbursed, received, legacyReceivedSatang, remaining: baseRemaining + penaltyRemaining, baseRemaining, penaltyRemaining, penaltyAccrued, penaltyWaived, penaltyPaid, settlementWaived, overdueDays, renegotiationRequired: Number.isFinite(maxPenaltyDays) && disbursed && baseRemaining > 0 && overdueDays > maxPenaltyDays, invalid, disbursementOn: disbursed ? fundedOn : null }
+  return { disbursed, received, legacyReceivedSatang, remaining: baseRemaining + penaltyRemaining, baseRemaining, penaltyRemaining, penaltyAccrued, penaltyWaived, penaltyPaid, settlementWaived, overdueDays, renegotiationRequired: Number.isFinite(maxPenaltyDays) && disbursed && baseRemaining > 0 && overdueDays > maxPenaltyDays, invalid, repaymentBreakdown, disbursementOn: disbursed ? fundedOn : null }
 }

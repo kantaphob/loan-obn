@@ -65,8 +65,8 @@ export async function recurringCandidates(itemId: number, month: string) {
   const end = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).toISOString().slice(0, 10)
   const occurredOn = { gte: `${month}-01`, lte: end < bangkokToday() ? end : bangkokToday() }
   const [ledger, historical] = await Promise.all([
-    prisma.ledgerEntry.findMany({ where: { direction: item.direction, accountScope: 'GENERAL', kind: 'GENERAL', contractId: null, payableId: null, receivableId: null, voidedAt: null, occurredOn, recurringPayment: null, payrollReceipt: null }, select: { id: true, occurredOn: true, amountSatang: true, categoryName: true, note: true }, orderBy: { occurredOn: 'desc' } }),
-    prisma.historicalCashEntry.findMany({ where: { direction: item.direction, occurredOn, recurringPayment: null, payrollReceipt: null }, select: { id: true, occurredOn: true, amountSatang: true, description: true }, orderBy: { occurredOn: 'desc' } }),
+    prisma.ledgerEntry.findMany({ where: { direction: item.direction, accountScope: 'GENERAL', kind: 'GENERAL', contractId: null, payableId: null, receivableId: null, voidedAt: null, occurredOn, reimbursementVoucher: null, recurringPayment: null, payrollReceipt: null }, select: { id: true, occurredOn: true, amountSatang: true, categoryName: true, note: true }, orderBy: { occurredOn: 'desc' } }),
+    prisma.historicalCashEntry.findMany({ where: { direction: item.direction, occurredOn, reimbursementVoucher: null, recurringPayment: null, payrollReceipt: null }, select: { id: true, occurredOn: true, amountSatang: true, description: true }, orderBy: { occurredOn: 'desc' } }),
   ])
   return [...ledger.map(e => ({ key: `LEDGER:${e.id}`, date: e.occurredOn, amount: e.amountSatang, label: `${e.categoryName} ${e.note}` })), ...historical.map(e => ({ key: `HISTORICAL:${e.id}`, date: e.occurredOn, amount: e.amountSatang, label: e.description }))].sort((a, b) => Math.abs(a.amount - item.amountSatang) - Math.abs(b.amount - item.amountSatang))
 }
@@ -88,12 +88,12 @@ export async function settleRecurring(input: { id: number; month: string; existi
         const id = Number(match[2])
         await lockCashForMatching(tx, match[1] as 'LEDGER' | 'HISTORICAL', id)
         if (match[1] === 'LEDGER') {
-          const e = await tx.ledgerEntry.findUniqueOrThrow({ where: { id }, include: { payrollReceipt: true, recurringPayment: true } })
-          if (e.voidedAt || e.accountScope !== 'GENERAL' || e.direction !== item.direction || e.kind !== 'GENERAL' || e.contractId || e.payableId || e.receivableId || e.payrollReceipt || e.recurringPayment) throw new Error('รายการนี้ไม่ใช่เงินทั่วไปที่ว่างสำหรับจับคู่')
+          const e = await tx.ledgerEntry.findUniqueOrThrow({ where: { id }, include: { reimbursementVoucher: true, payrollReceipt: true, recurringPayment: true } })
+          if (e.voidedAt || e.accountScope !== 'GENERAL' || e.direction !== item.direction || e.kind !== 'GENERAL' || e.contractId || e.payableId || e.receivableId || e.reimbursementVoucher || e.payrollReceipt || e.recurringPayment) throw new Error('รายการนี้ไม่ใช่เงินทั่วไปที่ว่างสำหรับจับคู่')
           ledgerEntryId = id
         } else {
-          const e = await tx.historicalCashEntry.findUniqueOrThrow({ where: { id }, include: { payrollReceipt: true, recurringPayment: true } })
-          if (e.direction !== item.direction || e.payrollReceipt || e.recurringPayment) throw new Error('รายการนี้ถูกจับคู่แล้ว หรือประเภทไม่ตรง')
+          const e = await tx.historicalCashEntry.findUniqueOrThrow({ where: { id }, include: { reimbursementVoucher: true, payrollReceipt: true, recurringPayment: true } })
+          if (e.direction !== item.direction || e.reimbursementVoucher || e.payrollReceipt || e.recurringPayment) throw new Error('รายการนี้ถูกจับคู่แล้ว หรือประเภทไม่ตรง')
           historicalEntryId = id
         }
       } else {

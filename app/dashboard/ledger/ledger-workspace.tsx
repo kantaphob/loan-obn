@@ -1,5 +1,6 @@
 'use client'
 
+import { CashActions } from '@/components/ui/cash-actions'
 import './ledger-entry.css'
 import './ledger-directory.css'
 import Link from 'next/link'
@@ -72,7 +73,7 @@ export function LedgerWorkspace({ data, initialCreate = false, initialDirection 
       })}
     </div>
     <Card className="ledger-directory-card overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{filtered.length} รายการ</span></h2>{data.canWrite && <div className="flex flex-wrap gap-2"><button type="button" className="ledger-create-action ledger-create-income" onClick={() => open('IN')}><ArrowDownLeft size={16} aria-hidden="true" />บันทึกรายรับ</button><button type="button" className="ledger-create-action ledger-create-expense" onClick={() => open('OUT')}><ArrowUpRight size={16} aria-hidden="true" />บันทึกรายจ่าย</button></div>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="font-semibold">รายการรับ–จ่าย <span className="ml-2 text-sm font-normal text-slate-500">{filtered.length} รายการ</span></h2>{data.canWrite && <CashActions onIncome={() => open('IN')} onExpense={() => open('OUT')} disabled={pending} />}</div>
       <div className="flex flex-wrap items-end gap-3 border-y border-slate-200/70 p-4">
         <label className="min-w-48 flex-1 text-xs text-slate-500">ค้นหารายการ<div className="relative mt-1"><Search className="absolute right-3 top-3" size={17} /><input className={`${field} pr-10`} value={query} onChange={e => { setQuery(e.target.value); setPage(1) }} placeholder="เลขรายการ สัญญา ชื่อผู้กู้ อ้างอิง" /></div></label>
         <label className="text-xs text-slate-500">ประเภท<select className={`${field} mt-1`} value={direction} onChange={e => { setDirection(e.target.value); setPage(1) }}><option value="">ทั้งหมด</option><option value="IN">รับเงิน</option><option value="OUT">จ่ายเงิน</option></select></label>
