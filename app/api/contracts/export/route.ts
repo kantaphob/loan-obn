@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   for (const row of filteredRows) {
     const contractDate = row.legacySourceCode && row.scheduledDisbursementDate ? row.scheduledDisbursementDate : row.createdAt
     const approvalStatus = row.limitApprovalRequired ? 'รออนุมัติ' : row.limitApprovedAt ? 'อนุมัติแล้ว' : 'ไม่ต้องอนุมัติ'
-    const contractStatus = row.status === 'REJECTED' ? 'ไม่อนุมัติ' : row.limitApprovalRequired ? 'รออนุมัติวงเงิน' : row.legacySourceCode ? sourceStatus(row.legacyDetails) || 'รายการย้อนหลัง' : row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : row.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'
+    const contractStatus = row.status === 'CANCELLED' ? 'ยกเลิกสัญญา' : row.status === 'REJECTED' ? 'ไม่อนุมัติ' : row.limitApprovalRequired ? 'รออนุมัติวงเงิน' : row.legacySourceCode ? sourceStatus(row.legacyDetails) || 'รายการย้อนหลัง' : row.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : row.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'
     const documentPackage = ({ LOAN: 'สัญญาเงินกู้', LOAN_GUARANTEE: 'สัญญาเงินกู้และสัญญาค้ำ', LOAN_GUARANTEE_COLLATERAL: 'สัญญาเงินกู้ สัญญาค้ำ และหลักประกัน' } as Record<string, string>)[row.documentPackage ?? ''] ?? '—'
     sheet.addRow([
       contractCode(row.id), excelDate(contractDate), row.legacySourceCode ?? '', row.borrowerCode, row.borrowerName,

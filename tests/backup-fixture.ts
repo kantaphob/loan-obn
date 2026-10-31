@@ -9,6 +9,6 @@ async function main() {
   db.close()
   // Import after changing cwd: backup and record-file roots stay inside the fixture.
   const { afterDatabaseCommit } = await import('../lib/after-database-commit')
-  await afterDatabaseCommit()
+  await afterDatabaseCommit(process.env.DATABASE_URL)
 }
 void main()

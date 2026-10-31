@@ -11,8 +11,8 @@ export function useContractReview(id: number) {
   async function show() {
     const current = ++generation.current
     setOpen(true); setReview(null); setError(''); setLoading(true)
-    try { const data = await getPendingContractReview(id); if (current === generation.current) setReview(data) }
-    catch (error) { if (current === generation.current) setError(error instanceof Error ? error.message : 'โหลดข้อมูลไม่สำเร็จ') }
+    try { const data = await getPendingContractReview(id); if (current === generation.current) { setReview(data); return true } return false }
+    catch (error) { if (current === generation.current) setError(error instanceof Error ? error.message : 'โหลดข้อมูลไม่สำเร็จ'); return false }
     finally { if (current === generation.current) setLoading(false) }
   }
   function close() { generation.current++; setOpen(false); setReview(null); setLoading(false) }

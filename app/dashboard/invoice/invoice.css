@@ -80,3 +80,8 @@
 .workspace-theme .invoice-review-modal .ap-review-debts th:nth-child(2) { width: 44%; }
 .workspace-theme .invoice-review-modal .ap-review-debts th:nth-child(3) { width: 30%; }
 @media(max-width:600px) { .workspace-theme .invoice-review-modal .ap-review-debts :is(th,td) { padding: 10px 8px; font-size: 11px; } }
+
+.invoice-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 136px; }
+.workspace-theme .action-button.invoice-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; min-width: 40px; padding: 0; border-radius: 11px; flex-shrink: 0; }
+.invoice-icon-action svg { flex-shrink: 0; }
+.invoice-signing-link { flex-basis: 100%; order: 1; white-space: normal; }

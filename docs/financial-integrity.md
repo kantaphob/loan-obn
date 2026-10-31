@@ -20,7 +20,7 @@ This does not verify bank authenticity or detect a re-encoded/cropped image. His
 
 ## Persistence and backups
 
-The Prisma client preserves lazy Prisma promises. Standalone model writes trigger file synchronization and a verified SQLite snapshot after success. Callback and array transactions trigger those effects only after commit. Rollbacks do not run them. Backup errors are logged separately and do not report a committed payment as failed. Backups include stored slip bytes in SQLite. Test runners disable real file/network side effects and use isolated databases.
+The Prisma client preserves lazy Prisma promises. Standalone model writes and successful write transactions request coalesced background file synchronization and a verified backup after commit. Read-only transactions and rollbacks do not request persistence. Backup errors are logged and retried separately and do not report a committed payment as failed. PostgreSQL backups package the database and private attachments; isolated SQLite backup tests embed slip bytes. Test runners disable real file/network side effects and use isolated databases.
 
 ## Google synchronization
 
@@ -61,3 +61,13 @@ The payout dialog shows the contract and exposure summary again. A slip remains 
 - Historical cashbook years can feed subsequent live-Ledger years. If both sources (or multiple imported account codes) occur in the same year, the combined figure is withheld pending source reconciliation; source breakdown remains visible. This avoids silently combining overlapping exports with live postings.
 - Current cash uses posted movements only, excludes voids and future dates, and never adds contractual receivables, waived debts, or legacy received totals as new cash. It reflects the history available in the system and still requires comparison with cash/bank evidence.
 - New monthly closing snapshots include opening/closing cash and its source breakdown. Previously frozen archives are retained as-is. Year workpaper trial balances and owner equity are not automatically inferred from cash carryforward.
+
+## Background persistence after a commit
+
+Database commit is the save boundary. Standalone mutations and successful write transactions request a background file/archive/backup pass; read-only transactions and rolled-back writes do not. Requests within one second coalesce, and writes committed during a pass trigger another pass afterward. Work never overlaps within the server process. Failure is logged and retried after 30 seconds. Startup requests a fresh pass so interrupted work regenerates from the authoritative database. Google queue writes share the same coalescing window. Slip bytes remain committed in the database before save succeeds; borrower-folder copies are produced by the background pass. Downloadable manual backups still wait for completion.
+
+`tests/persistence-queue.test.ts` checks non-blocking requests, burst coalescing, writes during backup and failure retry. Integrity tests check callback/array read transactions and rollback do not schedule persistence, while committed mixed transactions schedule once.
+
+## Cancelling an unpaid loan contract
+
+Administrators can cancel an approved waiting-payment contract from AP after reviewing the borrower and amounts and entering a reason. The action requires a current review digest and atomically checks the version, pending status, absence of paidAt and absence of active disbursements. It marks CANCELLED, releases the reservation, preserves documents/signatures/previous approval and appends a CANCELLATION revision. No money or ledger entry is created. Cancelled contracts remain searchable in Contracts with the reason, actor and timestamp; new document/signature mutations are blocked. Payment uses a conditional version/status update to avoid overwriting a simultaneous cancellation. Paid contracts cannot use this action.

@@ -1,5 +1,5 @@
 import { withPersistence } from './persisted-client'
-import { afterDatabaseCommit } from './after-database-commit'
+import { scheduleDatabasePersistence } from './after-database-commit'
 import { getDatabaseUrl } from './database-config'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient as SQLiteClient } from '@/generated/prisma-sqlite/client'
@@ -32,4 +32,4 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.schemaVersion = schemaVersion
 }
 
-export const prisma = withPersistence(basePrisma, afterDatabaseCommit)
+export const prisma = withPersistence(basePrisma, scheduleDatabasePersistence)

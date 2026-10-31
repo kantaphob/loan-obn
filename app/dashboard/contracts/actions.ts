@@ -270,8 +270,9 @@ export async function createLoanDocumentForExistingContract(contractId: number) 
     await prisma.$transaction(async tx => {
       const contract = await tx.loanContract.findUnique({ where: { id: contractId } })
       if (!contract) throw new Error('ไม่พบสัญญา')
+      if (contract.status === 'CANCELLED') throw new Error('สัญญานี้ยกเลิกแล้ว')
       if (contract.documentChoice !== 'NONE') throw new Error('รายการนี้มีการกำหนดเอกสารไว้แล้ว')
-      if (['CLOSED', 'REJECTED'].includes(contract.status)) throw new Error('สร้างเอกสารให้รายการที่ปิดยอดหรือไม่อนุมัติไม่ได้')
+      if (['CLOSED', 'REJECTED', 'CANCELLED'].includes(contract.status)) throw new Error('สร้างเอกสารให้รายการที่ปิดยอดหรือไม่อนุมัติไม่ได้')
       await tx.loanContract.update({ where: { id: contractId }, data: {
         documentChoice: 'CREATE', signingMethod: 'PRINT', documentPackage: 'LOAN', witnessCount: 2, guaranteeWitnessCount: 0,
         documentCreatedAt: now, documentCreatedBy: user.id, printSignedAt: null, printSignedBy: null,
@@ -299,6 +300,7 @@ export async function markPrintedContractSigned(contractId: number) {
     await prisma.$transaction(async tx => {
       const contract = await tx.loanContract.findUnique({ where: { id: contractId } })
       if (!contract) throw new Error('ไม่พบสัญญา')
+      if (contract.status === 'CANCELLED') throw new Error('สัญญานี้ยกเลิกแล้ว')
       if (contract.documentChoice !== 'CREATE' || contract.signingMethod !== 'PRINT') throw new Error('รายการนี้ไม่ได้ใช้เอกสารแบบพิมพ์เซ็น')
       if (contract.printSignedAt) throw new Error('บันทึกการลงนามรายการนี้แล้ว')
       await tx.loanContract.update({ where: { id: contractId }, data: { printSignedAt: new Date(), printSignedBy: user.id } })
@@ -412,7 +414,7 @@ export async function listContracts() {
       guarantorSignatureData: true, guarantorCapturedBy: true, guarantorConsentAt: true,
     },
     include: {
-      revisions: { where: { kind: 'REJECTION' }, orderBy: { id: 'desc' }, take: 1, select: { reason: true, createdBy: true, createdAt: true } },
+      revisions: { where: { kind: { in: ['REJECTION', 'CANCELLATION'] } }, orderBy: { id: 'desc' }, take: 1, select: { reason: true, createdBy: true, createdAt: true } },
       witnesses: { select: { position: true, name: true, signedAt: true }, orderBy: { position: 'asc' } },
       documentSignatures: { select: { documentStage: true, signer: true, name: true, signedAt: true } },
       ledgerEntries: { where: { kind: 'REPAYMENT', voidedAt: null }, select: { occurredOn: true }, orderBy: { occurredOn: 'desc' }, take: 1 },
@@ -481,6 +483,7 @@ export async function signContract(input: {
     const result = await prisma.$transaction(async tx => {
       const contract = await tx.loanContract.findUnique({ where: { id: input.contractId } })
       if (!contract) throw new Error('ไม่พบสัญญา')
+      if (contract.status === 'CANCELLED') throw new Error('สัญญานี้ยกเลิกแล้ว')
       if (contract.documentChoice !== 'CREATE' || contract.signingMethod !== 'E_SIGNATURE') throw new Error('สัญญานี้ไม่ได้เลือกลงนามแบบ e-signature')
       if (input.signer === 'GUARANTOR' && (!contract.documentPackage || contract.documentPackage === 'LOAN' || !contract.guarantorName)) throw new Error('สัญญานี้ไม่มีผู้ค้ำประกัน')
       const documentStage = input.documentStage ?? 'LOAN'

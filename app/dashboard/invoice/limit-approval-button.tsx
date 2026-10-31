@@ -1,5 +1,6 @@
 'use client'
 
+import { ClipboardCheck, CircleX } from 'lucide-react'
 import { DataLoading } from '@/components/ui/data-loading'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -44,7 +45,7 @@ export function LimitApprovalButton({ contractId }: { contractId: number }) {
       } catch { dialog.setError('บันทึกไม่อนุมัติไม่สำเร็จ กรุณาลองใหม่') }
     })
   }
-  return <><div className="flex flex-col items-start gap-2"><Button variant="primary" onClick={() => open()}>ตรวจสอบและอนุมัติ</Button><Button variant="danger" onClick={() => open(true)}>ไม่อนุมัติ</Button></div>
+  return <><div className="invoice-row-actions" role="group" aria-label="พิจารณารายการจอง"><Button variant="primary" className="invoice-icon-action" aria-label="ตรวจสอบและอนุมัติ" title="ตรวจสอบและอนุมัติ" onClick={() => open()}><ClipboardCheck size={18} aria-hidden="true" /></Button><Button variant="danger" className="invoice-icon-action" aria-label="ไม่อนุมัติ" title="ไม่อนุมัติ" onClick={() => open(true)}><CircleX size={18} aria-hidden="true" /></Button></div>
     <Modal open={dialog.open} className="invoice-review-modal" title={rejecting ? 'ไม่อนุมัติรายการจอง' : 'ตรวจสอบก่อนอนุมัติวงเงิน'} description={contractCode(contractId)} onClose={() => { if (!pending) dialog.close() }}>
       <div className="space-y-4 whitespace-normal text-sm">
         {dialog.loading && <DataLoading compact label="กำลังโหลดวงเงินและรายการค้างล่าสุด…" />}

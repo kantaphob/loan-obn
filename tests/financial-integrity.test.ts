@@ -43,6 +43,14 @@ test('post-commit effects cover standalone, callback and array transactions and 
   assert.equal((await prisma.paymentChannel.findUniqueOrThrow({ where: { code: 'TEST_COMMIT' } })).nameTh, 'committed')
   await observed.$transaction([observed.paymentChannel.update({ where: { code: 'TEST_COMMIT' }, data: { nameTh: 'array' } })])
   assert.equal(calls, 3)
+  await observed.$transaction(async tx => tx.paymentChannel.findMany())
+  await observed.$transaction([observed.paymentChannel.findMany()])
+  assert.equal(calls, 3, 'read-only transactions do not schedule backups')
+  await observed.$transaction([observed.paymentChannel.findMany(), observed.paymentChannel.update({ where: { code: 'TEST_COMMIT' }, data: { nameTh: 'mixed' } })])
+  assert.equal(calls, 4, 'mixed transactions schedule once after commit')
+  await assert.rejects(observed.$transaction([observed.paymentChannel.update({ where: { code: 'TEST_COMMIT' }, data: { nameTh: 'rollback-array' } }), observed.paymentChannel.update({ where: { code: 'MISSING' }, data: { nameTh: 'fail' } })]))
+  assert.equal(calls, 4, 'failed array transactions do not schedule backups')
+  assert.equal((await prisma.paymentChannel.findUniqueOrThrow({ where: { code: 'TEST_COMMIT' } })).nameTh, 'mixed')
 })
 
 test('credit reservation, duplicate references and slip hashes, edits, void and retry', async () => {

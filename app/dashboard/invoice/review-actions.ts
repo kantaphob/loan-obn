@@ -39,7 +39,7 @@ export async function approvePendingContract(id: number, expectedToken: string) 
 }
 export type EditPendingContractInput = {
   id: number; reviewToken: string; principal: string; scheduledDisbursementDate: string; repaymentDueDate: string;
-  collateralDescription: string; reason: string; confirmResetSignatures: boolean;
+  collateralDescription: string; reason: string; confirmResetSignatures: boolean; interestMethod?: string; internalRateCode?: string;
 }
 export async function editPendingContract(input: EditPendingContractInput) {
   try {
@@ -52,16 +52,23 @@ export async function editPendingContract(input: EditPendingContractInput) {
       assertReviewToken(data.reviewToken, input.reviewToken)
       if (c.limitApprovalRequired) throw new Error('กรุณาอนุมัติรายการจองก่อนแก้ไขสัญญาในขั้นรอจ่าย')
       if (data.hasSignatures && input.confirmResetSignatures !== true) throw new Error('สัญญามีลายเซ็นแล้ว กรุณายืนยันจัดทำเอกสารและลงนามใหม่ก่อนแก้ไข')
-      const computedAmounts = contractAmounts(input.principal, c.internalInterestPercent ?? c.interestPercent, c.interestMethod)
-      const amounts = computedAmounts.principalSatang === c.principalSatang ? { principalSatang: c.principalSatang, interestSatang: c.interestSatang, netSatang: c.netSatang, repaymentSatang: c.repaymentSatang } : computedAmounts
+      const interestMethod = input.interestMethod ?? c.interestMethod
+      const methodChanged = interestMethod !== c.interestMethod
+      const currentRate = c.internalInterestPercent ?? c.interestPercent
+      const selectedRate = input.internalRateCode === undefined ? null : await tx.interestRate.findUnique({ where: { code: typeof input.internalRateCode === 'string' ? input.internalRateCode : '' } })
+      if (input.internalRateCode !== undefined && (!selectedRate || !selectedRate.isActive)) throw new Error('อัตราดอกเบี้ยใน Master Data ไม่พร้อมใช้งาน กรุณาเลือกใหม่')
+      const rate = selectedRate?.percent ?? currentRate
+      const rateChanged = rate !== currentRate
+      const computedAmounts = contractAmounts(input.principal, rate, interestMethod)
+      const amounts = computedAmounts.principalSatang === c.principalSatang && !methodChanged && !rateChanged ? { principalSatang: c.principalSatang, interestSatang: c.interestSatang, netSatang: c.netSatang, repaymentSatang: c.repaymentSatang } : computedAmounts
       const collateralDescription = input.collateralDescription.trim() || null
       const principalChanged = amounts.principalSatang !== c.principalSatang
-      const changed = principalChanged || input.scheduledDisbursementDate !== c.scheduledDisbursementDate || input.repaymentDueDate !== c.repaymentDueDate || collateralDescription !== c.collateralDescription
+      const changed = rateChanged || methodChanged || principalChanged || input.scheduledDisbursementDate !== c.scheduledDisbursementDate || input.repaymentDueDate !== c.repaymentDueDate || collateralDescription !== c.collateralDescription
       if (!changed) throw new Error('ยังไม่มีข้อมูลเปลี่ยนแปลง')
       // A previously approved amount does not authorize increasing an over-limit reservation.
       const needsApproval = principalChanged && amounts.principalSatang > c.principalSatang && amounts.principalSatang > data.availableBeforeSatang
       const update = {
-        ...amounts, scheduledDisbursementDate: input.scheduledDisbursementDate, repaymentDueDate: input.repaymentDueDate, collateralDescription,
+        ...amounts, interestMethod, ...(rateChanged ? { internalInterestPercent: rate } : {}), scheduledDisbursementDate: input.scheduledDisbursementDate, repaymentDueDate: input.repaymentDueDate, collateralDescription,
         limitApprovalRequired: needsApproval,
         ...(needsApproval ? { limitApprovedAt: null, limitApprovedBy: null } : {}),
         reviewVersion: { increment: 1 },
@@ -73,7 +80,7 @@ export async function editPendingContract(input: EditPendingContractInput) {
       if (!updated.count) throw new Error('สัญญาเปลี่ยนแปลงแล้ว กรุณาโหลดใหม่')
       // Preserve the old signed version before clearing live signatures.
       const snapshot = Object.fromEntries(Object.entries(c).filter(([key]) => !['borrower', 'lender', 'revisions'].includes(key)))
-      await tx.contractRevision.create({ data: { contractId: c.id, kind: 'EDIT', beforeJson: JSON.stringify(snapshot), afterJson: JSON.stringify({ ...data, ...amounts, scheduledDisbursementDate: input.scheduledDisbursementDate, repaymentDueDate: input.repaymentDueDate, collateralDescription, limitApprovalRequired: needsApproval, reviewVersion: c.reviewVersion + 1 }), reason: input.reason.trim(), createdBy: user.id } })
+      await tx.contractRevision.create({ data: { contractId: c.id, kind: 'EDIT', beforeJson: JSON.stringify(snapshot), afterJson: JSON.stringify({ ...data, ...amounts, interestMethod, ...(rateChanged ? { internalInterestPercent: rate } : {}), scheduledDisbursementDate: input.scheduledDisbursementDate, repaymentDueDate: input.repaymentDueDate, collateralDescription, limitApprovalRequired: needsApproval, reviewVersion: c.reviewVersion + 1 }), reason: input.reason.trim(), createdBy: user.id } })
       await tx.contractWitness.deleteMany({ where: { contractId: c.id } })
       await tx.contractDocumentSignature.deleteMany({ where: { contractId: c.id } })
       return { needsApproval, signaturesReset: data.hasSignatures }
@@ -98,4 +105,20 @@ export async function rejectPendingContract(id: number, expectedToken: string, r
     await syncGoogleContract(id); refresh()
     return { success: true as const }
   } catch (error) { return { success: false as const, error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกไม่อนุมัติไม่สำเร็จ กรุณาลองใหม่' } }
+}
+
+export async function cancelPendingContract(id: number, expectedToken: string, reason: string) {
+  try {
+    const user = await operator(true)
+    if (typeof reason !== 'string' || !reason.trim() || reason.length > 500) throw new Error('กรุณาระบุเหตุผลยกเลิก ไม่เกิน 500 ตัวอักษร')
+    await prisma.$transaction(async tx => {
+      const { contract: c, data } = await loadPendingContractReview(tx, id)
+      assertReviewToken(data.reviewToken, expectedToken)
+      const updated = await tx.loanContract.updateMany({ where: { id, reviewVersion: c.reviewVersion, status: 'WAITING_PAYMENT', paidAt: null, ledgerEntries: { none: { kind: 'DISBURSEMENT', voidedAt: null } } }, data: { status: 'CANCELLED', limitApprovalRequired: false, reviewVersion: { increment: 1 } } })
+      if (!updated.count) throw new Error('สัญญาเปลี่ยนแปลงหรือจ่ายเงินแล้ว กรุณาโหลดข้อมูลล่าสุด')
+      await tx.contractRevision.create({ data: { contractId: id, kind: 'CANCELLATION', beforeJson: JSON.stringify(data), afterJson: JSON.stringify({ status: 'CANCELLED', limitApprovalRequired: false, reviewVersion: c.reviewVersion + 1 }), reason: reason.trim(), createdBy: user.id } })
+    })
+    await syncGoogleContract(id); refresh()
+    return { success: true as const }
+  } catch (error) { return { success: false as const, error: error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'ยกเลิกสัญญาไม่สำเร็จ กรุณาลองใหม่' } }
 }

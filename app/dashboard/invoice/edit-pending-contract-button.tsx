@@ -1,5 +1,6 @@
 'use client'
 
+import { PencilLine } from 'lucide-react'
 import { DataLoading } from '@/components/ui/data-loading'
 import { useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
@@ -14,7 +15,7 @@ import { useContractReview } from './use-contract-review'
 const field = 'mt-1 block w-full rounded-xl border border-slate-300 bg-white p-3 text-sm'
 export function EditPendingContractButton({ contractId }: { contractId: number }) {
   const dialog = useContractReview(contractId)
-  return <><Button variant="edit" onClick={() => { void dialog.show() }}>แก้ไขสัญญาก่อนจ่าย</Button><Modal open={dialog.open} className="invoice-review-modal" title="แก้ไขสัญญาก่อนจ่ายเงินจริง" description={contractCode(contractId)} onClose={dialog.close}>
+  return <><Button variant="edit" className="invoice-icon-action" aria-label="แก้ไขสัญญาก่อนจ่าย" title="แก้ไขสัญญาก่อนจ่าย" onClick={() => { void dialog.show() }}><PencilLine size={18} aria-hidden="true" /></Button><Modal open={dialog.open} className="invoice-review-modal" title="แก้ไขสัญญาก่อนจ่ายเงินจริง" description={contractCode(contractId)} onClose={dialog.close}>
     {dialog.loading && <DataLoading compact label="กำลังโหลดข้อมูลสัญญา…" />}
     {dialog.error && <p role="alert" className="text-sm text-red-700">{dialog.error}</p>}
     {dialog.review && <EditForm key={dialog.review.reviewToken} review={dialog.review} close={dialog.close} />}
@@ -22,17 +23,20 @@ export function EditPendingContractButton({ contractId }: { contractId: number }
 }
 function EditForm({ review: r, close }: { review: PendingContractReview; close: () => void }) {
   const [principal, setPrincipal] = useState((r.principalSatang / 100).toFixed(2))
+  const [rateCode, setRateCode] = useState('')
+  const rate = r.interestRates.find(item => item.code === rateCode)?.percent ?? (r.internalInterestPercent ?? r.interestPercent)
+  const [interestMethod, setInterestMethod] = useState(r.interestMethod)
   const [error, setError] = useState(''), [pending, startTransition] = useTransition()
   const router = useRouter(), { toast } = useToast()
-  let preview = r.netSatang
-  try { if (Number(principal) * 100 !== r.principalSatang) preview = contractAmounts(principal, r.internalInterestPercent ?? r.interestPercent, r.interestMethod).netSatang } catch { /* Validation is displayed on submit. */ }
+  let preview = { netSatang: r.netSatang, repaymentSatang: r.repaymentSatang, interestSatang: r.interestSatang }
+  try { if (Number(principal) * 100 !== r.principalSatang || interestMethod !== r.interestMethod || Number(rate) !== (r.internalInterestPercent ?? r.interestPercent)) preview = contractAmounts(principal, Number(rate), interestMethod) } catch { /* Validation is displayed on submit. */ }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     setError('')
     startTransition(async () => {
       try {
-        const result = await editPendingContract({ id: r.id, reviewToken: r.reviewToken, principal, scheduledDisbursementDate: String(form.get('scheduled')), repaymentDueDate: String(form.get('due')), collateralDescription: String(form.get('collateral')), reason: String(form.get('reason')), confirmResetSignatures: form.get('resetSignatures') === 'on' })
+        const result = await editPendingContract({ id: r.id, reviewToken: r.reviewToken, principal, interestMethod, internalRateCode: rateCode || undefined, scheduledDisbursementDate: String(form.get('scheduled')), repaymentDueDate: String(form.get('due')), collateralDescription: String(form.get('collateral')), reason: String(form.get('reason')), confirmResetSignatures: form.get('resetSignatures') === 'on' })
         if (!result.success) { setError(result.error); return }
         toast({ title: 'แก้ไขสัญญาเรียบร้อยแล้ว', description: result.needsApproval ? 'ยอดใหม่ต้องได้รับอนุมัติวงเงินอีกครั้งก่อนจ่าย' : result.signaturesReset ? 'กรุณาจัดทำเอกสารฉบับแก้ไขและลงนามใหม่ก่อนจ่าย' : 'ตรวจข้อมูลล่าสุดก่อนบันทึกจ่ายเงินจริง', variant: 'success' })
         close(); router.refresh()
@@ -40,8 +44,11 @@ function EditForm({ review: r, close }: { review: PendingContractReview; close: 
     })
   }
   return <form onSubmit={submit} className="space-y-4 whitespace-normal text-sm"><fieldset disabled={pending} className="space-y-4"><p className="rounded-xl bg-slate-50 p-3">{r.borrowerName} · ผู้ให้กู้ {r.lenderName}<span className="mt-1 block text-xs text-slate-500">เปลี่ยนผู้กู้ ผู้ให้กู้ หรือประเภทเอกสาร ให้จัดทำสัญญาใหม่</span></p>
-    <div className="grid gap-4 sm:grid-cols-2"><label>เงินต้น (บาท)<input className={field} type="number" min="0.01" max="2000000000" step="0.01" required value={principal} onChange={e => setPrincipal(e.target.value)} /></label><div className="rounded-xl bg-blue-50 p-3 text-blue-900">ยอดจ่ายสุทธิหลังแก้ไข<strong className="mt-1 block text-xl">{money(preview)} บาท</strong></div><label>วันนัดจ่ายตามสัญญา<input className={field} type="date" name="scheduled" defaultValue={r.scheduledDisbursementDate ?? ''} required /></label><label>วันครบกำหนดคืน<input className={field} type="date" name="due" defaultValue={r.repaymentDueDate ?? ''} required /></label></div>
-    <p className="text-xs leading-6 text-slate-500">วันคืนเงินจะคงเดิมหากไม่ได้แก้ไขช่องวันครบกำหนดคืน ยอดหักและยอดคืนคำนวณด้วยวิธีและอัตราเดิมของรายการ หากมีเอกสารกระดาษลงนามแล้ว ให้จัดทำฉบับแก้ไขก่อนจ่าย</p>
+    <label className="block">วิธีชำระดอกเบี้ย<select className={field} value={interestMethod} onChange={e => setInterestMethod(e.target.value)}><option value="INTEREST_UPFRONT">หักดอกเบี้ยก่อนจ่าย · คืนเงินต้น</option><option value="INTEREST_WITH_PRINCIPAL">ไม่หักดอกก่อนจ่าย · คืนเงินต้นพร้อมดอกเบี้ย</option></select></label>
+    <label className="block">อัตราดอกเบี้ยจาก Master Data<select className={field} value={rateCode} onChange={e => setRateCode(e.target.value)}><option value="">ใช้อัตราเดิม {r.internalInterestPercent ?? r.interestPercent}%</option>{r.interestRates.map(item => <option key={item.code} value={item.code}>{item.percent}% · {item.code}</option>)}</select><span className="mt-1 block text-xs text-slate-500">แสดงเฉพาะอัตราที่เปิดใช้งานใน Master Data · อัตราต่อรอบเดียวกับรายการเดิม</span>{r.interestRates.length === 0 && <span className="block text-xs text-amber-700">ยังไม่มีอัตราที่เปิดใช้งาน กรุณาตั้งค่าใน Master Data ก่อนเปลี่ยนอัตรา</span>}</label>
+    <div className="grid gap-4 sm:grid-cols-2"><label>เงินต้น (บาท)<input className={field} type="number" min="0.01" max="2000000000" step="0.01" required value={principal} onChange={e => setPrincipal(e.target.value)} /></label><div className="rounded-xl bg-blue-50 p-3 text-blue-900">ยอดจ่ายสุทธิหลังแก้ไข<strong className="mt-1 block text-xl">{money(preview.netSatang)} บาท</strong></div><label>วันนัดจ่ายตามสัญญา<input className={field} type="date" name="scheduled" defaultValue={r.scheduledDisbursementDate ?? ''} required /></label><label>วันครบกำหนดคืน<input className={field} type="date" name="due" defaultValue={r.repaymentDueDate ?? ''} required /></label></div>
+    <div className="rounded-xl bg-slate-50 p-3 leading-6">ดอกเบี้ยตามอัตราที่เลือก {money(preview.interestSatang)} บาท · หักก่อนจ่าย {money(interestMethod === 'INTEREST_UPFRONT' ? preview.interestSatang : 0)} บาท<strong className="block">ยอดที่ต้องคืนตามสัญญา {money(preview.repaymentSatang)} บาท</strong><span className="text-xs text-slate-500">ไม่หักดอกก่อนจ่าย หมายถึงรับเงินต้นเต็มจำนวน แล้วคืนเงินต้นพร้อมดอกเบี้ย ไม่ใช่ยกเว้นดอกเบี้ย</span></div>
+    <p className="text-xs leading-6 text-slate-500">วันคืนเงินจะคงเดิมหากไม่ได้แก้ไขช่องวันครบกำหนดคืน ยอดหักและยอดคืนคำนวณตามวิธีที่เลือกด้วยอัตราที่ระบุ หากมีเอกสารกระดาษลงนามแล้ว ให้จัดทำฉบับแก้ไขก่อนจ่าย</p>
     <label className="block">รายละเอียดหลักประกัน<textarea className={field} name="collateral" maxLength={2000} rows={2} defaultValue={r.collateralDescription ?? ''} /></label>
     <label className="block">เหตุผลแก้ไข <span className="text-red-700">*</span><textarea className={field} name="reason" maxLength={500} rows={2} required /></label>
     {r.hasSignatures && <label className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-amber-900"><input className="mt-1" type="checkbox" name="resetSignatures" required /><span>ยืนยันเก็บฉบับเดิมในประวัติ และเริ่มลงนามใหม่สำหรับฉบับแก้ไข ต้องตรวจและลงนามใหม่ก่อนจ่ายเงินจริง</span></label>}

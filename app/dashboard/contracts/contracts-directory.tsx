@@ -92,6 +92,8 @@ export function ContractsDirectory() {
       row.paidAt ? date(row.paidAt) : row.scheduledDisbursementDate ? date(row.scheduledDisbursementDate) : '—',
       row.repaymentDueDate ? date(row.repaymentDueDate) : '—',
       copyAmount(row.netSatang),
+      'ส่งคืน',
+      copyAmount(row.repaymentSatang),
     ].join(' ')
     try {
       await navigator.clipboard.writeText(message)
@@ -115,6 +117,7 @@ export function ContractsDirectory() {
     return sourceStatus || 'รายการย้อนหลัง'
   }
   const contractStatus = (row: Awaited<ReturnType<typeof listContracts>>[number]) => {
+    if (row.status === 'CANCELLED') return { label: 'ยกเลิกสัญญา', tone: 'rose', style: 'border-rose-200 bg-rose-50 text-rose-800' }
     if (row.status === 'REJECTED') return { label: 'ไม่อนุมัติ', tone: 'rose', style: 'border-rose-200 bg-rose-50 text-rose-800' }
     if (row.limitApprovalRequired) return { label: 'รออนุมัติวงเงิน', tone: 'violet', style: 'border-violet-200 bg-violet-50 text-violet-800' }
     if (row.status === 'WAITING_PAYMENT') return { label: row.legacySourceCode && legacyStatus(row) === 'จองสัญญา' ? 'จองสัญญา · รอจ่ายเงินจริง' : 'รอจ่ายเงิน', tone: 'amber', style: 'border-amber-200 bg-amber-50 text-amber-800' }
@@ -134,9 +137,9 @@ export function ContractsDirectory() {
   const signingCell = (row: Awaited<ReturnType<typeof listContracts>>[number]) => <div className="flex min-w-36 flex-col items-start gap-2">
     <span>{signingLabel(row)}</span>
     {row.documentChoice === 'CREATE' && (row.signingMethod !== 'E_SIGNATURE' || contractSignaturesComplete(row)) && <a href={`/api/contracts/${row.id}/document`} target="_blank" rel="noopener noreferrer" className="action-button action-button--secondary">ดู/พิมพ์</a>}
-    {row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}
-    {row.documentChoice === 'NONE' && !['CLOSED', 'REJECTED'].includes(row.status) && <Button onClick={() => void beginExistingDocument(row)}>สร้างสัญญา</Button>}
-    {row.documentChoice === 'CREATE' && row.signingMethod === 'PRINT' && !row.printSignedAt && <Button onClick={() => { setPrintedSigning(row); setDocumentActionError('') }}>บันทึกว่าลงนามแล้ว</Button>}
+    {row.status !== 'CANCELLED' && row.documentChoice === 'CREATE' && row.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(row) && <Button onClick={() => setSigning(row)}>ลงนาม</Button>}
+    {row.documentChoice === 'NONE' && !['CLOSED', 'REJECTED', 'CANCELLED'].includes(row.status) && <Button onClick={() => void beginExistingDocument(row)}>สร้างสัญญา</Button>}
+    {row.status !== 'CANCELLED' && row.documentChoice === 'CREATE' && row.signingMethod === 'PRINT' && !row.printSignedAt && <Button onClick={() => { setPrintedSigning(row); setDocumentActionError('') }}>บันทึกว่าลงนามแล้ว</Button>}
   </div>
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
@@ -243,7 +246,7 @@ export function ContractsDirectory() {
           <Button type="submit">ค้นหา</Button>
         </form>
         <label><span className="sr-only">กรองสถานะสัญญา</span><select className={fieldClass} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}>
-          <option value="">ทุกสถานะ</option><option value="WAITING_PAYMENT">รอจ่ายเงิน</option><option value="PAID">จ่ายเงินแล้ว</option><option value="CLOSED">ปิดยอดแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option>
+          <option value="">ทุกสถานะ</option><option value="WAITING_PAYMENT">รอจ่ายเงิน</option><option value="PAID">จ่ายเงินแล้ว</option><option value="CLOSED">ปิดยอดแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิกสัญญา</option>
         </select></label>
       </div>
       <div className="borrower-table-scroll overflow-x-auto">
@@ -273,8 +276,9 @@ export function ContractsDirectory() {
         ...(viewing.legacySourceCode ? [['เลขรายการเดิม', viewing.legacySourceCode], ['ชื่อผู้กู้ในรายการเดิม', legacyBorrowerName(viewing) || '—'], ['สถานะเดิม', legacyStatus(viewing) || '—'], ['ยอดชำระก่อนนำเข้า', `${money(viewing.legacyReceivedSatang)} บาท`], ['ยอดคงเหลือตามข้อมูลเดิม', `${money(Math.max(0, viewing.repaymentSatang - viewing.legacyReceivedSatang))} บาท`]] : []),
         ['ผู้กู้', viewing.borrowerName], ['ผู้ให้กู้', viewing.lenderName],
         ...(viewing.persuaderId && viewing.persuaderNameSnapshot ? [['Persuader (ข้อมูลภายใน)', viewing.persuaderNameSnapshot], ['ส่วนแบ่งตามเงื่อนไข', `${(viewing.persuaderShareBasisPoints ?? 0) / 100}% ของเงินต้น · ${money(viewing.persuaderShareSatang ?? 0)} บาท`], ['ฐานส่วนแบ่ง', viewing.persuaderShareBase === 'PRINCIPAL' ? 'เงินต้น' : '—']] : []),
-        ['สถานะ', viewing.status === 'REJECTED' ? 'ไม่อนุมัติ' : viewing.limitApprovalRequired ? 'รออนุมัติวงเงิน' : viewing.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : viewing.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'],
+        ['สถานะ', viewing.status === 'CANCELLED' ? 'ยกเลิกสัญญา' : viewing.status === 'REJECTED' ? 'ไม่อนุมัติ' : viewing.limitApprovalRequired ? 'รออนุมัติวงเงิน' : viewing.status === 'WAITING_PAYMENT' ? 'รอจ่ายเงิน' : viewing.status === 'CLOSED' ? 'ปิดยอดแล้ว' : 'จ่ายเงินแล้ว'],
         ...(viewing.limitApprovedAt ? [['อนุมัติวงเงินโดย', `${viewing.limitApprovedBy ?? 'ผู้ดูแล'} · ${date(viewing.limitApprovedAt.toISOString())}`]] : []),
+        ...(viewing.status === 'CANCELLED' && viewing.revisions[0] ? [['เหตุผลยกเลิก', viewing.revisions[0].reason], ['ผู้บันทึกยกเลิก', viewing.revisions[0].createdBy], ['วันที่ยกเลิก', viewing.revisions[0].createdAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })]] : []),
         ...(viewing.status === 'REJECTED' && viewing.revisions[0] ? [['เหตุผลไม่อนุมัติ', viewing.revisions[0].reason], ['ผู้บันทึกไม่อนุมัติ', viewing.revisions[0].createdBy], ['วันที่ไม่อนุมัติ', viewing.revisions[0].createdAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })]] : []),
         ['ผู้ค้ำประกัน', viewing.guarantorName || '—'],
         ['ที่อยู่ผู้ค้ำประกัน', viewing.guarantorName ? [viewing.guarantorHouseNumber, viewing.guarantorSoi, viewing.guarantorRoad, viewing.guarantorSubdistrict, viewing.guarantorDistrict, viewing.guarantorProvince].filter(Boolean).join(' ') : '—'],

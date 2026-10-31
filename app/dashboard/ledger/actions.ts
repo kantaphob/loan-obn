@@ -4,14 +4,12 @@ import { assertAccountingDateOpen } from '@/lib/monthly-accounting'
 import { lockCashForMatching } from '@/lib/cash-matching'
 import { assertBankLoanLedgerUnlinked } from '@/lib/bank-loan-ledger'
 
-import { loadPendingContractReview, assertReviewToken } from '@/lib/pending-contract-review'
+import { loadPendingContractReview, assertReviewToken, StaleContractReviewError } from '@/lib/pending-contract-review'
 
 import { assertUniqueLedgerProof, slipDigest } from '@/lib/ledger-proof'
 
 import { slipFileName } from '@/lib/slip-name'
 import { readRepaymentSlip } from '@/lib/repayment-slip'
-import { getDatabaseUrl } from '@/lib/database-config'
-import { syncBorrowerSlipFiles } from '@/lib/borrower-slip-files.mjs'
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth/current-user'
@@ -135,7 +133,8 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
           if (contract.signingMethod === 'E_SIGNATURE' && !contractSignaturesComplete(contract)) throw new Error('กรุณาลงนามอิเล็กทรอนิกส์ให้ครบก่อนจ่ายเงิน')
           if (amountSatang !== contract.netSatang) throw new Error('ยอดจ่ายต้องเท่ากับยอดสุทธิตามสัญญา')
           direction = 'OUT'; categoryCode = 'LOAN_DISBURSEMENT'; categoryName = ''
-          await tx.loanContract.update({ where: { id: contract.id }, data: { status: 'PAID', paidAt: new Date(`${input.occurredOn}T00:00:00+07:00`) } })
+          const funded = await tx.loanContract.updateMany({ where: { id: contract.id, status: 'WAITING_PAYMENT', paidAt: null, reviewVersion: contract.reviewVersion }, data: { status: 'PAID', paidAt: new Date(`${input.occurredOn}T00:00:00+07:00`) } })
+          if (!funded.count) throw new Error('สัญญาเปลี่ยนแปลงหรือยกเลิกแล้ว กรุณาโหลดข้อมูลล่าสุดก่อนบันทึกจ่าย')
         } else {
           if (!balance.disbursed) throw new Error('ต้องจ่ายเงินกู้ก่อนรับชำระคืน')
           const firstDate = balance.disbursementOn ?? contract.paidAt?.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
@@ -177,8 +176,6 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
     revalidatePath('/dashboard/capital'); revalidatePath('/dashboard'); revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true, contract: { select: { borrowerCode: true } } } })
     if (saved) {
-      try { if (slip && saved.contract?.borrowerCode) await syncBorrowerSlipFiles(getDatabaseUrl(), undefined, saved.contract.borrowerCode) }
-      catch (storageError) { console.error('Ledger saved; borrower slip archive sync failed', storageError) }
       try {
         await syncGoogleLedger(saved.id)
         if (saved.contractId) {
@@ -189,6 +186,7 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
     }
     return { success: true }
   } catch (error) {
+    if (error instanceof StaleContractReviewError) return { error: error.message, code: error.code }
     return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง' }
   }
 }

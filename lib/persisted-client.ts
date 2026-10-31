@@ -3,16 +3,17 @@ const writes = new Set(['create', 'createMany', 'createManyAndReturn', 'update',
 export function withPersistence<T extends object>(client: T, afterCommit: () => Promise<void>): T {
   const delegates = new Map<PropertyKey, object>()
   const originals = new WeakMap<object, object>()
+  const mutations = new WeakSet<object>()
   const effect = async () => {
     try { await afterCommit() } catch (error) { console.error('Post-commit persistence failed:', error instanceof Error ? error.message : 'unknown') }
   }
-  function observe(promise: object) {
+  function observe(promise: object, changed: () => boolean = () => true) {
     let observed: Promise<unknown> | undefined
     const result = new Proxy(promise, {
       get(target, method) {
         if (['then', 'catch', 'finally'].includes(String(method))) {
           return (...args: unknown[]) => {
-            observed ??= Promise.resolve(target).then(async value => { await effect(); return value })
+            observed ??= Promise.resolve(target).then(async value => { if (changed()) await effect(); return value })
             return Reflect.apply(Reflect.get(observed, method), observed, args)
           }
         }
@@ -21,6 +22,7 @@ export function withPersistence<T extends object>(client: T, afterCommit: () => 
       },
     })
     originals.set(result, promise)
+    if (changed()) mutations.add(result)
     return result
   }
   return new Proxy(client, {
@@ -28,8 +30,15 @@ export function withPersistence<T extends object>(client: T, afterCommit: () => 
       const value = Reflect.get(target, property)
       if (typeof value === 'function') {
         if (property === '$transaction') return (...args: unknown[]) => {
-          if (Array.isArray(args[0])) args[0] = args[0].map(item => originals.get(item) ?? item)
-          return observe(Reflect.apply(value, target, args))
+          let changed = false
+          if (Array.isArray(args[0])) {
+            changed = args[0].some(item => mutations.has(item))
+            args[0] = args[0].map(item => originals.get(item) ?? item)
+          } else if (typeof args[0] === 'function') {
+            const callback = args[0] as (tx: object) => Promise<unknown>
+            args[0] = (tx: object) => callback(withPersistence(tx, async () => { changed = true }))
+          }
+          return observe(Reflect.apply(value, target, args), () => changed)
         }
         if (['$executeRaw', '$executeRawUnsafe'].includes(String(property))) return (...args: unknown[]) => observe(Reflect.apply(value, target, args))
         return value.bind(target)
