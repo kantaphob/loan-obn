@@ -26,9 +26,18 @@ export function validateHistory(next: AssetData, previous: AssetData, options: {
       if (JSON.stringify(updatedTerms) !== JSON.stringify(previousTerms) || updatedHome.disposedOn !== home.disposedOn) throw new Error('ใบขายที่บันทึกแล้วแก้เงื่อนไขไม่ได้ เพื่อรักษาประวัติการขาย')
       for (const payment of home.sale.payments) if (JSON.stringify(updatedSale.payments.find(row => row.id === payment.id)) !== JSON.stringify(payment)) throw new Error('รายการรับเงินขายบ้านที่ลงบัญชีแล้วแก้หรือลบไม่ได้')
     }
+    for (const work of home.buildingWorks ?? []) {
+      const updated = updatedHome.buildingWorks?.find(row => row.id === work.id)
+      for (const payment of work.payments ?? []) if (JSON.stringify(updated?.payments?.find(row => row.id === payment.id)) !== JSON.stringify(payment)) throw new Error('ประวัติจ่ายค่าซ่อมที่ลงบัญชีแล้วแก้หรือลบไม่ได้')
+      if (work.payments?.length && updated?.treatment !== work.treatment) throw new Error('งานซ่อมที่จ่ายแล้วเปลี่ยนประเภทต้นทุนไม่ได้')
+    }
     for (const order of home.buildingChangeOrders ?? []) {
       const updated = updatedHome.buildingChangeOrders?.find(row => row.id === order.id)
-      if (!updated) throw new Error('เก็บประวัติใบงานเพิ่ม-ลดไว้ กรุณายกเลิกอนุมัติแทนการลบ')
+      if (!updated) {
+        if (order.status !== 'draft' || (order.payments ?? []).length) throw new Error('ใบงานที่อนุมัติแล้วหรือมีรับ–จ่าย ลบไม่ได้ เพื่อรักษาประวัติไว้')
+        continue
+      }
+      if ((updated.context ?? 'construction') !== (order.context ?? 'construction')) throw new Error('ขอบเขตใบงานเดิมเปลี่ยนระหว่าง Asset กับ Property ไม่ได้')
       if ((order.payments ?? []).length && JSON.stringify(updated) !== JSON.stringify(order)) throw new Error('ใบงานที่มีรับ–จ่ายแล้วแก้หรือลบไม่ได้ เพื่อรักษาประวัติบัญชี')
       for (const payment of order.payments ?? []) if (JSON.stringify(updated.payments?.find(row => row.id === payment.id)) !== JSON.stringify(payment)) throw new Error('รายการรับ–จ่ายใบงานที่ลงบัญชีแล้วแก้หรือลบไม่ได้')
     }
@@ -72,11 +81,16 @@ export function validateLedgerLinks(data: AssetData, entries: LedgerOption[]) {
   for (const loan of data.loans) for (const draw of loan.disbursements ?? []) check(draw.ledgerEntryId, draw.amount, draw.date, 'IN')
   for (const loan of data.loans) for (const payment of loan.contractorPayments ?? []) check(payment.ledgerEntryId, payment.amount, payment.date, 'OUT')
   for (const home of data.homes) for (const work of home.landDevelopments ?? []) for (const payment of work.payments) check(payment.ledgerEntryId, payment.amount, payment.date, payment.direction ?? 'OUT')
+  for (const home of data.homes) for (const work of home.buildingWorks ?? []) for (const payment of work.payments ?? []) {
+    const entry = entries.find(row => row.id === payment.ledgerEntryId)
+    if (entry && (entry.kind !== 'GENERAL' || entry.accountScope !== 'GENERAL' || entry.contractId)) throw new Error('งานซ่อมต้องเชื่อมรายการรับ–จ่ายทั่วไป ไม่ใช่รายการสินเชื่อ')
+    check(payment.ledgerEntryId, payment.amount, payment.date, payment.direction)
+  }
   for (const home of data.homes) for (const project of home.buildingProjects ?? []) for (const payment of project.payments) check(payment.ledgerEntryId, payment.amount, payment.date, payment.direction)
   for (const home of data.homes) for (const order of home.buildingChangeOrders ?? []) for (const payment of order.payments ?? []) check(payment.ledgerEntryId, payment.amount, payment.date, payment.direction)
   for (const home of data.homes) for (const payment of home.sale?.payments ?? []) check(payment.ledgerEntryId, payment.amount, payment.date, 'IN')
 }
 
 export function assetLedgerIds(data: AssetData) {
-  return [...data.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.vehicleFinancing?.payments ?? []).map(payment => payment.ledgerEntryId), ...(home.vehicleFinancing?.downPayments ?? []).map(payment => payment.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(row => row.ledgerEntryId)), ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(row => row.ledgerEntryId)), ...(home.buildingChangeOrders ?? []).flatMap(order => (order.payments ?? []).map(row => row.ledgerEntryId)), ...(home.sale?.payments ?? []).map(payment => payment.ledgerEntryId)]), ...data.loans.flatMap(loan => [...loan.payments.map(row => row.ledgerEntryId), ...(loan.disbursements ?? []).map(row => row.ledgerEntryId), ...(loan.contractorPayments ?? []).map(row => row.ledgerEntryId)])].filter((id): id is number => Boolean(id))
+  return [...data.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.buildingWorks ?? []).flatMap(work => (work.payments ?? []).map(payment => payment.ledgerEntryId)), ...(home.vehicleFinancing?.payments ?? []).map(payment => payment.ledgerEntryId), ...(home.vehicleFinancing?.downPayments ?? []).map(payment => payment.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(row => row.ledgerEntryId)), ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(row => row.ledgerEntryId)), ...(home.buildingChangeOrders ?? []).flatMap(order => (order.payments ?? []).map(row => row.ledgerEntryId)), ...(home.sale?.payments ?? []).map(payment => payment.ledgerEntryId)]), ...data.loans.flatMap(loan => [...loan.payments.map(row => row.ledgerEntryId), ...(loan.disbursements ?? []).map(row => row.ledgerEntryId), ...(loan.contractorPayments ?? []).map(row => row.ledgerEntryId)])].filter((id): id is number => Boolean(id))
 }

@@ -240,11 +240,13 @@ export function validateAssetData(data: AssetData) {
     if (home.boqManagementFee !== undefined) amount(home.boqManagementFee)
     if (home.boqAgreedTotal !== undefined) amount(home.boqAgreedTotal)
     if (home.boqVersion !== undefined && (!Number.isSafeInteger(home.boqVersion) || home.boqVersion < 1)) fail('เลขเวอร์ชัน BOQ ไม่ถูกต้อง')
+    if (home.boqVersionName !== undefined) { text(home.boqVersionName); if (!home.boqVersionName.trim() || home.boqVersionName.length > 100) fail('ชื่อชุด BOQ ไม่ถูกต้อง') }
     if (home.boqVersions !== undefined) {
       if (!Array.isArray(home.boqVersions) || home.boqVersions.length > 100) fail('ประวัติเวอร์ชัน BOQ ไม่ถูกต้อง')
       const versionIds = new Set<string>(); const versionNumbers = new Set<number>()
       for (const version of home.boqVersions) {
         text(version.id)
+        if (version.name !== undefined) { text(version.name); if (!version.name.trim() || version.name.length > 100) fail('ชื่อชุด BOQ ในประวัติไม่ถูกต้อง') }
         if (!/^[a-zA-Z0-9-]{1,80}$/.test(version.id) || versionIds.has(version.id) || !Number.isSafeInteger(version.version) || version.version < 1 || versionNumbers.has(version.version)) fail('เวอร์ชัน BOQ ซ้ำหรือไม่ถูกต้อง')
         versionIds.add(version.id); versionNumbers.add(version.version); date(version.createdOn); amount(version.managementFee); if (version.agreedTotal !== undefined) amount(version.agreedTotal)
         if (!Array.isArray(version.items) || version.items.length > 10000) fail('รายการในเวอร์ชัน BOQ ไม่ถูกต้อง')
@@ -266,6 +268,7 @@ export function validateAssetData(data: AssetData) {
       const orderIds = new Set<string>(); const orderNumbers = new Set<number>()
       for (const order of home.buildingChangeOrders) {
         id(order.id); text(order.title); text(order.reference); text(order.notes); date(order.date)
+        if (order.context !== undefined && !['construction', 'property'].includes(order.context)) fail('ขอบเขตงานเพิ่ม–ลดไม่ถูกต้อง')
         if (orderIds.has(order.id) || !Number.isSafeInteger(order.number) || order.number < 1 || orderNumbers.has(order.number) || !Number.isSafeInteger(order.baseVersion) || order.baseVersion < 1 || !order.title.trim() || order.date > today() || !['draft', 'approved'].includes(order.status)) fail('รายละเอียดใบงานเพิ่ม-ลดงานไม่ถูกต้อง')
         orderIds.add(order.id); orderNumbers.add(order.number)
         if (!Array.isArray(order.lines) || order.lines.length < 1 || order.lines.length > 1000) fail('ใบงานต้องมีรายการอย่างน้อย 1 รายการ')
@@ -310,9 +313,29 @@ export function validateAssetData(data: AssetData) {
     }
     if (home.buildingWorks !== undefined) {
       if (home.kind !== 'house' || !Array.isArray(home.buildingWorks) || home.buildingWorks.length > 10000) fail('รายการจัดการบ้านไม่ถูกต้อง')
+      const workIds = new Set<string>()
       for (const work of home.buildingWorks) {
+        if (workIds.has(work.id)) fail('รหัสงานซ้ำ')
+        workIds.add(work.id)
         id(work.id); text(work.name); text(work.vendor); text(work.reference); text(work.notes); date(work.date); date(work.warrantyUntil, true); amount(work.amount)
         if (!work.name.trim() || work.date > today() || !['construction', 'repair', 'improvement', 'decoration', 'built_in', 'equipment'].includes(work.type) || !['capital', 'expense'].includes(work.treatment)) fail('รายละเอียดงานบ้านไม่ถูกต้อง')
+        if (work.budget !== undefined) amount(work.budget)
+        if (work.status !== undefined && !['reported', 'waiting_repair', 'repair', 'completed'].includes(work.status)) fail('สถานะงานซ่อมไม่ถูกต้อง')
+        if (work.completedOn) { date(work.completedOn); if (work.completedOn > today() || work.completedOn < work.date) fail('วันที่ปิดงานซ่อมไม่ถูกต้อง') }
+        if (work.status === 'completed' && !work.completedOn) fail('ระบุวันที่ปิดงานซ่อม')
+        if (work.itemId && !home.items.some(item => item.id === work.itemId && item.purchaseStatus !== 'planned' && (!work.roomNames.length || work.roomNames.includes(item.room)))) fail('เลือกอุปกรณ์ที่รับมาแล้วและอยู่ในห้องของงานซ่อม')
+        if (work.payments?.length && work.treatment !== 'expense') fail('รายการจ่ายค่าซ่อมต้องเป็นค่าใช้จ่าย')
+        if (work.payments !== undefined) {
+          if (!Array.isArray(work.payments) || work.payments.length > 10000) fail('ประวัติจ่ายค่าซ่อมไม่ถูกต้อง')
+          let net = 0
+          const ids = new Set<string>()
+          for (const payment of work.payments) {
+            id(payment.id); date(payment.date); amount(payment.amount, true); text(payment.reference); text(payment.note)
+            if (ids.has(payment.id) || !Number.isSafeInteger(payment.ledgerEntryId) || payment.ledgerEntryId < 1 || payment.date > today() || !['IN', 'OUT'].includes(payment.direction) || !['deposit', 'progress', 'final', 'refund'].includes(payment.type) || (payment.direction === 'IN') !== (payment.type === 'refund')) fail('รายการจ่ายค่าซ่อมไม่ถูกต้อง')
+            ids.add(payment.id); net += payment.direction === 'OUT' ? payment.amount : -payment.amount
+          }
+          if (net < -0.005) fail('ยอดรับคืนค่าซ่อมเกินยอดจ่าย')
+        }
         if (!Array.isArray(work.roomNames) || new Set(work.roomNames).size !== work.roomNames.length || work.roomNames.some(room => !home.rooms.includes(room))) fail('เลือกห้องที่เกี่ยวข้องกับงานให้ถูกต้อง')
       }
     }

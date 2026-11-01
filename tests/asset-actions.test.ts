@@ -337,8 +337,41 @@ test('assets, independent debt, immutable terms, audit snapshots and ledger reco
   const cashReceipt = await createPropertyCashEntry({ ...cashInput, requestKey: crypto.randomUUID(), direction: 'IN', description: 'Refund', categoryCode: 'PROPERTY_TEST_IN', reference: 'PROPERTY-CASH-IN-1' }); assert.ok(cashReceipt.data, cashReceipt.error)
   assert.equal(await prisma.ledgerEntry.count(), cashCount + 2)
   assert.equal(await prisma.ledgerEntry.count({ where: { accountScope: 'LENDING' } }), lendingCount)
+  const { createBuildingProjectPayment } = await import('../app/thing/_shared/actions')
+  const repairData = structuredClone((await getAssetWorkspace()).data)
+  const repairHome = repairData.homes.find(row => row.id === home.id)!
+  const repairId = crypto.randomUUID()
+  repairHome.buildingWorks = [...(repairHome.buildingWorks ?? []), { id: repairId, name: 'Room repair', type: 'repair', treatment: 'expense', roomNames: [], date: '2020-02-01', amount: 500, budget: 600, status: 'repair', vendor: '', warrantyUntil: '', reference: '', notes: '' }]
+  const repairSaved = await saveAssetWorkspace(repairData, 'Prepare repair'); assert.ok(repairSaved.data, repairSaved.error)
+  const baselineCost = assetCosts(repairSaved.data.homes.find(row => row.id === home.id)!).total
+  const repairPayment = { buildingId: home.id, workId: repairId, requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID(), direction: 'OUT' as const, amount: '125.50', occurredOn: '2020-02-01', categoryCode: 'PROPERTY_TEST_OUT', channelCode: 'BANKING', reference: 'PROPERTY-CASH-OUT-1', note: '', paymentType: 'progress' as const, existingLedgerId: cashEntry.id }
+  const beforeRepairCount = await prisma.ledgerEntry.count()
+  const linkedRepair = await createBuildingProjectPayment(repairPayment); assert.ok('data' in linkedRepair, linkedRepair.error)
+  assert.equal(await prisma.ledgerEntry.count(), beforeRepairCount, 'linking a previous repair payment creates no duplicate cash')
+  assert.equal(assetCosts(linkedRepair.data.homes.find(row => row.id === home.id)!).total, baselineCost, 'repair never increases asset capital')
+  assert.ok((await createBuildingProjectPayment({ ...repairPayment, paymentId: crypto.randomUUID(), requestKey: crypto.randomUUID() })).error, 'cannot reuse an already-linked ledger entry')
+  const newRepair = await createBuildingProjectPayment({ ...repairPayment, existingLedgerId: undefined, requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID(), amount: '100', reference: 'REPAIR-NEW-1' }); assert.ok('data' in newRepair, newRepair.error)
+  assert.equal(await prisma.ledgerEntry.count(), beforeRepairCount + 1)
+  const linkedWork = newRepair.data.homes.find(row => row.id === home.id)!.buildingWorks!.find(row => row.id === repairId)!
+  assert.equal(linkedWork.payments?.length, 2)
+  assert.match((await voidLedger(linkedWork.payments![1].ledgerEntryId, 'Cannot void linked maintenance')).error ?? '', /งานซ่อม/)
+  const removedRepairPayment = structuredClone(newRepair.data)
+  removedRepairPayment.homes.find(row => row.id === home.id)!.buildingWorks!.find(row => row.id === repairId)!.payments = []
+  assert.match((await saveAssetWorkspace(removedRepairPayment)).error ?? '', /แก้หรือลบไม่ได้/)
+  const overRefund = await createBuildingProjectPayment({ ...repairPayment, existingLedgerId: undefined, requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID(), direction: 'IN', paymentType: 'refund', categoryCode: 'PROPERTY_TEST_IN', amount: '999', reference: 'REPAIR-REFUND-TOO-MUCH' }); assert.ok(overRefund.error)
+  assert.equal(await prisma.ledgerEntry.count(), beforeRepairCount + 1, 'failed refund is atomic')
+  const badRepair = structuredClone(newRepair.data)
+  const badWork = badRepair.homes.find(row => row.id === home.id)!.buildingWorks!.find(row => row.id === repairId)!
+  badWork.status = 'completed'; badWork.completedOn = ''
+  assert.match((await saveAssetWorkspace(badRepair)).error ?? '', /วันที่ปิดงาน/)
+  badWork.completedOn = '2020-02-02'
+  const closedRepair = await saveAssetWorkspace(badRepair, 'Close repair'); assert.ok(closedRepair.data, closedRepair.error)
+  assert.equal(closedRepair.data.homes.find(row => row.id === home.id)!.buildingWorks!.find(row => row.id === repairId)!.status, 'completed')
+  assert.equal(assetCosts(closedRepair.data.homes.find(row => row.id === home.id)!).total, baselineCost)
+
   await prisma.user.update({ where: { id: user.id }, data: { role: 'REVIEWER' } })
   assert.match((await createPropertyCashEntry({ ...cashInput, requestKey: crypto.randomUUID() })).error ?? '', /ไม่มีสิทธิ์/)
+  assert.match((await createBuildingProjectPayment({ ...repairPayment, existingLedgerId: undefined, requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID() })).error ?? '', /ไม่มีสิทธิ์/)
   assert.match((await saveBankLoanContractSettings('draw-loan', amended.data.revision, contractSettings)).error ?? '', /ไม่มีสิทธิ์/)
   assert.match((await recordBankLoanCash({ ...receipt, requestKey: crypto.randomUUID(), revision: beforeFailure.revision })).error ?? '', /ไม่มีสิทธิ์/)
   assert.match((await saveAssetWorkspace(paid.data)).error ?? '', /ไม่มีสิทธิ์/)

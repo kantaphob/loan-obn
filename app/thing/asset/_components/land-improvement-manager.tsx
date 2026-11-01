@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { ChevronDown, FilePlus2, Pencil, Plus, Wrench, Wallet, ReceiptText } from 'lucide-react'
+import { ChevronDown, CircleX, FilePlus2, Pencil, Plus, Wrench, Wallet, ReceiptText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { money, today, type Home, type LandDevelopment, type LandDevelopmentDocumentReference, type LandDevelopmentMaterial, type LandDevelopmentPayment, type LandMaintenanceRecord, type LedgerOption } from '@/app/thing/_shared/model'
@@ -44,7 +44,10 @@ export function LandDevelopmentManager({ landId, landName, rows, busy, canWrite,
   const [costWork, setCostWork] = useState<LandDevelopment | null>(null)
   const [costDraft, setCostDraft] = useState<ActualCostDraft>({ amount: '', date: today(), note: '' })
   const [expanded, setExpanded] = useState(false)
-  const budget = rows.reduce((sum, row) => sum + row.budget, 0)
+  const activeRows = rows.filter(row => row.status !== 'cancelled')
+  const cancelledRows = rows.filter(row => row.status === 'cancelled')
+  const [cancelledExpanded, setCancelledExpanded] = useState(false)
+  const budget = rows.filter(row => row.status !== 'cancelled').reduce((sum, row) => sum + row.budget, 0)
   const actual = rows.filter(row => row.treatment === 'capital').reduce((sum, row) => sum + row.actualCost, 0)
   const serviceExpense = rows.filter(row => row.treatment === 'expense').reduce((sum, row) => sum + row.actualCost, 0)
   const paid = rows.reduce((sum, row) => sum + row.payments.filter(payment => (payment.direction ?? 'OUT') === 'OUT').reduce((subtotal, payment) => subtotal + payment.amount, 0), 0)
@@ -81,26 +84,38 @@ export function LandDevelopmentManager({ landId, landName, rows, busy, canWrite,
       setCostWork(null)
     } catch (caught) { setFormError(caught instanceof Error ? caught.message : 'บันทึกต้นทุนจริงไม่สำเร็จ') }
   }
+  async function cancelWork(row: LandDevelopment) {
+    setFormError('')
+    try {
+      await onSave({ ...row, status: 'cancelled', recognizedAssetValue: 0, resultingAssetId: '' })
+    } catch (caught) {
+      setFormError(caught instanceof Error ? caught.message : 'ยกเลิกรายการไม่สำเร็จ')
+    }
+  }
 
   return <section className={compact ? 'mt-4 border-t border-slate-100 pt-4 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0' : 'mt-5 border-t border-slate-100 pt-4'} aria-label={`การพัฒนาที่ดิน ${landName}`}>
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="m-0 flex items-center gap-2 text-sm font-semibold text-slate-700"><Wrench size={15} />งานพัฒนาที่ดิน · {rows.length} รายการ</h3><p className="mb-0 mt-1 text-xs text-slate-600">งบ {money(budget)} · ปรับปรุงจริง {money(actual)} · ซ่อม/บริการ {money(serviceExpense)}</p><p className="mb-0 mt-1 text-[11px] text-slate-500">จ่าย {money(paid)} · รับคืน {money(refunded)} · สุทธิ {money(paid - refunded)} บาท</p></div>
-      <div className="flex flex-wrap gap-2">{rows.length ? <Button disabled={busy} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? 'ซ่อนรายการ' : `ดูรายการ ${rows.length}`}<ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} /></Button> : null}{canWrite && <Button disabled={busy} onClick={() => show()}><Plus size={14} />เพิ่มรายการ</Button>}</div>
+      <div><h3 className="m-0 flex items-center gap-2 text-sm font-semibold text-slate-700"><Wrench size={15} />งานพัฒนาที่ดิน · {activeRows.length} รายการ</h3>{cancelledRows.length ? <p className="mb-0 mt-1 text-[11px] text-rose-700">ยกเลิกแล้ว {cancelledRows.length} รายการ · แยกไว้ด้านล่าง</p> : null}<p className="mb-0 mt-1 text-xs text-slate-600">งบ {money(budget)} · ปรับปรุงจริง {money(actual)} · ซ่อม/บริการ {money(serviceExpense)}</p><p className="mb-0 mt-1 text-[11px] text-slate-500">จ่าย {money(paid)} · รับคืน {money(refunded)} · สุทธิ {money(paid - refunded)} บาท</p></div>
+      <div className="flex flex-wrap gap-2">{activeRows.length ? <Button disabled={busy} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? 'ซ่อนรายการ' : `ดูรายการ ${activeRows.length}`}<ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} /></Button> : null}{canWrite && <Button disabled={busy} onClick={() => show()}><Plus size={14} />เพิ่มรายการ</Button>}</div>
     </div>
-    {expanded && (!rows.length ? <p className="mb-0 mt-3 text-xs text-slate-400">ยังไม่มีรายการพัฒนา</p> : <div className="mt-3 space-y-2">{rows.map(row => {
+    {expanded && (!activeRows.length ? <p className="mb-0 mt-3 text-xs text-slate-400">ยังไม่มีรายการพัฒนาที่ยังดำเนินการอยู่</p> : <div className="mt-3 space-y-2">{activeRows.map(row => {
       const rowPaid = row.payments.filter(payment => (payment.direction ?? 'OUT') === 'OUT').reduce((sum, payment) => sum + payment.amount, 0)
       const rowRefunded = row.payments.filter(payment => payment.direction === 'IN').reduce((sum, payment) => sum + payment.amount, 0)
-      return <article key={row.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+      const isCancelled = row.status === 'cancelled'
+      return <article key={row.id} className={`rounded-xl border px-3 py-3 shadow-sm ${isCancelled ? 'border-rose-100 bg-rose-50/40' : 'border-slate-200 bg-white'}`}>
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2"><div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5"><h4 className="m-0 text-sm font-semibold text-slate-800">{row.name}</h4><span className="text-xs text-slate-500">{types[row.type]}</span><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{statusNames[row.status]}</span><span title={costMethodNames[row.costMethod]} className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">{costMethodShortNames[row.costMethod]}</span></div>
             {row.type === 'fill_compaction' ? <p className="mb-0 mt-1 text-xs text-slate-500">{row.areaRai} ไร่ {row.areaNgan} งาน {row.areaSquareWah} ตร.วา · สูง {row.fillHeightMeters} ม. · {money(row.volumeCubicMeters)} ลบ.ม.</p> : null}
           </div>
           {canWrite ? <div className="flex shrink-0 flex-wrap gap-1.5">
-            <Button className="px-2.5 py-1.5" disabled={busy} onClick={() => { setCostWork(row); setCostDraft({ amount: '', date: today(), note: '' }); setFormError('') }} aria-label={`บันทึกต้นทุนจริง ${row.name}`}><ReceiptText size={13} />ต้นทุน</Button>
-            <Button className="px-2.5 py-1.5" disabled={busy} onClick={() => showCashEntry(row, 'OUT')} aria-label={`บันทึกจ่าย ${row.name}`}><Wallet size={13} />จ่าย</Button>
-            <Button className="px-2.5 py-1.5" disabled={busy || rowPaid - rowRefunded <= 0} onClick={() => showCashEntry(row, 'IN')} aria-label={`บันทึกรับคืน ${row.name}`}><Wallet size={13} />รับคืน</Button>
+            {!isCancelled ? <>
+              <Button className="px-2.5 py-1.5" disabled={busy} onClick={() => { setCostWork(row); setCostDraft({ amount: '', date: today(), note: '' }); setFormError('') }} aria-label={`บันทึกต้นทุนจริง ${row.name}`}><ReceiptText size={13} />ต้นทุน</Button>
+              <Button className="px-2.5 py-1.5" disabled={busy} onClick={() => showCashEntry(row, 'OUT')} aria-label={`บันทึกจ่าย ${row.name}`}><Wallet size={13} />จ่าย</Button>
+              <Button className="px-2.5 py-1.5" disabled={busy || rowPaid - rowRefunded <= 0} onClick={() => showCashEntry(row, 'IN')} aria-label={`บันทึกรับคืน ${row.name}`}><Wallet size={13} />รับคืน</Button>
+            </> : null}
             <Button className="px-2.5 py-1.5" disabled={busy} onClick={() => show(row)} aria-label={`แก้ไข ${row.name}`}><Pencil size={13} />แก้ไข</Button>
+            {!isCancelled && row.status !== 'completed' && row.status !== 'retired' ? <Button className="px-2.5 py-1.5" variant="danger" disabled={busy} onClick={() => void cancelWork(row)} aria-label={`ยกเลิกรายการ ${row.name}`}><CircleX size={13} />ยกเลิก</Button> : null}
           </div> : null}</div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600"><span className="whitespace-nowrap">งบ <strong className="font-medium">{money(row.budget)}</strong></span><span className="whitespace-nowrap">{row.treatment === 'expense' ? 'ค่าใช้จ่ายจริง' : 'ปรับปรุงจริง'} <strong className="font-medium">{money(row.actualCost)}</strong></span><span className="whitespace-nowrap">จ่าย <strong className="font-medium">{money(rowPaid)}</strong></span><span className="whitespace-nowrap">คืน <strong className="font-medium">{money(rowRefunded)}</strong></span></div>
             {row.recognizedAssetValue && row.treatment === 'capital' ? <p className="mb-0 mt-1 text-xs text-emerald-700">รับรู้เป็นสินทรัพย์ {money(row.recognizedAssetValue)} บาท{row.resultingAssetId ? ` · ${assets.find(asset => asset.id === row.resultingAssetId)?.assetCode ?? ''}` : ''}</p> : null}
@@ -109,6 +124,14 @@ export function LandDevelopmentManager({ landId, landName, rows, busy, canWrite,
         </div>
       </article>
     })}</div>)}
+    {cancelledRows.length ? <section className="mt-3 rounded-xl border border-rose-100 bg-rose-50/30 p-3" aria-label="รายการยกเลิก">
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><h4 className="m-0 text-xs font-semibold text-rose-800">รายการยกเลิก · {cancelledRows.length} รายการ</h4><p className="mb-0 mt-1 text-[11px] text-slate-500">แยกจากงานปัจจุบันและไม่รวมงบพัฒนา · เก็บประวัติต้นทุนและรับ–จ่ายไว้</p></div><Button disabled={busy} aria-expanded={cancelledExpanded} onClick={() => setCancelledExpanded(value => !value)}>{cancelledExpanded ? 'ซ่อนรายการยกเลิก' : 'ดูรายการยกเลิก'}<ChevronDown size={14} className={`transition-transform ${cancelledExpanded ? 'rotate-180' : ''}`} /></Button></div>
+      {cancelledExpanded ? <div className="mt-3 space-y-2">{cancelledRows.map(row => {
+        const rowPaid = row.payments.filter(payment => (payment.direction ?? 'OUT') === 'OUT').reduce((sum, payment) => sum + payment.amount, 0)
+        const rowRefunded = row.payments.filter(payment => payment.direction === 'IN').reduce((sum, payment) => sum + payment.amount, 0)
+        return <article key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-100 bg-white px-3 py-2.5"><div><strong className="text-sm text-slate-800">{row.name}</strong><p className="mb-0 mt-1 text-xs text-slate-500">{types[row.type]} · ยกเลิกแล้ว · งบ {money(row.budget)} · ปรับปรุงจริง {money(row.actualCost)} · จ่าย {money(rowPaid)} · รับคืน {money(rowRefunded)}</p></div>{canWrite ? <Button className="px-2.5 py-1.5" disabled={busy} onClick={() => show(row)} aria-label={`แก้ไขหรือเปิดใช้งาน ${row.name}`}><Pencil size={13} />ดู / แก้ไข</Button> : null}</article>
+      })}</div> : null}
+    </section> : null}
 
     <Modal open={open} title={editing && rows.some(row => row.id === editing.id) ? `แก้ไขรายการพัฒนา · ${landName}` : `เพิ่มรายการพัฒนา · ${landName}`} description="รายการนี้จะเชื่อมกับที่ดินแปลงนี้ โดยแยกงบ ต้นทุน และยอดจ่ายจากราคาที่ดิน" onClose={() => { if (!busy) setOpen(false) }} className="max-w-3xl">
       {editing && <form onSubmit={submit} className="space-y-5">

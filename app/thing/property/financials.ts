@@ -12,7 +12,7 @@ export function assetFinancials(home: Home) {
   const budget = roundMoney(developments.reduce((sum, row) => sum + row.budget, 0) + projects.reduce((sum, row) => sum + projectBudget(row), 0))
   const boqPaid = roundMoney(home.boq.reduce((sum, row) => sum + row.paid, 0))
   const expenses = roundMoney(works.filter(row => row.treatment === 'expense').reduce((sum, row) => sum + row.amount, 0) + developments.filter(row => row.treatment === 'expense').reduce((sum, row) => sum + row.actualCost, 0) + developments.reduce((sum, row) => sum + row.maintenance.reduce((value, item) => value + item.cost, 0), 0))
-  const payments = [...developments.flatMap(row => row.payments), ...projects.flatMap(row => row.payments)]
+  const payments = [...works.flatMap(row => row.payments ?? []),...developments.flatMap(row => row.payments), ...projects.flatMap(row => row.payments)]
   const paid = roundMoney(payments.filter(row => row.direction !== 'IN').reduce((sum, row) => sum + row.amount, 0))
   const refunded = roundMoney(payments.filter(row => row.direction === 'IN').reduce((sum, row) => sum + row.amount, 0))
   const activity = [

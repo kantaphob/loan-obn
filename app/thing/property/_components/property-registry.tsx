@@ -1,10 +1,12 @@
 'use client'
 
+import { assetLedgerIds } from '@/app/thing/_shared/integrity'
+
 import { createPropertyCashEntry, type PropertyCashInput } from '../actions'
 import { PropertyCashForm } from './property-cash-form'
-import { LandPurchaseEditor } from '../../asset/_components/land-purchase-editor'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Building2, House, Layers3, MapPin, Plus, Search, Unlink, X, RefreshCw, ArrowUpRight, Wallet, TrendingUp, Wrench } from 'lucide-react'
 import { PageContainer } from '@/components/ui/page-container'
 import { Header } from '@/components/ui/header'
@@ -12,12 +14,11 @@ import { CashActions } from '@/components/ui/cash-actions'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createBuildingProjectPayment, createLandDevelopmentPayment, getAssetWorkspace, saveAssetWorkspace } from '../../_shared/actions'
-import { assetAcquisitionCost, assetCosts, isHomeDisposed, saleDeclarationAmounts, money, propertyAssetIds, propertyTotalCost, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData, type Home, type Property, type LedgerOption, type LandDevelopment, type BuildingProject, type BuildingChangeOrder } from '../../_shared/model'
+import { assetAcquisitionCost, assetCosts, isHomeDisposed, saleDeclarationAmounts, money, propertyAssetIds, propertyTotalCost, propertyTypes, propertyStatuses, propertyAddressFields, type AssetData, type Home, type Property, type LedgerOption, type LandDevelopment, type BuildingProject, type BuildingChangeOrder, type BuildingWork } from '../../_shared/model'
 import { categoryPath, isPropertyComponent, type AssetCategory } from '../categories'
 import { BuildingManager, type BuildingProjectPaymentDraft } from '@/app/thing/asset/_components/building-manager'
 import { LandDevelopmentManager, type DevelopmentPaymentDraft } from '@/app/thing/asset/_components/land-improvement-manager'
 
-import { AssetForm } from '@/app/thing/asset/_components/asset-form'
 import { AppraisalPanel, PropertyAppraisal } from './appraisal-panel'
 import { assetFinancials } from '../financials'
 
@@ -28,7 +29,14 @@ function nextCode(data: AssetData) {
   return `PROP-${String(Math.max(0, ...numbers) + 1).padStart(3, '0')}`
 }
 
+type PropertyTab = 'overview' | 'construction' | 'rooms' | 'maintenance' | 'cashbook' | 'details'
+
 export function PropertyRegistry({ initial, categories, canWrite, ledger, financialCategories, channels }: Props) {
+  const router = useRouter()
+  const [operationsTab, setOperationsTab] = useState<PropertyTab>('overview')
+  const manageAsset = (id: string) => router.push(`/thing/asset?assetId=${encodeURIComponent(id)}`)
+  const editLandPurchase = (id: string) => router.push(`/thing/asset?assetId=${encodeURIComponent(id)}&purchase=1`)
+
   const [data, setData] = useState(initial)
   const [ledgerUpdate, setLedgerUpdate] = useState<{ base: LedgerOption[]; rows: LedgerOption[] } | null>(null)
   const visibleLedger = ledgerUpdate?.base === ledger ? ledgerUpdate.rows : ledger
@@ -40,16 +48,11 @@ export function PropertyRegistry({ initial, categories, canWrite, ledger, financ
   const [error, setError] = useState('')
   const [removing, setRemoving] = useState<Property | null>(null)
   const [busy, setBusy] = useState(false)
-  const [costAssetId, setCostAssetId] = useState('')
-  const [detailAssetId, setDetailAssetId] = useState('')
-  const detailAsset = data.homes.find(home => home.id === detailAssetId)
-  const costAsset = data.homes.find(home => home.id === costAssetId)
-  const landCostAsset = costAsset && isPropertyComponent(costAsset.categoryCode, 'LAND', categories) ? costAsset : null
   const [operationsPropertyId, setOperationsPropertyId] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const refreshLock = useRef(false)
   async function refresh() {
-    if (refreshLock.current || open || busy || removing || detailAssetId) return
+    if (refreshLock.current || open || busy || removing) return
     refreshLock.current = true; setRefreshing(true)
     try { const latest = await getAssetWorkspace(); setData(latest.data); setLedgerUpdate({ base: ledger, rows: latest.ledger }); setError('') }
     catch { setError('โหลดข้อมูล Asset ล่าสุดไม่สำเร็จ กรุณาลองใหม่') }
@@ -72,13 +75,7 @@ export function PropertyRegistry({ initial, categories, canWrite, ledger, financ
   const mainCost = financials.reduce((sum, row) => sum + row.main, 0)
   const additionalCost = financials.reduce((sum, row) => sum + row.additions, 0)
   const developmentBudget = financials.reduce((sum, row) => sum + row.budget, 0)
-  const usedLedgerIds = data.homes.flatMap(home => [
-    ...home.boq.map(row => row.ledgerEntryId),
-    ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(payment => payment.ledgerEntryId)),
-    ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(payment => payment.ledgerEntryId)),
-    ...(home.buildingChangeOrders ?? []).flatMap(order => (order.payments ?? []).map(payment => payment.ledgerEntryId)),
-    ...(home.sale?.payments ?? []).map(payment => payment.ledgerEntryId),
-  ]).filter((id): id is number => Boolean(id))
+  const usedLedgerIds = assetLedgerIds(data)
   async function saveMemberAsset(assetId: string, patch: Partial<Home>, reason: string) {
     if (busy || !canWrite) throw new Error('ไม่สามารถบันทึกรายการนี้ได้')
     setBusy(true); setError('')
@@ -100,7 +97,9 @@ export function PropertyRegistry({ initial, categories, canWrite, ledger, financ
     try {
       const result = await createLandDevelopmentPayment({ requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID(), landId, developmentId: work.id, direction: payment.direction, categoryCode: payment.categoryCode, amount: payment.amount, occurredOn: payment.occurredOn, channelCode: payment.channelCode, reference: payment.reference, note: payment.note, paymentType: payment.paymentType }, payment.slip)
       if ('error' in result) throw new Error(result.error || 'บันทึกรายการรับ–จ่ายไม่สำเร็จ')
-      setData(result.data); setNotice(`บันทึกรายการ ${payment.direction === 'IN' ? 'รับคืน' : 'จ่าย'} ใน Property แล้ว · TX-${String(result.entryId).padStart(6, '0')}`)
+      const latest = await getAssetWorkspace()
+      setLedgerUpdate({ base: ledger, rows: latest.ledger })
+      setData(latest.data); setNotice(`บันทึกรายการ ${payment.direction === 'IN' ? 'รับคืน' : 'จ่าย'} ใน Property แล้ว · TX-${String(result.entryId).padStart(6, '0')}`)
     } catch (caught) { const message = caught instanceof Error ? caught.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ'; setError(message); throw new Error(message) }
     finally { setBusy(false) }
   }
@@ -111,11 +110,11 @@ export function PropertyRegistry({ initial, categories, canWrite, ledger, financ
     const history = [...(work.actualCostHistory ?? []), { id: crypto.randomUUID(), ...record }]
     await saveLandWork(landId, { ...work, actualCost: Math.round((work.actualCost + record.amount + Number.EPSILON) * 100) / 100, actualCostHistory: history })
   }
-  async function createBuildingPayment(buildingId: string, project: BuildingProject | BuildingChangeOrder, payment: BuildingProjectPaymentDraft) {
+  async function createBuildingPayment(buildingId: string, project: BuildingProject | BuildingChangeOrder | BuildingWork, payment: BuildingProjectPaymentDraft) {
     if (busy || !canWrite) throw new Error('ไม่สามารถบันทึกรายการนี้ได้')
     setBusy(true); setError('')
     try {
-      const result = await createBuildingProjectPayment({ requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID(), buildingId, ...('title' in project ? { changeOrderId: project.id } : { projectId: project.id }), direction: payment.direction, categoryCode: payment.categoryCode, amount: payment.amount, occurredOn: payment.occurredOn, channelCode: payment.channelCode, reference: payment.reference, note: payment.note, paymentType: payment.paymentType }, payment.slip)
+      const result = await createBuildingProjectPayment({ requestKey: payment.requestKey ?? crypto.randomUUID(), paymentId: payment.paymentId ?? crypto.randomUUID(), buildingId, ...('treatment' in project ? { workId: project.id } : 'title' in project ? { changeOrderId: project.id } : { projectId: project.id }), existingLedgerId: payment.existingLedgerId, direction: payment.direction, categoryCode: payment.categoryCode, amount: payment.amount, occurredOn: payment.occurredOn, channelCode: payment.channelCode, reference: payment.reference, note: payment.note, paymentType: payment.paymentType }, payment.slip)
       if ('error' in result) throw new Error(result.error || 'บันทึกรายการรับ–จ่ายไม่สำเร็จ')
       setData(result.data); setNotice(`บันทึกรายการ ${payment.direction === 'IN' ? 'รับคืน' : 'จ่าย'} ใน Property แล้ว · TX-${String(result.entryId).padStart(6, '0')}`)
     } catch (caught) { const message = caught instanceof Error ? caught.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ'; setError(message); throw new Error(message) }
@@ -144,7 +143,7 @@ export function PropertyRegistry({ initial, categories, canWrite, ledger, financ
   }
   return <PageContainer><div className="asset-workspace property-workspace">
     <Header title="Property · รวมอสังหาริมทรัพย์" icon={<House size={21} />} description="รวมที่ดิน อาคาร และสิ่งปลูกสร้างในสถานที่เดียวกัน โดยอ้างอิงสินทรัพย์เดิม" actions={canWrite ? <Button variant="primary" disabled={open || busy || refreshing} onClick={() => { setEditing(null); setOpen(true); setNotice(''); setError('') }}><Plus size={15} />สร้าง Property</Button> : undefined} />
-    <div className="property-portfolio"><div className="property-portfolio-heading"><div><span className="property-eyebrow">PROPERTY PORTFOLIO</span><h2>ภาพรวมมูลค่าอสังหาริมทรัพย์</h2><p>{heldProperties.length} Property ที่ถืออยู่ · {linked.size} สินทรัพย์ที่เชื่อมแล้ว · ไม่รวมรถ</p></div><Link href="/thing/asset">จัดการ Asset <ArrowUpRight size={15} /></Link></div><div className="property-money-hero"><span>ต้นทุนทรัพย์สินที่ยังถืออยู่</span><strong>{money(mainCost + additionalCost)} <em>บาท</em></strong><small>อ้างอิงราคาซื้อ / BOQ และต้นทุนเพิ่มที่รับรู้ใน Asset</small></div><div className="property-portfolio-breakdown"><div><span>ต้นทุนหลัก</span><strong>{money(mainCost)} <small>บาท</small></strong></div><div><span>ต้นทุนเพิ่มในทะเบียน</span><strong>+ {money(additionalCost)} <small>บาท</small></strong></div><div><span>งบพัฒนา / โครงการ</span><strong>{money(developmentBudget)} <small>บาท</small></strong></div></div></div>
+    <div className="property-portfolio"><div className="property-portfolio-heading"><div><span className="property-eyebrow">PROPERTY PORTFOLIO</span><h2>ภาพรวมมูลค่าอสังหาริมทรัพย์</h2><p>{heldProperties.length} Property ที่ถืออยู่ · {linked.size} สินทรัพย์ที่เชื่อมแล้ว · ไม่รวมรถ</p></div><Link href="/thing/asset">จัดการ Asset <ArrowUpRight size={15} /></Link></div><div className="property-money-hero"><span>ต้นทุนทรัพย์สินที่ยังถืออยู่</span><strong>{money(mainCost + additionalCost)} <em>บาท</em></strong><small>ยอดรวมจากทะเบียนบ้านและที่ดินใน Asset · แก้ไขข้อมูลต้นทุนที่สินทรัพย์ต้นทาง</small></div><div className="property-portfolio-breakdown"><div><span>ต้นทุนหลัก</span><strong>{money(mainCost)} <small>บาท</small></strong></div><div><span>ต้นทุนเพิ่มในทะเบียน</span><strong>+ {money(additionalCost)} <small>บาท</small></strong></div><div><span>งบพัฒนา / โครงการ</span><strong>{money(developmentBudget)} <small>บาท</small></strong></div></div></div>
     <div className="property-sync"><span>ข้อมูลจาก Asset · รุ่น {data.revision} · พร้อมรวมเพิ่ม {eligible.filter(home => !allLinked.has(home.id)).length} รายการ</span><Button disabled={refreshing || open || busy || Boolean(removing)} onClick={() => void refresh()}><RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />{refreshing ? 'กำลังอัปเดต…' : 'อัปเดตข้อมูล'}</Button></div>
     {notice ? <p role="status" className="asset-notice">{notice}</p> : null}
     {error && !removing ? <p role="alert" className="asset-error">{error}</p> : null}
@@ -164,22 +163,23 @@ export function PropertyRegistry({ initial, categories, canWrite, ledger, financ
           {property.latitude !== undefined || property.longitude !== undefined ? <p className="asset-hint">พิกัด: {property.latitude ?? '—'}, {property.longitude ?? '—'}</p> : null}
           {sold ? <PropertySaleSummary members={members} /> : null}
           {!sold ? <><PropertyMoney members={members} /><PropertyAppraisal members={members} landIds={members.filter(home => isPropertyComponent(home.categoryCode, 'LAND', categories)).map(home => home.id)} /></> : null}
-          <div className="property-members">{members.map(home => <SourceRow key={home.id} home={home} categories={categories} sold={sold} onManage={!sold && canWrite ? () => setDetailAssetId(home.id) : undefined} onSave={!sold && canWrite ? (patch, reason) => saveMemberAsset(home.id, patch, reason) : undefined} onEdit={!sold && canWrite && !isHomeDisposed(home) ? () => setCostAssetId(costAssetId === home.id ? '' : home.id) : undefined} />)}</div>
-          {costAsset && !landCostAsset && members.some(home => home.id === costAsset.id) ? <section className="mt-4 rounded-xl border border-blue-200 bg-blue-50/30 p-4"><div className="flex items-center justify-between gap-2"><div><h3 className="m-0 text-sm font-semibold">ราคาบ้าน / BOQ · {costAsset.name}</h3><p className="mb-0 mt-1 text-xs text-slate-500">ใช้ “แก้ไขข้อมูลบ้าน” เพื่อกรอกราคาเหมา หรือ “จัดการ BOQ” เพื่อเพิ่มรายการต้นทุน</p></div><Button disabled={busy} onClick={() => setCostAssetId('')}>ปิด</Button></div><BuildingManager key={costAsset.id} asset={costAsset} canWrite={canWrite} busy={busy} ledger={visibleLedger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} onCreateProjectPayment={(project,payment) => createBuildingPayment(costAsset.id,project,payment)} onSave={(patch,reason) => saveMemberAsset(costAsset.id,patch,reason)} /></section> : null}
+          <div className="property-members">{members.map(home => <SourceRow key={home.id} home={home} categories={categories} sold={sold} onManage={!sold && canWrite ? () => manageAsset(home.id) : undefined} onSave={!sold && canWrite ? (patch, reason) => saveMemberAsset(home.id, patch, reason) : undefined} onEdit={!sold && canWrite && !isHomeDisposed(home) ? () => isPropertyComponent(home.categoryCode, 'LAND', categories) ? editLandPurchase(home.id) : router.push(`/thing/asset?assetId=${encodeURIComponent(home.id)}&section=boq`) : undefined} />)}</div>
+
           <div className="property-card-footer"><span>{members.length} สินทรัพย์{sold ? ' · จำหน่ายแล้ว' : <> · ต้นทุนรวม <strong>{money(propertyTotalCost(property, data.homes))} บาท</strong></>}</span><div className="asset-tools">{!sold ? <Button aria-expanded={operationsOpen} disabled={busy || refreshing} onClick={() => { setOperationsPropertyId(operationsOpen ? '' : property.id); setError('') }}><Wrench size={14} />{operationsOpen ? 'ซ่อนรายการ' : 'จัดการ Property'}</Button> : null}{canWrite ? <><Button disabled={busy || refreshing || sold} onClick={() => { setEditing(property); setOpen(true); setNotice(''); setError('') }}>แก้ไข / เพิ่มสินทรัพย์</Button><Button disabled={busy} onClick={() => { setRemoving(property); setError('') }}><Unlink size={14} />ยกเลิกการรวม</Button></> : null}</div></div>
-          {operationsOpen && !sold ? <PropertyOperationsPanel property={property} members={members} categories={categories} ledger={visibleLedger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} canWrite={canWrite} busy={busy} error={error} onSaveAsset={saveMemberAsset} onSaveLandWork={saveLandWork} onCreateLandPayment={createLandPayment} onRecordLandCost={recordLandCost} onCreateBuildingPayment={createBuildingPayment} onCreatePropertyPayment={createPropertyPayment} /> : null}
+          {operationsOpen && !sold ? <PropertyOperationsPanel property={property} members={members} categories={categories} ledger={visibleLedger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} canWrite={canWrite} busy={busy} error={error} tab={operationsTab} onTabChange={setOperationsTab} onManageAsset={manageAsset} onEditAsset={editLandPurchase} onSaveAsset={saveMemberAsset} onSaveLandWork={saveLandWork} onCreateLandPayment={createLandPayment} onRecordLandCost={recordLandCost} onCreateBuildingPayment={createBuildingPayment} onCreatePropertyPayment={createPropertyPayment} /> : null}
         </section>
       })}
     </>
-    <p className="asset-hint">ต้นทุนรวมอ่านจากราคาซื้อหรือ BOQ และรายการเพิ่มเติมที่ยังไม่รวมในราคาหลักของแต่ละ Asset ไม่สร้างต้นทุนหรือรายการรับ–จ่ายใหม่ มูลค่าประเมินรวมแสดงเมื่อมีราคาประเมินเฉพาะสินทรัพย์ครบทุกชิ้น โดยไม่รวมรายการประเมินบ้านพร้อมที่ดินซ้ำ</p>
-    <Modal open={Boolean(removing)} title="ยกเลิกการรวม Property" onClose={() => { if (!busy) setRemoving(null) }}><p className="text-sm leading-7">ยกเลิก “{removing?.name}” และปลดการเชื่อมสินทรัพย์ทั้งหมด? ที่ดิน อาคาร BOQ และประวัติต้นทางจะยังอยู่ สามารถนำไปจัดกลุ่มใหม่ได้</p>{error ? <p role="alert" className="asset-error">{error}</p> : null}<div className="asset-form-actions"><Button disabled={busy} onClick={() => setRemoving(null)}>กลับ</Button><Button variant="danger" disabled={busy} onClick={() => void remove()}>{busy ? 'กำลังบันทึก…' : 'ยืนยันยกเลิกการรวม'}</Button></div></Modal>
-    <Modal open={!!detailAsset} title={`จัดการข้อมูล · ${detailAsset?.name ?? ''}`} onClose={() => { if (!busy) setDetailAssetId('') }} className="max-w-3xl">{detailAsset ? <AssetForm key={detailAsset.id} initial={detailAsset} categories={categories} busy={busy} error={error} onCancel={() => setDetailAssetId('')} onSave={async fields => { await saveMemberAsset(detailAsset.id, { name: fields.name, categoryCode: fields.categoryCode, ...fields.land }, `แก้ข้อมูลสินทรัพย์: ${detailAsset.name}`); setDetailAssetId('') }} /> : null}</Modal>
-    <Modal open={!!landCostAsset} title={`ราคาซื้อที่ดิน · ${landCostAsset?.name ?? ''}`} onClose={() => { if (!busy) setCostAssetId('') }} className="max-w-3xl">{landCostAsset ? <LandPurchaseEditor key={landCostAsset.id} home={landCostAsset} busy={busy} error={error} onCancel={() => setCostAssetId('')} onSave={async patch => { await saveMemberAsset(landCostAsset.id,patch,`แก้ราคาซื้อจริงและข้อตกลงที่ดิน: ${landCostAsset.name}`); setCostAssetId('') }} /> : null}</Modal>
+    <p className="asset-hint">ต้นทุนรวมอ่านจากทะเบียนบ้านและที่ดินที่เชื่อมอยู่ โดย Property แสดงยอดภาพรวมและไม่สร้างรายการต้นทุนหรือรับ–จ่ายซ้ำ รายละเอียดต้นทุนและเอกสารแก้ไขได้ที่ Asset ต้นทาง</p>
+    <Modal open={Boolean(removing)} title="ยกเลิกการรวม Property" onClose={() => { if (!busy) setRemoving(null) }}><p className="text-sm leading-7">ยกเลิก “{removing?.name}” และปลดการเชื่อมสินทรัพย์ทั้งหมด? ข้อมูลบ้าน ที่ดิน และประวัติต้นทางจะยังอยู่ สามารถนำไปจัดกลุ่มใหม่ได้</p>{error ? <p role="alert" className="asset-error">{error}</p> : null}<div className="asset-form-actions"><Button disabled={busy} onClick={() => setRemoving(null)}>กลับ</Button><Button variant="danger" disabled={busy} onClick={() => void remove()}>{busy ? 'กำลังบันทึก…' : 'ยืนยันยกเลิกการรวม'}</Button></div></Modal>
+
   </div></PageContainer>
 }
 
-function PropertyOperationsPanel({ property, members, categories, ledger, usedLedgerIds, financialCategories, channels, canWrite, busy, error, onSaveAsset, onSaveLandWork, onCreateLandPayment, onRecordLandCost, onCreateBuildingPayment, onCreatePropertyPayment }: {
+function PropertyOperationsPanel({ property, members, categories, ledger, usedLedgerIds, financialCategories, channels, canWrite, busy, error, onSaveAsset, onSaveLandWork, onCreateLandPayment, onRecordLandCost, onCreateBuildingPayment, onCreatePropertyPayment, onManageAsset, onEditAsset, tab, onTabChange }: {
   property: Property
+  tab: PropertyTab
+  onTabChange: (tab: PropertyTab) => void
   members: Home[]
   categories: AssetCategory[]
   ledger: LedgerOption[]
@@ -189,17 +189,19 @@ function PropertyOperationsPanel({ property, members, categories, ledger, usedLe
   canWrite: boolean
   busy: boolean
   error: string
+  onManageAsset: (assetId: string) => void
+  onEditAsset: (assetId: string) => void
   onSaveAsset: (assetId: string, patch: Partial<Home>, reason: string) => Promise<void>
   onSaveLandWork: (landId: string, work: LandDevelopment) => Promise<void>
   onCreateLandPayment: (landId: string, work: LandDevelopment, payment: DevelopmentPaymentDraft) => Promise<void>
   onRecordLandCost: (landId: string, workId: string, record: { amount: number; date: string; note: string }) => Promise<void>
   onCreatePropertyPayment: (input: PropertyCashInput) => Promise<void>
-  onCreateBuildingPayment: (buildingId: string, project: BuildingProject | BuildingChangeOrder, payment: BuildingProjectPaymentDraft) => Promise<void>
+  onCreateBuildingPayment: (buildingId: string, project: BuildingProject | BuildingChangeOrder | BuildingWork, payment: BuildingProjectPaymentDraft) => Promise<void>
 }) {
   const lands = members.filter(home => isPropertyComponent(home.categoryCode, 'LAND', categories))
   const buildings = members.filter(home => home.kind === 'house' && !isPropertyComponent(home.categoryCode, 'LAND', categories))
   const linkedIds = new Set(members.flatMap(home => [
-    ...home.boq.map(row => row.ledgerEntryId),
+    ...home.boq.map(row => row.ledgerEntryId), ...(home.buildingWorks ?? []).flatMap(work => (work.payments ?? []).map(payment => payment.ledgerEntryId)),
     ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(payment => payment.ledgerEntryId)),
     ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(payment => payment.ledgerEntryId)),
     ...(home.buildingChangeOrders ?? []).flatMap(order => (order.payments ?? []).map(payment => payment.ledgerEntryId)),
@@ -208,20 +210,25 @@ function PropertyOperationsPanel({ property, members, categories, ledger, usedLe
   const rows = ledger.filter(row => linkedIds.has(row.id) || row.note.split(/[\s·/]+/).includes(property.code)).sort((a, b) => b.occurredOn.localeCompare(a.occurredOn) || b.id - a.id)
   const received = rows.filter(row => row.direction === 'IN').reduce((sum, row) => sum + row.amountSatang / 100, 0)
   const paid = rows.filter(row => row.direction === 'OUT').reduce((sum, row) => sum + row.amountSatang / 100, 0)
-  const [tab, setTab] = useState<'management' | 'cashbook'>('management')
+  const attention = [
+    { label: 'งานซ่อมที่ยังไม่ปิด', count: buildings.flatMap(home => home.buildingWorks ?? []).filter(work => work.treatment === 'expense' && work.status !== 'completed').length, target: 'maintenance' as const, hint: 'ติดตามอาการและสถานะงานซ่อม' },
+    { label: 'อุปกรณ์เสีย / รอซ่อม', count: buildings.flatMap(home => home.items).filter(item => ['damaged', 'waiting_repair', 'repair'].includes(item.status ?? '')).length, target: 'rooms' as const, hint: 'เปิดทะเบียนอุปกรณ์ตามห้อง' },
+    { label: 'โครงการที่ยังไม่เสร็จ', count: buildings.flatMap(home => home.buildingProjects ?? []).filter(project => project.status !== 'completed').length, target: 'construction' as const, hint: 'ตรวจงบและความคืบหน้า' },
+  ]
+  const setTab = onTabChange
   const [cashDirection, setCashDirection] = useState<'IN' | 'OUT' | null>(null)
-  return <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label={`รายการ Property ${property.code}`}>
+  return <section id={`property-operations-${property.id}`} className="mt-4 scroll-mt-20 overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label={`รายการ Property ${property.code}`}>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3">
-      <div><strong className="text-sm text-slate-800">รายการของ Property · {property.code}</strong><p className="mb-0 mt-1 text-xs text-slate-500">งานและธุรกรรมรวมของบ้านพร้อมที่ดิน โดยข้อมูลประจำสินทรัพย์ยังแยกเก็บตามเดิม</p></div>
-      <div className="flex gap-1 rounded-lg bg-slate-100 p-1" role="tablist" aria-label="ส่วนจัดการ Property">
-        <button type="button" role="tab" aria-selected={tab === 'management'} onClick={() => setTab('management')} className={`rounded-md px-3 py-2 text-xs font-medium ${tab === 'management' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Wrench size={13} className="mr-1 inline" />งาน / อุปกรณ์</button>
-        <button type="button" role="tab" aria-selected={tab === 'cashbook'} onClick={() => setTab('cashbook')} className={`rounded-md px-3 py-2 text-xs font-medium ${tab === 'cashbook' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Wallet size={13} className="mr-1 inline" />รับ–จ่าย · {rows.length}</button>
-      </div>
+      <div><strong className="text-sm text-slate-800">รายการของ Property · {property.code}</strong><p className="mb-0 mt-1 text-xs text-slate-500">จัดการงานหลังรวมบ้านพร้อมที่ดิน · ข้อมูลตั้งต้นและห้องเชื่อมจาก Asset</p></div>
+      <div className="property-operation-navigation" role="group" aria-label="ส่วนจัดการ Property">{([
+        ['overview', 'ภาพรวม'], ['construction', 'ต่อเติม / ปรับปรุง'], ['rooms', 'อุปกรณ์ในบ้าน'], ['maintenance', 'ซ่อมบำรุง'], ['cashbook', `รับ–จ่าย · ${rows.length}`], ['details', 'ข้อมูลบ้านและที่ดิน'],
+      ] as const).map(([key, name]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} className={`property-operation-tab ${tab === key ? 'is-active' : ''}`} >{name}</button>)}</div>
     </div>
     {error ? <p role="alert" className="asset-error mx-4 mt-4">{error}</p> : null}
-    {tab === 'management' ? <div className="space-y-4 p-4">
-      {lands.map(land => <LandDevelopmentManager key={land.id} compact landId={land.id} landName={land.name} rows={land.landDevelopments ?? []} busy={busy} canWrite={canWrite && !isHomeDisposed(land)} error={error} ledger={ledger} usedLedgerIds={usedLedgerIds} assets={members} financialCategories={financialCategories} channels={channels} onSave={work => onSaveLandWork(land.id, work)} onCreatePayment={(work, payment) => onCreateLandPayment(land.id, work, payment)} onRecordActualCost={(workId, record) => onRecordLandCost(land.id, workId, record)} />)}
-      {buildings.map(building => <BuildingManager key={building.id} propertyMode asset={building} canWrite={canWrite && !isHomeDisposed(building)} busy={busy} ledger={ledger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} onCreateProjectPayment={(project, payment) => onCreateBuildingPayment(building.id, project, payment)} onSave={(patch, reason) => onSaveAsset(building.id, patch, reason)} />)}
+    {tab === 'overview' ? <div className="space-y-4 p-4"><h3 className="m-0 text-base font-semibold">ภาพรวม · {property.name}</h3><PropertyMoney members={members} /><h4 className="m-0 text-sm font-semibold">รายการที่ต้องจัดการ</h4><div className="property-attention-grid">{attention.map(item => <button key={item.label} type="button" className="property-attention-card" onClick={() => setTab(item.target)}><span>{item.label}</span><strong>{item.count} รายการ</strong><small>{item.hint} →</small></button>)}</div><div className="property-origin-links"><div><strong>ข้อมูลตั้งต้นใน Asset</strong><p>ข้อมูลบ้าน BOQ ตั้งต้น และใบงานเพิ่ม–ลดแก้ไขในทะเบียนบ้าน ส่วน Property แสดงภาพรวมบ้านพร้อมที่ดิน</p></div><div className="flex flex-wrap gap-2">{members.map(home => <Button key={home.id} onClick={() => onManageAsset(home.id)}>เปิด {home.name} ↗</Button>)}</div></div></div> : tab !== 'cashbook' ? <div className="space-y-4 p-4">
+      {tab === 'construction' ? lands.map(land => <LandDevelopmentManager key={land.id} compact landId={land.id} landName={land.name} rows={land.landDevelopments ?? []} busy={busy} canWrite={canWrite && !isHomeDisposed(land)} error={error} ledger={ledger} usedLedgerIds={usedLedgerIds} assets={members} financialCategories={financialCategories} channels={channels} onSave={work => onSaveLandWork(land.id, work)} onCreatePayment={(work, payment) => onCreateLandPayment(land.id, work, payment)} onRecordActualCost={(workId, record) => onRecordLandCost(land.id, workId, record)} />) : null}
+      {tab === 'details' ? lands.map(land => <SourceRow key={land.id} home={land} categories={categories} onManage={() => onManageAsset(land.id)} onEdit={() => onEditAsset(land.id)} onSave={(patch, reason) => onSaveAsset(land.id, patch, reason)} />) : null}
+      {buildings.map(building => <BuildingManager key={`${building.id}-${tab}`} propertyMode activeSection={tab === 'construction' ? 'information' : tab === 'rooms' ? 'management' : tab === 'maintenance' ? 'maintenance' : 'details'} asset={building} canWrite={canWrite && !isHomeDisposed(building)} busy={busy} ledger={ledger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} onCreateProjectPayment={(project, payment) => onCreateBuildingPayment(building.id, project, payment)} onSave={(patch, reason) => onSaveAsset(building.id, patch, reason)} />)}
       {!lands.length && !buildings.length ? <p className="mb-0 rounded-lg bg-slate-50 p-5 text-center text-sm text-slate-500">Property นี้ยังไม่มีที่ดินหรืออาคารที่เชื่อมไว้</p> : null}
     </div> : <div className="space-y-4 p-4">
       {canWrite ? <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="m-0 text-base font-semibold">รับ–จ่ายของ {property.code}</h3><CashActions disabled={busy} onIncome={() => setCashDirection('IN')} onExpense={() => setCashDirection('OUT')} /></div> : null}
@@ -250,22 +257,26 @@ function PropertySaleSummary({ members }: { members: Home[] }) {
 
 function PropertyMoney({ members }: { members: Home[] }) {
   const rows = members.map(assetFinancials)
-  const sum = (key: 'main' | 'additions' | 'expenses' | 'developmentActual' | 'projectActual' | 'budget' | 'paid' | 'refunded' | 'boqPaid') => rows.reduce((value, row) => value + row[key], 0)
-  return <div className="property-finance-grid"><div><Wallet size={16} /><span>ราคาซื้อ / BOQ</span><strong>{money(sum('main'))}</strong><small>บาท · ต้นทุนหลัก</small></div><div className="property-finance-add"><TrendingUp size={16} /><span>ต้นทุนเพิ่มในทะเบียน</span><strong>+ {money(sum('additions'))}</strong><small>บาท · รวมอยู่ในต้นทุนแล้ว</small></div><div><span>พัฒนา / โครงการจริง</span><strong>{money(sum('developmentActual') + sum('projectActual'))}</strong><small>บาท · ติดตามแยก ไม่บวกซ้ำ</small><small>งบที่ระบุ {money(sum('budget'))} บาท</small></div><div><span>ซ่อมบำรุง / ค่าใช้จ่าย</span><strong>{money(sum('expenses'))}</strong><small>บาท · ไม่เพิ่มมูลค่าสินทรัพย์</small></div><div><span>จ่ายตามงาน / โครงการ</span><strong>{money(sum('paid'))}</strong><small>รับคืน {money(sum('refunded'))} บาท · ดูแยกในแต่ละ Asset</small></div><div><span>ยอดจ่ายที่ระบุใน BOQ</span><strong>{money(sum('boqPaid'))}</strong><small>แสดงแยกจากยอดโครงการ ไม่บวกซ้ำ</small></div><div><span>ค้างจ่าย</span><strong>ตรวจตามรายการ</strong><small>งบประมาณลบยอดจ่ายไม่ใช่หนี้ค้างจ่าย</small></div></div>
+  const sum = (key: 'main' | 'additions' | 'expenses' | 'developmentActual' | 'projectActual' | 'budget' | 'paid' | 'refunded') => rows.reduce((value, row) => value + row[key], 0)
+  return <div className="property-finance-grid"><div><Wallet size={16} /><span>ต้นทุนหลักจากทะเบียน</span><strong>{money(sum('main'))}</strong><small>บาท · สรุปรวมสินทรัพย์</small></div><div className="property-finance-add"><TrendingUp size={16} /><span>ต้นทุนเพิ่มในทะเบียน</span><strong>+ {money(sum('additions'))}</strong><small>บาท · รวมอยู่ในต้นทุนแล้ว</small></div><div><span>พัฒนา / โครงการจริง</span><strong>{money(sum('developmentActual') + sum('projectActual'))}</strong><small>บาท · ติดตามแยก ไม่บวกซ้ำ</small><small>งบที่ระบุ {money(sum('budget'))} บาท</small></div><div><span>ซ่อมบำรุง / ค่าใช้จ่าย</span><strong>{money(sum('expenses'))}</strong><small>บาท · ไม่เพิ่มมูลค่าสินทรัพย์</small></div><div><span>จ่ายตามงาน / โครงการ</span><strong>{money(sum('paid'))}</strong><small>รับคืน {money(sum('refunded'))} บาท · ดูแยกในแต่ละ Asset</small></div><div><span>ค้างจ่าย</span><strong>ตรวจตามรายการ</strong><small>งบประมาณลบยอดจ่ายไม่ใช่หนี้ค้างจ่าย</small></div></div>
 }
 
 function SourceRow({ home, categories, remove, sold = false, onEdit, onManage, onSave }: { home: Home; categories: AssetCategory[]; remove?: () => void; sold?: boolean; onEdit?: () => void; onManage?: () => void; onSave?: (patch: Partial<Home>, reason: string) => Promise<void> }) {
   const land = isPropertyComponent(home.categoryCode, 'LAND', categories)
   const costs = assetFinancials(home)
-  return <article className="property-source property-source-expanded"><div className="property-source-top"><div className="property-source-icon" aria-hidden="true">{land ? <MapPin size={19} /> : <Building2 size={19} />}</div><div className="property-source-info"><small>{home.assetCode ?? home.id} · {land ? 'ที่ดิน' : 'อาคาร / สิ่งปลูกสร้าง'}</small><strong>{home.name}</strong><small>{land ? `โฉนด ${home.landDetails?.deedNumber || 'ยังไม่ระบุ'}` : home.address || categoryPath(home.categoryCode, categories)}</small></div>{remove ? <button type="button" className="property-remove" aria-label={`นำ ${home.name} ออกจากการรวม`} onClick={remove}><X size={16} /></button> : null}</div>
+  return <article className={`property-source property-source-expanded${!sold && !isHomeDisposed(home) ? ' property-source-aligned' : ''}`}><div className="property-source-top"><div className="property-source-icon" aria-hidden="true">{land ? <MapPin size={19} /> : <Building2 size={19} />}</div><div className="property-source-info"><small>{home.assetCode ?? home.id} · {land ? 'ที่ดิน' : 'อาคาร / สิ่งปลูกสร้าง'}</small><strong>{home.name}</strong><small>{land ? `โฉนด ${home.landDetails?.deedNumber || 'ยังไม่ระบุ'}` : home.address || categoryPath(home.categoryCode, categories)}</small></div>{!sold && !isHomeDisposed(home) && (onManage || onEdit) ? <div className="ml-auto flex max-w-[48%] shrink-0 flex-col items-end gap-2" role="group" aria-label={`จัดการ ${home.name}`}>
+      {onManage ? <Button className="max-w-full whitespace-normal text-right" onClick={onManage}>เปิดทะเบียน{land ? 'ที่ดิน' : 'บ้าน'}ใน Asset</Button> : null}
+      {onEdit ? <Button className="max-w-full whitespace-normal text-right" onClick={onEdit}>{land ? 'แก้ข้อมูลที่ดินใน Asset' : 'เปิดข้อมูลบ้านใน Asset'}</Button> : null}
+    </div> : null}{remove ? <button type="button" className="property-remove" aria-label={`นำ ${home.name} ออกจากการรวม`} onClick={remove}><X size={16} /></button> : null}</div>
     {sold || home.disposedOn ? <p className="mb-0 mt-2 text-xs font-medium text-emerald-800">ขายแล้ว{home.disposedOn ? ` · ${home.disposedOn}` : ''}</p> : null}
     {!sold && !isHomeDisposed(home) ? <>
-    {onManage ? <div className="mt-3"><Button onClick={onManage}>จัดการข้อมูล{land ? 'ที่ดิน' : 'บ้าน'}</Button></div> : null}{onEdit ? <div className="mt-3 flex flex-wrap gap-2"><Button onClick={onEdit}>{land ? 'แก้ราคาซื้อที่ดิน' : 'ตั้งราคาบ้าน / จัดการ BOQ'}</Button></div> : null}
-    {land && home.landDetails?.purchaseContractPrice !== undefined ? <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">ราคาในสัญญาซื้อขาย {money(home.landDetails.purchaseContractPrice)} บาท{home.landDetails.transferBuyerShare !== undefined ? ` · ค่าโอน: ผู้ซื้อ ${home.landDetails.transferBuyerShare}% / ผู้ขาย ${100 - home.landDetails.transferBuyerShare}%` : ''}</p> : null}
-    <dl className="property-source-values"><div><dt>{home.costSource === 'boq' ? 'ต้นทุน BOQ' : 'ราคาซื้อ'}</dt><dd>{costs.main === 0 && home.boq.length === 0 && !home.purchasePrice ? <span>ยังไม่บันทึกต้นทุนหลัก</span> : money(costs.main)}</dd></div><div><dt>ต้นทุนเพิ่มในทะเบียน</dt><dd className="property-positive">+ {money(costs.additions)}</dd></div><div className="property-source-total"><dt>ต้นทุนตามข้อมูลที่บันทึก</dt><dd>{money(costs.total)} <small>บาท</small></dd></div></dl>
+    <div className="property-source-contract">{land && home.landDetails?.purchaseContractPrice !== undefined ? <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">ราคาในสัญญาซื้อขาย {money(home.landDetails.purchaseContractPrice)} บาท{home.landDetails.transferBuyerShare !== undefined ? ` · ค่าโอน: ผู้ซื้อ ${home.landDetails.transferBuyerShare}% / ผู้ขาย ${100 - home.landDetails.transferBuyerShare}%` : ''}</p> : null}</div>
+    <div className="property-source-body">
+    <dl className="property-source-values"><div><dt>ต้นทุนหลัก</dt><dd>{costs.main === 0 && home.boq.length === 0 && !home.purchasePrice ? <span>ยังไม่บันทึกต้นทุนหลัก</span> : money(costs.main)}</dd></div><div><dt>ต้นทุนเพิ่มในทะเบียน</dt><dd className="property-positive">+ {money(costs.additions)}</dd></div><div className="property-source-total"><dt>ต้นทุนตามข้อมูลที่บันทึก</dt><dd>{money(costs.total)} <small>บาท</small></dd></div></dl>
     <AppraisalPanel home={home} land={land} canWrite={Boolean(onSave)} onSave={onSave ?? (async () => {})} />
     {home.landValue > 0 && home.landDetails && ['asking', 'sale'].includes(home.landDetails.priceType ?? '') ? <div className="property-appraisal"><span>{home.landDetails.priceType === 'asking' ? 'ราคาประกาศขาย' : 'ราคาขายที่บันทึก'}<strong>{money(home.landValue)} บาท</strong></span><small>{home.landDetails.valuationOn || 'ยังไม่ระบุวันที่'} · {home.landDetails.valuationSource || 'ยังไม่ระบุแหล่งที่มา'}</small></div> : null}
-    {costs.activity.length || costs.paid || costs.refunded || home.boq.length ? <details className="property-money-details"><summary>การปรับปรุงและเงินที่เกี่ยวข้อง · {costs.activity.length} รายการ</summary><div className="property-payment-summary"><span>ยอดจ่ายที่ระบุใน BOQ <b>{money(costs.boqPaid)}</b></span><span>จ่ายตามโครงการ <b>{money(costs.paid)}</b></span><span>รับคืน <b>{money(costs.refunded)}</b></span><span>จ่ายสุทธิ <b>{money(costs.netPaid)} บาท</b></span></div>{costs.activity.map(row => <div className="property-money-event" key={row.id}><div><strong>{row.name}</strong><small>{row.date || 'ยังไม่ระบุวันที่'} · {row.label}</small>{row.recognized > 0 ? <small>มูลค่ารับรู้ที่ระบุใน Asset: {money(row.recognized)} บาท · ไม่บวกซ้ำ</small> : null}</div><div className="property-event-amount"><b>{money(row.amount)}</b>{row.budget > 0 ? <small>งบ {money(row.budget)}</small> : null}{row.amount === 0 && row.budget > 0 ? <small>ยังไม่บันทึกต้นทุนจริง</small> : null}</div></div>)}<p className="asset-hint">ยอดโครงการจริง ยอดจ่าย และมูลค่าที่รับรู้แสดงคนละมุม ไม่ได้นำมาบวกกันเป็นต้นทุนใหม่</p></details> : null}
+    {costs.activity.length || costs.paid || costs.refunded ? <details className="property-money-details"><summary>การปรับปรุงและเงินที่เกี่ยวข้อง · {costs.activity.length} รายการ</summary><div className="property-payment-summary"><span>จ่ายตามโครงการ <b>{money(costs.paid)}</b></span><span>รับคืน <b>{money(costs.refunded)}</b></span><span>จ่ายสุทธิ <b>{money(costs.netPaid)} บาท</b></span></div>{costs.activity.map(row => <div className="property-money-event" key={row.id}><div><strong>{row.name}</strong><small>{row.date || 'ยังไม่ระบุวันที่'} · {row.label}</small>{row.recognized > 0 ? <small>มูลค่ารับรู้ที่ระบุใน Asset: {money(row.recognized)} บาท · ไม่บวกซ้ำ</small> : null}</div><div className="property-event-amount"><b>{money(row.amount)}</b>{row.budget > 0 ? <small>งบ {money(row.budget)}</small> : null}{row.amount === 0 && row.budget > 0 ? <small>ยังไม่บันทึกต้นทุนจริง</small> : null}</div></div>)}<p className="asset-hint">ยอดโครงการจริง ยอดจ่าย และมูลค่าที่รับรู้แสดงคนละมุม ไม่ได้นำมาบวกกันเป็นต้นทุนใหม่</p></details> : null}
+    </div>
     </> : null}
   </article>
 }

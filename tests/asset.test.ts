@@ -555,3 +555,17 @@ test('land purchase contract value and fee allocation do not replace actual acqu
  land.landDetails.transferBuyerShare=101;assert.throws(()=>validateAssetData(data),/ส่วนแบ่งค่าโอน/)
  land.landDetails.transferBuyerShare=50;land.landDetails.purchaseContractPrice=-1;assert.throws(()=>validateAssetData(data))
 })
+
+test('construction and post-combination variations preserve origin and one shared cost total', () => {
+ const data=initialData(); const home=newHome('Variation phases','house'); data.homes=[home];data.loans=[];data.properties=[]
+ home.purchasePrice=1000
+ home.buildingChangeOrders=[{id:'original-order',number:1,baseVersion:1,title:'Construction variation',date:'2026-01-01',status:'approved',reference:'',notes:'',lines:[{id:'original-line',kind:'add',description:'Original change',amount:100}]},{id:'property-order',context:'property',number:2,baseVersion:1,title:'Later variation',date:'2026-01-02',status:'approved',reference:'',notes:'',lines:[{id:'property-line',kind:'add',description:'Later change',amount:50}]}]
+ validateAssetData(data)
+ assert.equal(assetCosts(home).total,1000, 'variation quotes do not duplicate recorded acquisition cost')
+ const changed=structuredClone(data)
+ changed.homes[0].buildingChangeOrders![0].context='property'
+ assert.throws(()=>validateHistory(changed,data),/ขอบเขตใบงาน/)
+ const invalid=structuredClone(data)
+ Object.assign(invalid.homes[0].buildingChangeOrders![1],{context:'unknown'})
+ assert.throws(()=>validateAssetData(invalid),/ขอบเขตงาน/)
+})

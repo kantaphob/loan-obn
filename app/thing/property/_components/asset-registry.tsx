@@ -1,10 +1,14 @@
 'use client'
 
+import { assetLedgerIds } from '@/app/thing/_shared/integrity'
+
 import { assetAcquisitionCost, assetCosts, loanAssetIds, propertyAssetIds, type HomeSale } from '@/app/thing/_shared/model'
 
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import { BadgeDollarSign, Boxes, Landmark, Pencil, Plus, Trash2, RotateCcw, History, Search } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { LandPurchaseEditor } from '@/app/thing/asset/_components/land-purchase-editor'
+import { BadgeDollarSign, Boxes, Landmark, Pencil, Plus, Trash2, RotateCcw, History, Search, SlidersHorizontal } from 'lucide-react'
 import { PageContainer } from '@/components/ui/page-container'
 import { Header } from '@/components/ui/header'
 import { Card } from '@/components/ui/card'
@@ -17,7 +21,7 @@ import { AssetForm, type AssetFormValues } from '@/app/thing/asset/_components/a
 import { LandDevelopmentManager, type DevelopmentPaymentDraft } from '@/app/thing/asset/_components/land-improvement-manager'
 import { VehicleManager } from '@/app/thing/asset/_components/vehicle-manager'
 import { BuildingManager, type BuildingProjectPaymentDraft } from '@/app/thing/asset/_components/building-manager'
-import type { BuildingChangeOrder, BuildingProject, LandDevelopment, LedgerOption } from '@/app/thing/_shared/model'
+import type { BuildingWork, BuildingChangeOrder, BuildingProject, LandDevelopment, LedgerOption } from '@/app/thing/_shared/model'
 import { appraisalHistory } from '../financials'
 
 type Props = { initial: AssetData; categories: AssetCategory[]; canWrite: boolean; ledger: LedgerOption[]; financialCategories: { code: string; nameTh: string; direction: string }[]; channels: { code: string; nameTh: string }[]; mode?: 'masterdata' | 'basic'; view?: 'active' | 'archived' }
@@ -34,11 +38,32 @@ function landPriceGrowth(item: Home) {
 }
 
 function PropertyAssetLink({ property }: { property: { code: string; name: string } }) {
-  return <div className="flex min-h-32 flex-col items-start justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
-    <strong className="text-sm text-emerald-900">สินทรัพย์นี้อยู่ใน Property {property.code}</strong>
-    <span className="text-xs text-emerald-800">{property.name} · งานและรับ–จ่ายจัดการจาก Property เพื่อรวมภาพบ้านพร้อมที่ดิน</span>
-    <Link href="/thing/property" className="mt-1 inline-flex items-center rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-800">เปิด Property</Link>
+  return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2.5">
+    <div className="min-w-0"><strong className="block text-xs text-emerald-900">รวมอยู่ใน Property {property.code}</strong><span className="mt-0.5 block truncate text-xs text-emerald-800">{property.name} · ภาพรวมบ้านและที่ดินจัดการที่ Property</span></div>
+    <Link href="/thing/property" className="inline-flex shrink-0 items-center rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-800">เปิด Property</Link>
   </div>
+}
+
+function LandInitialInfo({ asset }: { asset: Home }) {
+  const details = asset.landDetails
+  const areaWa = details?.areaSquareWa ?? 0
+  const rai = Math.floor(areaWa / 400)
+  const ngan = Math.floor((areaWa % 400) / 100)
+  const wa = Math.round((areaWa % 100) * 100) / 100
+  const area = areaWa > 0 ? `${rai} ไร่ ${ngan} งาน ${wa.toLocaleString('th-TH', { maximumFractionDigits: 2 })} ตร.วา` : 'ยังไม่ระบุ'
+  const fields = [
+    ['ประเภทเอกสารสิทธิ', details?.titleType],
+    ['เลขโฉนด', details?.deedNumber],
+    ['เลขที่ดิน', details?.parcelNo],
+    ['หน้าสำรวจ', details?.surveyNo],
+    ['ระวาง', details?.mapSheet],
+    ['ขนาดที่ดิน', area],
+    ['ที่ตั้ง', [details?.moo && `หมู่ ${details.moo}`, details?.subdistrict, details?.district, details?.province].filter(Boolean).join(' ') || asset.address],
+  ] as const
+  return <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-label={`ข้อมูลตั้งต้นของสินทรัพย์ ${asset.name}`}>
+    <header className="border-b border-slate-200 px-4 py-3"><h3 className="m-0 text-sm font-semibold text-slate-800">ข้อมูลตั้งต้นของสินทรัพย์ · {asset.name}</h3></header>
+    <div className="p-4"><h4 className="mb-3 mt-0 text-xs font-semibold text-slate-700">ข้อมูลที่ดิน</h4><dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{fields.map(([title, value]) => <div key={title} className="rounded-xl bg-slate-50 p-3"><dt className="text-xs text-slate-500">{title}</dt><dd className="mb-0 mt-1 text-sm font-medium text-slate-800">{value || 'ยังไม่ระบุ'}</dd></div>)}</dl></div>
+  </section>
 }
 
 function latestLandPrice(item: Home) {
@@ -78,18 +103,22 @@ function HouseValueSummary({ item }: { item: Home }) {
   const latest = appraisalHistory(item, false)[0]
   const difference = latest ? latest.amount - costs.total : null
   const percent = difference !== null && costs.total > 0 ? difference / costs.total * 100 : null
-  return <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><span className="text-xs text-slate-500">ราคาประเมินบ้านล่าสุด</span><strong className="text-base text-slate-900">{latest ? `${money(latest.amount)} บาท` : 'ยังไม่ระบุ'}</strong>{percent !== null ? <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${difference! > 0 ? 'bg-emerald-50 text-emerald-700' : difference! < 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-200 text-slate-600'}`}>{difference! > 0 ? '+' : ''}{percent.toLocaleString('th-TH', { maximumFractionDigits: 2 })}%</span> : null}</div>
-    <p className="mb-0 mt-1 text-xs text-slate-500">ต้นทุนบ้านรวม {money(costs.total)} · {item.costSource === 'boq' ? 'BOQ อ้างอิง' : 'ราคาซื้อ'} {money(costs.main)} + งานเพิ่ม {money(costs.additions)} บาท</p>
-    {latest ? <p className="mb-0 mt-1 text-xs text-slate-500">ประเมินเมื่อ {latest.date} · {latest.source}{difference !== null ? ` · ${difference > 0 ? 'เพิ่มขึ้น' : difference < 0 ? 'ลดลง' : 'เท่ากับต้นทุน'} ${difference > 0 ? '+' : ''}${money(difference)} บาท เทียบต้นทุนบ้าน` : ''}</p> : null}
+  return <div className="mt-3 rounded-xl bg-slate-50 px-3 py-3 text-slate-600">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"><div><span className="block text-xs text-slate-500">ราคาประเมินบ้านล่าสุด</span><strong className="text-xl font-semibold tabular-nums text-slate-900">{latest ? `${money(latest.amount)} บาท` : 'ยังไม่ระบุ'}</strong></div>{percent !== null ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${difference! > 0 ? 'bg-emerald-50 text-emerald-700' : difference! < 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-200 text-slate-600'}`}>{difference! > 0 ? '+' : ''}{percent.toLocaleString('th-TH', { maximumFractionDigits: 2 })}%</span> : null}</div>
+    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 pt-2 text-xs"><span>ต้นทุนรวม <strong className="text-slate-700">{money(costs.total)}</strong> บาท</span><span>{item.costSource === 'boq' ? 'BOQ อ้างอิง' : 'ราคาซื้อ'} {money(costs.main)}</span><span>งานเพิ่ม {money(costs.additions)} บาท</span></div>
+    {latest ? <p className="mb-0 mt-1.5 text-[11px] text-slate-500">ประเมินเมื่อ {latest.date} · {latest.source}{difference !== null ? ` · ${difference > 0 ? 'เพิ่มขึ้น' : difference < 0 ? 'ลดลง' : 'เท่ากับต้นทุน'} ${difference > 0 ? '+' : ''}${money(difference)} บาทจากต้นทุน` : ''}</p> : null}
   </div>
 }
 
 export function AssetRegistry({ initial, categories, canWrite, ledger, financialCategories, channels, mode = 'masterdata', view = 'active' }: Props) {
+  const searchParams = useSearchParams()
+  const requestedAsset = initial.homes.find(home => home.id === searchParams.get('assetId'))
+  const [purchaseAsset, setPurchaseAsset] = useState<Home | null>(canWrite && searchParams.get('purchase') === '1' && requestedAsset?.landDetails ? requestedAsset : null)
   const [data, setData] = useState(initial)
-  const [editing, setEditing] = useState<Home | null>(null)
+  const [editing, setEditing] = useState<Home | null>(searchParams.get('edit') === '1' ? requestedAsset ?? null : null)
   const [priceOnly, setPriceOnly] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [assetActionsOpen, setAssetActionsOpen] = useState(false)
+  const [open, setOpen] = useState(searchParams.get('edit') === '1' && Boolean(requestedAsset) && canWrite)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -103,10 +132,10 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
   const [searchQuery, setSearchQuery] = useState('')
   const [assetFilter, setAssetFilter] = useState<'all' | 'land' | 'building' | 'vehicle' | 'other'>('all')
   const [showSold, setShowSold] = useState(false)
-  const [selectedAssetId, setSelectedAssetId] = useState(initial.homes[0]?.id ?? '')
+  const [selectedAssetId, setSelectedAssetId] = useState(requestedAsset?.id ?? initial.homes[0]?.id ?? '')
   const showArchived = view === 'archived'
   const isAssetSold = (item: Home) => Boolean(item.disposedOn || item.saleDeclaration) || Boolean(data.properties?.some(property => property.status === 'DISPOSED' && propertyAssetIds(property).includes(item.id)))
-  const usedLedgerIds = [...data.homes.flatMap(home => [...home.boq.map(row => row.ledgerEntryId), ...(home.vehicleFinancing?.payments ?? []).map(payment => payment.ledgerEntryId), ...(home.landDevelopments ?? []).flatMap(work => work.payments.map(payment => payment.ledgerEntryId)), ...(home.buildingProjects ?? []).flatMap(project => project.payments.map(payment => payment.ledgerEntryId)), ...(home.buildingChangeOrders ?? []).flatMap(order => (order.payments ?? []).map(payment => payment.ledgerEntryId)), ...(home.sale?.payments ?? []).map(payment => payment.ledgerEntryId)]), ...data.loans.flatMap(loan => loan.payments.map(payment => payment.ledgerEntryId))].filter((id): id is number => Boolean(id))
+  const usedLedgerIds = assetLedgerIds(data)
   const activeAssets = data.homes.filter(item => showArchived ? Boolean(item.archivedOn) : !item.archivedOn && (showSold ? isAssetSold(item) : !isAssetSold(item)))
   const ownedAssets = data.homes.filter(item => !item.archivedOn && !isAssetSold(item))
   const ownedAssetCost = ownedAssets.reduce((sum, item) => {
@@ -281,11 +310,11 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
     } catch (caught) { const message = caught instanceof Error ? caught.message : 'บันทึกรายการรับ–จ่ายไม่สำเร็จ'; setError(message); throw new Error(message) }
     finally { setBusy(false) }
   }
-  async function createProjectPayment(buildingId: string, project: BuildingProject | BuildingChangeOrder, payment: BuildingProjectPaymentDraft) {
+  async function createProjectPayment(buildingId: string, project: BuildingProject | BuildingChangeOrder | BuildingWork, payment: BuildingProjectPaymentDraft) {
     if (busy || !canWrite) throw new Error('ไม่สามารถบันทึกรายการนี้ได้')
     setBusy(true); setError('')
     try {
-      const result = await createBuildingProjectPayment({ requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID(), buildingId, ...('title' in project ? { changeOrderId: project.id } : { projectId: project.id }), direction: payment.direction, categoryCode: payment.categoryCode, amount: payment.amount, occurredOn: payment.occurredOn, channelCode: payment.channelCode, reference: payment.reference, note: payment.note, paymentType: payment.paymentType }, payment.slip)
+      const result = await createBuildingProjectPayment({ requestKey: payment.requestKey ?? crypto.randomUUID(), paymentId: payment.paymentId ?? crypto.randomUUID(), buildingId, ...('treatment' in project ? { workId: project.id } : 'title' in project ? { changeOrderId: project.id } : { projectId: project.id }), existingLedgerId: payment.existingLedgerId, direction: payment.direction, categoryCode: payment.categoryCode, amount: payment.amount, occurredOn: payment.occurredOn, channelCode: payment.channelCode, reference: payment.reference, note: payment.note, paymentType: payment.paymentType }, payment.slip)
       if ('error' in result) throw new Error(result.error || 'บันทึกรายการรับ–จ่ายไม่สำเร็จ')
       setData(result.data)
       setNotice(`บันทึก${payment.direction === 'IN' ? 'รายรับคืน' : 'รายจ่าย'} ${money(Number(payment.amount))} บาทในรับ–จ่ายแล้ว · TX-${String(result.entryId).padStart(6, '0')} · ผูกกับ ${'title' in project ? `ใบงาน ${project.number} · ${project.title}` : project.name}`)
@@ -317,27 +346,42 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
         const isLand = chain.some(category => category.code === 'LAND')
         const categoryLabel = chain.at(-1)?.nameTh ?? 'ไม่ระบุหมวดหมู่'
         const supportsPropertyValuation = isLand || item.kind === 'house'
-        const assetActions = <div className="flex flex-wrap gap-2">
-          {supportsPropertyValuation && !item.disposedOn && !showArchived ? <Button disabled={busy} onClick={() => setPriceHistoryAsset(item)} aria-label={`ประวัติราคา ${item.name}`}><History size={14} />ประวัติราคา</Button> : null}
-          {canWrite ? showArchived ? <Button disabled={busy} onClick={() => archive(item, false)} aria-label={`กู้คืน ${item.name}`}><RotateCcw size={14} />กู้คืน</Button> : <>
-            {supportsPropertyValuation && !item.disposedOn ? <Button disabled={busy} onClick={() => isLand ? show(item, true) : setAppraisalAsset(item)} aria-label={`อัปเดตราคา ${item.name}`}><BadgeDollarSign size={14} />อัปเดตราคา</Button> : null}
-            {!item.disposedOn ? <Button disabled={busy} onClick={() => openSale(item)} aria-label={`บันทึกขาย ${item.name}`}><BadgeDollarSign size={14} />บันทึกขาย</Button> : null}
-            {item.sale && item.sale.payments.reduce((sum, row) => sum + row.amount, 0) + 0.009 < item.sale.salePrice ? <Button disabled={busy} onClick={() => openSaleReceipt(item)}><Plus size={14} />บันทึกรับเงิน</Button> : null}
-            {(isLand || item.kind === 'house') && !item.disposedOn ? <Link href={`/thing/liabilities?assetId=${encodeURIComponent(item.id)}`} title="ดูหรือเพิ่มเงินกู้ที่ผูกกับสินทรัพย์นี้" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"><Landmark size={14} />สินเชื่อ / รีไฟแนนซ์</Link> : null}
-            {!item.disposedOn ? <Button disabled={busy} onClick={() => show(item)} aria-label={`แก้ไขหมวดหมู่ ${item.name}`}><Pencil size={14} />แก้ไข</Button> : null}
-            <Button variant="danger" disabled={busy} onClick={() => { setError(''); setDeleting(item) }} aria-label={`ลบ ${item.name}`}><Trash2 size={14} />ลบ</Button>
-          </> : null}
+        const actionButtonClass = 'w-full justify-start whitespace-nowrap'
+        const assetActions = <div className="relative flex justify-end">
+          <button type="button" aria-label={`เปิดเมนูการทำงาน ${item.name}`} aria-haspopup="menu" aria-expanded={assetActionsOpen} onClick={() => setAssetActionsOpen(value => !value)} className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-slate-700 transition hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><SlidersHorizontal size={21} /></button>
+          {assetActionsOpen ? <><button type="button" aria-label="ปิดเมนูการทำงาน" onClick={() => setAssetActionsOpen(false)} className="fixed inset-0 z-40 cursor-default" /><div role="menu" aria-label={`การทำงานของ ${item.name}`} onClick={() => setAssetActionsOpen(false)} className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+            <p className="mb-1 mt-0 px-2 py-1 text-xs font-semibold text-slate-500">การทำงาน</p>
+            {supportsPropertyValuation && !item.disposedOn && !showArchived ? <Button className={actionButtonClass} disabled={busy} onClick={() => setPriceHistoryAsset(item)} aria-label={`ประวัติราคา ${item.name}`}><History size={14} />ประวัติราคา</Button> : null}
+            {canWrite ? showArchived ? <Button className={actionButtonClass} disabled={busy} onClick={() => archive(item, false)} aria-label={`กู้คืน ${item.name}`}><RotateCcw size={14} />กู้คืน</Button> : <>
+              {supportsPropertyValuation && !item.disposedOn ? <Button className={actionButtonClass} disabled={busy} onClick={() => isLand ? show(item, true) : setAppraisalAsset(item)} aria-label={`อัปเดตราคา ${item.name}`}><BadgeDollarSign size={14} />อัปเดตราคา</Button> : null}
+              {isLand && !item.disposedOn ? <Button className={actionButtonClass} disabled={busy} onClick={() => setPurchaseAsset(item)}>แก้ราคาซื้อที่ดิน</Button> : null}
+              {!item.disposedOn ? <Button className={actionButtonClass} disabled={busy} onClick={() => openSale(item)} aria-label={`บันทึกขาย ${item.name}`}><BadgeDollarSign size={14} />บันทึกขาย</Button> : null}
+              {item.sale && item.sale.payments.reduce((sum, row) => sum + row.amount, 0) + 0.009 < item.sale.salePrice ? <Button className={actionButtonClass} disabled={busy} onClick={() => openSaleReceipt(item)}><Plus size={14} />บันทึกรับเงิน</Button> : null}
+              {(isLand || item.kind === 'house') && !item.disposedOn ? <Link role="menuitem" href={`/thing/liabilities?assetId=${encodeURIComponent(item.id)}`} title="ดูหรือเพิ่มเงินกู้ที่ผูกกับสินทรัพย์นี้" className="inline-flex w-full items-center justify-start gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"><Landmark size={14} />สินเชื่อ / รีไฟแนนซ์</Link> : null}
+              {!item.disposedOn ? <Button className={actionButtonClass} disabled={busy} onClick={() => show(item)} aria-label={`แก้ไขหมวดหมู่ ${item.name}`}><Pencil size={14} />แก้ไข</Button> : null}
+              <Button className={actionButtonClass} variant="danger" disabled={busy} onClick={() => { setError(''); setDeleting(item) }} aria-label={`ลบ ${item.name}`}><Trash2 size={14} />ลบ</Button>
+            </> : null}
+          </div></> : null}
         </div>
-        const assetSummary = <div className="min-w-0 flex-1"><h2 className="m-0 text-base font-semibold text-slate-900">{item.name}</h2><div className="mt-1.5 flex flex-wrap items-center gap-1.5"><span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">{item.assetCode ?? 'รอสร้างรหัส'}</span><span title={categoryPath(item.categoryCode, categories)} className="max-w-full truncate rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{categoryLabel}</span>{isAssetSold(item) ? <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">ขายแล้ว{item.disposedOn ? ` · ${item.disposedOn}` : ''}</span> : null}</div>{isLand ? <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600"><div className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><span className="text-xs text-slate-500">มูลค่าประเมิน</span><strong className="text-base text-slate-900">{latestLandPrice(item) ? `${money(latestLandPrice(item)!)} บาท` : 'ยังไม่ระบุ'}</strong>{(() => { const growth = landPriceGrowth(item); return typeof growth.difference === 'number' && typeof growth.percent === 'number' ? <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${growth.difference > 0 ? 'bg-emerald-50 text-emerald-700' : growth.difference < 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-200 text-slate-600'}`}>{growth.difference > 0 ? '+' : ''}{growth.percent.toLocaleString('th-TH', { maximumFractionDigits: 2 })}%</span> : <span className="text-xs text-slate-500">{growth.message}</span> })()}</div><p className="mb-0 mt-1 text-xs text-slate-500">ต้นทุนรวม {money(landAssetCostTotal(item).total)} · ราคาซื้อ {money(item.purchasePrice)} + ปรับปรุง {money(landAssetCostTotal(item).improvements)} บาท</p></div> : item.kind === 'house' ? <HouseValueSummary item={item} /> : null}{item.sale ? <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-xs text-slate-700"><p className="mb-1 font-semibold text-emerald-800">ขายแล้ว · {item.sale.date}</p><p className="mb-1">ราคาขาย {money(item.sale.salePrice)} · ค่าใช้จ่ายขาย {money(item.sale.sellingCosts)} บาท</p><p className="mb-1">รับเงินจริง {money(item.sale.payments.reduce((sum, row) => sum + row.amount, 0))} · คงเหลือ {money(Math.max(0, item.sale.salePrice - item.sale.payments.reduce((sum, row) => sum + row.amount, 0)))} บาท{item.sale.buyer ? ` · ผู้ซื้อ ${item.sale.buyer}` : ''}</p><p className="mb-0 text-slate-500">ส่วนต่างเทียบต้นทุนอ้างอิง {money(item.sale.salePrice - item.sale.sellingCosts - item.sale.includedAssetIds.reduce((sum, assetId) => sum + assetAcquisitionCost(data.homes.find(home => home.id === assetId)!), 0))} บาท</p></div> : item.disposedOn ? <p className="mb-0 mt-2 text-xs text-emerald-700">ขายรวมในใบขาย {item.disposalSaleId ? data.homes.find(home => home.sale?.id === item.disposalSaleId)?.name : 'สินทรัพย์'} · {item.disposedOn}</p> : null}{item.archivedOn ? <p className="mb-0 mt-2 text-xs text-slate-500">ลบเมื่อ {item.archivedOn}</p> : null}</div>
+        const assetIdentity = <div className="min-w-0"><h2 className="m-0 text-base font-semibold text-slate-900">{item.name}</h2><div className="mt-1.5 flex flex-wrap items-center gap-1.5"><span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">{item.assetCode ?? 'รอสร้างรหัส'}</span><span title={categoryPath(item.categoryCode, categories)} className="max-w-full truncate rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{categoryLabel}</span>{isAssetSold(item) ? <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">ขายแล้ว{item.disposedOn ? ` · ${item.disposedOn}` : ''}</span> : null}</div></div>
+        const assetValueSummary = isLand ? <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-xs text-slate-500">มูลค่าประเมิน</span><strong className="text-xl font-semibold text-slate-900">{latestLandPrice(item) ? `${money(latestLandPrice(item)!)} บาท` : 'ยังไม่ระบุ'}</strong>{(() => { const growth = landPriceGrowth(item); return typeof growth.difference === 'number' && typeof growth.percent === 'number' ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${growth.difference > 0 ? 'bg-emerald-50 text-emerald-700' : growth.difference < 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-200 text-slate-600'}`}>{growth.difference > 0 ? '+' : ''}{growth.percent.toLocaleString('th-TH', { maximumFractionDigits: 2 })}%</span> : <span className="text-xs text-slate-500">{growth.message}</span> })()}</div><p className="mb-0 mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500">ต้นทุนรวม {money(landAssetCostTotal(item).total)} · ราคาซื้อ {money(item.purchasePrice)} + ปรับปรุง {money(landAssetCostTotal(item).improvements)} บาท</p></div> : item.kind === 'house' ? <HouseValueSummary item={item} /> : null
+        const assetSaleSummary = item.sale ? <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-xs text-slate-700"><p className="mb-1 font-semibold text-emerald-800">ขายแล้ว · {item.sale.date}</p><p className="mb-1">ราคาขาย {money(item.sale.salePrice)} · ค่าใช้จ่ายขาย {money(item.sale.sellingCosts)} บาท</p><p className="mb-1">รับเงินจริง {money(item.sale.payments.reduce((sum, row) => sum + row.amount, 0))} · คงเหลือ {money(Math.max(0, item.sale.salePrice - item.sale.payments.reduce((sum, row) => sum + row.amount, 0)))} บาท{item.sale.buyer ? ` · ผู้ซื้อ ${item.sale.buyer}` : ''}</p><p className="mb-0 text-slate-500">ส่วนต่างเทียบต้นทุนอ้างอิง {money(item.sale.salePrice - item.sale.sellingCosts - item.sale.includedAssetIds.reduce((sum, assetId) => sum + assetAcquisitionCost(data.homes.find(home => home.id === assetId)!), 0))} บาท</p></div> : item.disposedOn ? <p className="m-0 text-xs text-emerald-700">ขายรวมในใบขาย {item.disposalSaleId ? data.homes.find(home => home.sale?.id === item.disposalSaleId)?.name : 'สินทรัพย์'} · {item.disposedOn}</p> : null
 
         const linkedToProperty = Boolean(linkedProperty && !showArchived)
         return <section className="min-w-0 p-4 sm:p-5" aria-label={`รายละเอียด ${item.name}`}>
-          {isLand && !showArchived && !linkedToProperty ? <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.72fr)_minmax(0,1.5fr)]"><div className="flex flex-col items-start gap-3">{assetSummary}{assetActions}</div><LandDevelopmentManager compact landId={item.id} landName={item.name} rows={item.landDevelopments ?? []} busy={busy} canWrite={canWrite && !item.disposedOn} error={error} ledger={ledger} usedLedgerIds={usedLedgerIds} assets={data.homes} financialCategories={financialCategories} channels={channels} onSave={improvement => saveLandDevelopment(item.id, improvement)} onCreatePayment={(work, payment) => createDevelopmentPayment(item.id, work, payment)} onRecordActualCost={(workId, record) => recordDevelopmentCost(item.id, workId, record)} /></div> : <>
-            <div className="flex flex-wrap items-start justify-between gap-3">{assetSummary}{assetActions}</div>
-            {linkedToProperty ? <div className="mt-4"><PropertyAssetLink property={linkedProperty!} /></div> : null}
-            {item.kind === 'house' && !showArchived && !linkedToProperty ? <BuildingManager asset={item} canWrite={canWrite && !item.disposedOn} busy={busy} ledger={ledger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} onCreateProjectPayment={(project, payment) => createProjectPayment(item.id, project, payment)} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} /> : null}
-            {item.kind === 'vehicle' && !showArchived ? <VehicleManager asset={item} canWrite={canWrite && !item.disposedOn} busy={busy} channels={channels} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} onRecordInstallment={(draft, file) => recordVehicleInstallment(item.id, draft, file)} onRecordDownPayment={(draft, file) => recordVehicleDownPayment(item.id, draft, file)} /> : null}
-          </>}
+          <div className="space-y-3">
+            <header className="flex min-w-0 items-start justify-between gap-4">
+              {assetIdentity}
+              {assetActions}
+            </header>
+            {assetValueSummary ? <section aria-label={`ราคาและมูลค่า ${item.name}`}>{assetValueSummary}</section> : null}
+            {assetSaleSummary ? <section aria-label={`ข้อมูลการขาย ${item.name}`}>{assetSaleSummary}</section> : null}
+            {item.archivedOn ? <p className="m-0 text-xs text-slate-500">ลบเมื่อ {item.archivedOn}</p> : null}
+            {linkedToProperty ? <PropertyAssetLink property={linkedProperty!} /> : null}
+          </div>
+          {isLand && !showArchived ? <div className="mt-4"><LandInitialInfo asset={item} /><div className="mt-4"><LandDevelopmentManager compact landId={item.id} landName={item.name} rows={item.landDevelopments ?? []} busy={busy} canWrite={canWrite && !item.disposedOn} error={error} ledger={ledger} usedLedgerIds={usedLedgerIds} assets={data.homes} financialCategories={financialCategories} channels={channels} onSave={improvement => saveLandDevelopment(item.id, improvement)} onCreatePayment={(work, payment) => createDevelopmentPayment(item.id, work, payment)} onRecordActualCost={(workId, record) => recordDevelopmentCost(item.id, workId, record)} /></div></div> : null}
+          {item.kind === 'house' && !isLand && !showArchived ? <BuildingManager key={item.id} registryMode asset={item} canWrite={canWrite && !item.disposedOn} busy={busy} ledger={ledger} usedLedgerIds={usedLedgerIds} financialCategories={financialCategories} channels={channels} onCreateProjectPayment={(project, payment) => createProjectPayment(item.id, project, payment)} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} /> : null}
+          {item.kind === 'vehicle' && !showArchived ? <VehicleManager asset={item} canWrite={canWrite && !item.disposedOn} busy={busy} channels={channels} onSave={(patch, reason) => saveAssetPatch(item.id, patch, reason)} onRecordInstallment={(draft, file) => recordVehicleInstallment(item.id, draft, file)} onRecordDownPayment={(draft, file) => recordVehicleDownPayment(item.id, draft, file)} /> : null}
         </section>
       })() : <section className="grid min-h-48 place-items-center p-6 text-sm text-slate-500">เลือกสินทรัพย์จากรายการทางซ้าย</section>}
     </div> : null}
@@ -361,6 +405,7 @@ export function AssetRegistry({ initial, categories, canWrite, ledger, financial
     <Modal open={Boolean(priceHistoryAsset)} title={`ประวัติราคา · ${priceHistoryAsset?.name ?? ''}`} description="เปรียบเทียบราคาซื้อกับราคาที่บันทึกหรือประเมินไว้ตามลำดับเวลา" onClose={() => setPriceHistoryAsset(null)}>
       {priceHistoryAsset ? (() => { const rows = assetPriceHistory(priceHistoryAsset); return <div className="space-y-2">{rows.length ? rows.map((row, index) => { const previous = rows.slice(0, index).filter(candidate => candidate.type === row.type || candidate.type === 'purchase' && row.type !== 'purchase').at(-1); const difference = previous ? row.amount - previous.amount : undefined; const percent = previous?.amount ? difference! / previous.amount * 100 : undefined; return <article key={`${row.date}-${row.type}-${row.amount}-${index}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex flex-wrap items-baseline justify-between gap-2"><strong className="text-sm text-slate-800">{money(row.amount)} บาท</strong><span className="text-xs text-slate-500">{row.date || 'ไม่ระบุวันที่'} · {row.type === 'purchase' ? 'ราคาซื้อ' : row.type === 'official_appraisal' ? 'ประเมินราชการ' : row.type === 'market_appraisal' ? 'ประเมินตลาด' : row.type === 'asking' ? 'ราคาตั้งขาย' : row.type === 'sale' ? 'ราคาขาย' : 'ประเมินบ้าน'}</span></div>{difference !== undefined ? <p className={`mb-0 mt-1 text-xs font-medium ${difference > 0 ? 'text-emerald-700' : difference < 0 ? 'text-rose-700' : 'text-slate-500'}`}>{difference > 0 ? '+' : ''}{money(difference)} บาท ({difference > 0 ? '+' : ''}{percent!.toLocaleString('th-TH', { maximumFractionDigits: 2 })}%) เทียบกับรายการก่อนหน้า</p> : null}{row.source && row.type !== 'purchase' ? <p className="mb-0 mt-1 text-xs text-slate-500">แหล่งประเมิน: {row.source}</p> : null}{row.notes ? <p className="mb-0 mt-1 text-xs text-slate-500">{row.notes}</p> : null}</article> }) : <p className="text-sm text-slate-500">ยังไม่มีประวัติราคา</p>}</div> })() : null}
     </Modal>
+    <Modal open={Boolean(purchaseAsset)} title={`ราคาซื้อที่ดิน · ${purchaseAsset?.name ?? ''}`} onClose={() => { if (!busy) setPurchaseAsset(null) }} className="max-w-3xl">{purchaseAsset ? <LandPurchaseEditor key={purchaseAsset.id} home={purchaseAsset} busy={busy} error={error} onCancel={() => setPurchaseAsset(null)} onSave={async patch => { await saveAssetPatch(purchaseAsset.id, patch, `แก้ราคาซื้อที่ดิน: ${purchaseAsset.name}`); setPurchaseAsset(null) }} /> : null}</Modal>
     <Modal open={Boolean(appraisalAsset)} title={`อัปเดตราคาประเมินบ้าน · ${appraisalAsset?.name ?? ''}`} description="บันทึกเป็นประวัติราคาแยกจากต้นทุนก่อสร้างและราคาของ Property" onClose={() => { if (!busy) setAppraisalAsset(null) }}>
       {appraisalAsset ? <form className="space-y-3" onSubmit={event => void saveHouseAppraisal(event)}><label className="block text-xs font-medium text-slate-600">มูลค่าประเมินบ้าน (บาท) *<input name="amount" type="number" min="0.01" step="0.01" required className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label><div className="grid gap-3 sm:grid-cols-2"><label className="block text-xs font-medium text-slate-600">วันที่ประเมิน *<input name="date" type="date" required max={today()} defaultValue={today()} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label><label className="block text-xs font-medium text-slate-600">แหล่งประเมิน *<input name="source" required maxLength={200} placeholder="เช่น ธนาคาร / ผู้ประเมิน" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label></div><label className="block text-xs font-medium text-slate-600">หมายเหตุ<textarea name="notes" maxLength={1000} rows={2} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label>{error ? <p role="alert" className="m-0 text-sm text-rose-700">{error}</p> : null}<div className="flex justify-end gap-2"><Button type="button" disabled={busy} onClick={() => setAppraisalAsset(null)}>ยกเลิก</Button><Button type="submit" variant="primary" disabled={busy}>{busy ? 'กำลังบันทึก…' : 'บันทึกราคาประเมิน'}</Button></div></form> : null}
     </Modal>
