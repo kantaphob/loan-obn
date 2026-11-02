@@ -4,6 +4,7 @@ import { syncBorrowerSlipFiles } from './lib/borrower-slip-files.mjs'
 import { createServer } from 'node:http'
 import next from 'next'
 import { WebSocket, WebSocketServer } from 'ws'
+import { createAgentVillage } from './lib/agent-village/runtime.mjs'
 
 const dev = process.env.NODE_ENV !== 'production'
 // The app intentionally has no login for its single-user workflow. Keep it
@@ -27,10 +28,19 @@ const server = createServer((request, response) => {
   return handle(request, response)
 })
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 1024 })
+const agentSockets = new WebSocketServer({ noServer: true, maxPayload: 1024 })
+const village = createAgentVillage({ root: process.cwd() })
+globalThis.__agentVillage = village
+village.subscribe(event => {
+  const message = JSON.stringify(event)
+  for (const client of agentSockets.clients) {
+    if (client.readyState === WebSocket.OPEN) client.send(message)
+  }
+})
 
 server.on('upgrade', (request, socket, head) => {
   const pathname = new URL(request.url ?? '/', `http://${request.headers.host}`).pathname
-  if (pathname !== '/api/realtime') {
+  if (pathname !== '/api/realtime' && pathname !== '/api/agent-village') {
     handleUpgrade(request, socket, head).catch((error) => {
       console.error('Next.js WebSocket upgrade error:', error)
       socket.destroy()
@@ -51,9 +61,15 @@ server.on('upgrade', (request, socket, head) => {
     }
   }
 
-  sockets.handleUpgrade(request, socket, head, (websocket) => {
-    sockets.emit('connection', websocket)
+  const target = pathname === '/api/agent-village' ? agentSockets : sockets
+  target.handleUpgrade(request, socket, head, (websocket) => {
+    target.emit('connection', websocket)
   })
+})
+
+agentSockets.on('connection', socket => {
+  socket.send(JSON.stringify(village.snapshot()))
+  socket.on('error', error => console.error('Agent WebSocket error:', error.message))
 })
 
 sockets.on('connection', (socket) => {
@@ -71,7 +87,7 @@ globalThis.__loanNotificationHub = {
 }
 
 const heartbeat = setInterval(() => {
-  for (const socket of sockets.clients) {
+  for (const socket of [...sockets.clients, ...agentSockets.clients]) {
     if (socket.readyState === WebSocket.OPEN) socket.ping()
   }
 }, 30_000)
@@ -98,8 +114,9 @@ function shutdown() {
 
   // WebSocketServer.close() waits for existing clients; terminate them so the
   // HTTP server can finish closing instead of leaving Ctrl+C hanging forever.
-  for (const socket of sockets.clients) socket.terminate()
+  for (const socket of [...sockets.clients, ...agentSockets.clients]) socket.terminate()
   sockets.close()
+  agentSockets.close()
 
   const forceExit = setTimeout(() => process.exit(130), 5_000)
   forceExit.unref()

@@ -1,0 +1,146 @@
+.sect-app {
+  --sect-bg: #0c1111;
+  --sect-gold: #d8b77b;
+  --sect-muted: #9ca59f;
+  --sect-border: #b49b6329;
+  min-height: 100vh;
+  background: var(--sect-bg);
+  color: #e6e7df;
+  font-family: Arial, Helvetica, sans-serif;
+  isolation: isolate;
+}
+.sect-app button, .sect-app input {font-family: inherit;}
+.sect-app button {cursor: pointer;}
+.sect-app button:focus-visible, .sect-app a:focus-visible, .sect-search:focus-within {outline: 2px solid var(--sect-gold); outline-offset: 5px;}
+.sect-header {height: 86px; padding: 0 5%; display: flex; align-items: center; justify-content: space-between; gap: 24px; position: absolute; top: 0; left: 0; right: 0; z-index: 3; border-bottom: 1px solid #e5d5ad12; background: linear-gradient(#0b131680,transparent);}
+.sect-brand {display: flex; align-items: center; gap: 13px; font-size: 15px; letter-spacing: .4px; color: #e8d6b0;}
+.sect-brandSeal {font: 29px Georgia,serif; width: 44px; height: 46px; display: grid; place-items: center; border: 1px solid #bba17166; outline: 1px solid #bba17120; outline-offset: 3px; border-radius: 4px; color: #d9bb7c;}
+.sect-brand small {display: block; font-size: 7px; letter-spacing: 2.1px; margin-top: 6px; color: #ada992;}
+.sect-header nav {display: flex; gap: 35px; margin-left: auto; margin-right: 35px; font-size: 12px; color: #b5bbb0;}
+.sect-header nav button:hover {color: #e5c88a;}
+.sect-systemLink {font-size: 11px; display: flex; align-items: center; gap: 13px; color: #d9c295; border: 1px solid #c1a16a50; border-radius: 4px; padding: 11px 15px; background: #0d17193d;}
+.sect-hero {min-height: 640px; position: relative; overflow: hidden; display: flex; align-items: center;}
+.sect-heroArt {position: absolute; inset: 0; background: #152025 url('/ai-sect/dragon-sanctum-v1.webp') center 39% / cover no-repeat; z-index: 0; animation: sect-reveal 1.8s ease-out both;}
+.sect-hero:after {content: ''; position: absolute; inset: 0; background: linear-gradient(0deg,#0c1111 0%,#0c11114d 19%,transparent 38%),linear-gradient(90deg,#080f13ed 0%,#0a1419b8 28%,#0b151a3d 56%,transparent 78%); pointer-events: none; z-index: 1;}
+.sect-heroContent {position: relative; z-index: 2; padding: 140px 0 95px; margin-left: 7%; max-width: 590px;}
+.sect-eyebrow {display: flex; gap: 12px; align-items: center; font-size: 9px; font-weight: 500; letter-spacing: 2.5px; color: #b8a27a;}
+.sect-eyebrow>span {width: 21px; height: 1px; background: #c7a66b;}
+.sect-heroKicker {font-size: 12px; color: #aeb4a8; margin: 27px 0 15px; letter-spacing: 1.6px;}
+.sect-hero h1 {font-size: clamp(38px,4.4vw,65px); letter-spacing: -.7px; font-weight: 500; line-height: 1.45; margin: 0; color: #ecd09c; text-shadow: 0 3px 20px #0b1017;}
+.sect-hero h1>span {display: block; font-size: .73em; color: #edf0e5; letter-spacing: -.8px;}
+.sect-heroContent>p {font-size: 13px; color: #a9b2ad; line-height: 2; margin: 21px 0 27px;}
+.sect-heroActions {display: flex; gap: 17px; align-items: center;}
+.sect-primary {display: flex; align-items: center; gap: 23px; padding: 13px 21px; font-size: 12px; border: 1px solid #ebce9a; background: linear-gradient(120deg,#d8bd88,#b99a66); color: #222725; border-radius: 3px; box-shadow: 0 3px 22px #b28c4020; transition: box-shadow .2s;}
+.sect-primary:hover {box-shadow: 0 3px 30px #b28c4050;}
+.sect-secondary {display: flex; align-items: center; gap: 9px; font-size: 11px; padding: 13px 8px; color: #c3bea9;}
+.sect-prototype {display: inline-flex; align-items: center; gap: 8px; margin-top: 27px; font-size: 9px; color: #919b92; letter-spacing: .3px;}
+.sect-prototype i {width: 4px; height: 4px; background: #b09b73; border-radius: 50%;}
+.sect-sceneLabel {position: absolute; right: 7%; bottom: 95px; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 12px; color: #d3b67e; opacity: .75;}
+.sect-sceneLabel>span {font: 30px Georgia,serif; letter-spacing: 12px; text-shadow: 0 2px 20px #000;}
+.sect-sceneLabel>small {font-size: 8px; letter-spacing: 1px; color: #b0b4a6;}
+.sect-heroBottom {position: absolute; bottom: 26px; left: 5%; right: 5%; z-index: 2; display: flex; justify-content: space-between; color: #808c86; font-size: 8px; letter-spacing: 2px;}
+.sect-heroBottom>span:last-child {display: flex; align-items: center; gap: 10px; letter-spacing: .5px;}
+.sect-mist {position: absolute; inset: 60% -20% -20%; z-index: 1; opacity: .25; background: radial-gradient(ellipse at 30% 50%,#a9b6a74a,transparent 55%); filter: blur(30px); animation: sect-mist 14s ease-in-out infinite alternate; pointer-events: none;}
+.sect-content {max-width: 1500px; padding: 0 5%; margin: 0 auto;}
+.sect-structure {display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-top: 1px solid var(--sect-border); border-bottom: 1px solid var(--sect-border); padding: 23px 0;}
+.sect-structure>div {display: flex; align-items: center; gap: 17px; padding-left: 30px; border-left: 1px solid #b49b631a;}
+.sect-structure>div:first-child {padding-left: 0; border-left: 0;}
+.sect-structure strong {font: 36px Georgia,serif; color: var(--sect-gold);}
+.sect-structure span {font-size: 12px; color: #d1d4c9;}
+.sect-structure small {font-size: 9px; display: block; color: #77867d; margin-top: 7px;}
+.sect-humanReview>svg {color: #ab9570;}
+.sect-command {display: flex; gap: 29px; align-items: center; margin: 32px 0 48px; border: 1px solid #a2885226; background: radial-gradient(ellipse at 0 100%,#b3914412,transparent 60%),linear-gradient(120deg,#141b19,#101716); border-radius: 5px; padding: 25px 32px; position: relative;}
+.sect-command:before {content: ''; width: 23px; height: 23px; border-top: 1px solid #b69b6266; border-left: 1px solid #b69b6266; position: absolute; top: -1px; left: -1px;}
+.sect-commandSeal {position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 73px; height: 73px; flex-shrink: 0; border: 1px solid #ad925960; outline: 1px solid #ad925920; outline-offset: 5px; border-radius: 50%; background: radial-gradient(#b5964329,#14231d00); color: #dec188;}
+.sect-commandSeal>span {font: 31px Georgia,serif;}
+.sect-commandSeal>small {font-size: 7px; margin-top: 2px; letter-spacing: 1px;}
+.sect-smallLabel {font-size: 8px; color: #a18c64; letter-spacing: 2px; font-weight: 500;}
+.sect-commandCopy h2 {font-size: 20px; font-weight: 400; color: #dedbc7; margin: 7px 0;}
+.sect-commandCopy p {font-size: 11px; color: #829085; line-height: 1.8;}
+.sect-textButton {display: flex; align-items: center; gap: 12px; margin-left: auto; color: #b4a17d; font-size: 10px; padding: 12px 0 12px 15px; flex-shrink: 0;}
+.sect-teamsSection {scroll-margin-top: 30px;}
+.sect-sectionHeading {display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; margin-bottom: 25px;}
+.sect-sectionHeading h2 {font-size: 27px; color: #dfdfd0; font-weight: 400; margin: 10px 0; letter-spacing: -.3px;}
+.sect-sectionHeading p {font-size: 11px; color: #7e8d84; line-height: 1.8;}
+.sect-count {font-size: 10px; color: #b0a184; padding-bottom: 5px; white-space: nowrap;}
+.sect-toolbar {display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-bottom: 18px; margin-bottom: 24px; border-bottom: 1px solid var(--sect-border);}
+.sect-tabs {display: flex; align-items: center; gap: 6px;}
+.sect-tabs button {display: flex; align-items: center; gap: 8px; font-size: 10px; color: #809087; border: 1px solid transparent; border-radius: 3px; padding: 10px 13px;}
+.sect-tabs button[aria-pressed=true] {border-color: #a8935c4d; background: #bfa6680c; color: #d4bd8f;}
+.sect-search {display: flex; align-items: center; gap: 9px; color: #7d8c82; font-size: 11px; background: #131b18; border: 1px solid #8d9d771c; padding: 9px 12px; border-radius: 3px; width: 235px;}
+.sect-search input {outline: none; border: 0; min-width: 0; width: 100%; background: transparent; color: #d6dbcf; font-size: 11px;}
+.sect-search input::placeholder {color: #758379;}
+.sect-search button {display: grid; place-items: center; padding: 2px;}
+.sect-teams {display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 20px;}
+.sect-teamCard {min-width: 0; width: 100%; display: flex; flex-direction: column; border: 1px solid #9c8d6126; border-radius: 5px; overflow: hidden; background: #121b18; text-align: left; transition: transform .25s, border-color .25s, box-shadow .25s;}
+.sect-teamCard:hover {transform: translateY(-5px); border-color: #a88c4f88; box-shadow: 0 12px 35px #0006;}
+.sect-cardImage {position: relative; width: 100%; overflow: hidden;}
+.sect-portrait {aspect-ratio: 1; width: 100%; background: #17201c url('/ai-sect/cultivator-portraits-v1.webp') no-repeat; background-size: 500% 200%; transition: scale .7s ease;}
+.sect-teamCard:hover .sect-portrait {scale: 1.045;}
+.sect-cardImage:after {content: ''; position: absolute; inset: 65% 0 -1px; background: linear-gradient(transparent,#121b18); pointer-events: none;}
+.sect-teamNumber {position: absolute; left: 13px; top: 13px; font: 14px Georgia,serif; color: #cfb987; text-shadow: 0 1px 5px #000; padding: 4px 6px; border: 1px solid #d7b77b40; background: #10191780; border-radius: 2px;}
+.sect-teamSymbol {position: absolute; bottom: 10px; right: 14px; z-index: 1; font: 25px Georgia,serif; color: #d0b17b90;}
+.sect-cardText {position: relative; padding: 3px 16px 14px; width: 100%; display: flex; flex-direction: column; flex: 1;}
+.sect-teamTitle {font-size: 8px; color: #a38e68; letter-spacing: .7px;}
+.sect-cardText h3 {font-size: 15px; color: #dfdfcd; font-weight: 500; margin: 6px 0 9px; line-height: 1.6;}
+.sect-cardText>p {font-size: 10px; color: #809087; line-height: 1.9; margin-bottom: 16px; flex: 1;}
+.sect-cardFooter {display: flex; justify-content: space-between; align-items: center; gap: 6px; padding-top: 12px; border-top: 1px solid #8a9a7820; font-size: 8px; color: #9b9f88;}
+.sect-cardFooter>span {display: flex; align-items: center; gap: 5px;}
+.sect-cardFooter i {width: 3px; height: 3px; border-radius: 50%; background: #ac9668;}
+.sect-cardFooter>span:last-child {color: #bd9f67;}
+.sect-teamsList {grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px;}
+.sect-teamsList .sect-teamCard {flex-direction: row;}
+.sect-teamsList .sect-cardImage {width: 145px; flex-shrink: 0;}
+.sect-teamsList .sect-cardText {padding: 15px 20px;}
+.sect-teamsList .sect-cardText>p {margin-bottom: 10px;}
+.sect-teamsList .sect-cardImage:after {inset: 0 0 0 60%; background: linear-gradient(90deg,transparent,#121b18);}
+.sect-teamsList .sect-teamNumber {font-size: 10px; top: 8px; left: 8px;}
+.sect-teamsList .sect-teamSymbol {display: none;}
+.sect-empty {display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 55px 20px; border: 1px dashed #a78c4440; color: #9d9e87; font-size: 13px;}
+.sect-empty button {color: #d2b57b; text-decoration: underline; font-size: 11px;}
+.sect-flow {margin: 45px 0 0; padding: 25px 0 30px; border-top: 1px solid var(--sect-border); border-bottom: 1px solid var(--sect-border);}
+.sect-flow>div {display: flex; align-items: center; gap: 9px; margin-bottom: 24px; color: #a58f66;}
+.sect-flow h2 {font-size: 13px; font-weight: 400; color: #d1cdb5;}
+.sect-flow>div>span {margin-left: auto; font-size: 9px; color: #78877c;}
+.sect-flow ol {display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); list-style: none; padding: 0; margin: 0; gap: 20px;}
+.sect-flow li {display: flex; align-items: center; gap: 12px; font-size: 11px; color: #9fa997;}
+.sect-flow li>span {font: 20px Georgia,serif; color: #9e875b;}
+.sect-flow li>svg {margin-left: auto; color: #6b735e;}
+.sect-footer {padding: 28px 0 35px; display: flex; align-items: center; gap: 20px; color: #778678; font-size: 9px;}
+.sect-footer>div {display: flex; align-items: center; gap: 9px; color: #9d9981; font-size: 10px;}
+.sect-footerSeal {font: 20px Georgia,serif; color: #baa16e; margin-right: 6px;}
+.sect-footer p {font-size: 9px; margin: 0 auto;}
+.sect-footer a {display: flex; align-items: center; gap: 8px; color: #b2a17c; white-space: nowrap;}
+.sect-dialog {border: 1px solid #ad96543b; background: #101916; color: #dcddcb; width: 450px; max-width: calc(100vw - 20px); height: 100dvh; max-height: 100dvh; margin: 0 0 0 auto; padding: 0; overflow-y: auto; outline: none; box-shadow: -20px 0 80px #0007;}
+.sect-dialog::backdrop {background: #070e0eb5; backdrop-filter: blur(7px);}
+.sect-panel {position: relative; padding: 36px 32px;}
+.sect-close {position: absolute; right: 18px; top: 18px; display: grid; place-items: center; height: 34px; width: 34px; border-radius: 50%; border: 1px solid #b29a6333; color: #b8aa86; background: #20291e; z-index: 2;}
+.sect-panelEyebrow {font-size: 8px; letter-spacing: 2px; color: #a38e64; margin: 12px 0 25px;}
+.sect-panelPortrait {width: 245px; margin: 0 auto 20px; border-radius: 5px; overflow: hidden; border: 1px solid #b0965d30; position: relative;}
+.sect-panelPortrait:after {content: ''; position: absolute; inset: 80% 0 0; background: linear-gradient(transparent,#101916);}
+.sect-panel>.sect-smallLabel {display: block; text-align: center; margin-top: 15px;}
+.sect-panel h2 {font-size: 27px; font-weight: 400; text-align: center; color: #d9bd86; margin: 10px 0 5px;}
+.sect-panel h3 {font-size: 13px; font-weight: 400; text-align: center; color: #9ba78e; margin-bottom: 21px;}
+.sect-panel>p {font-size: 12px; line-height: 2; color: #9fa995;}
+.sect-previewBadge {font-size: 9px; color: #baa377; padding: 12px; background: #b296510c; border: 1px solid #b296512a; border-radius: 3px; margin: 22px 0 26px; display: flex; align-items: center; gap: 8px;}
+.sect-previewBadge>span {width: 4px; height: 4px; border-radius: 50%; background: #ab935e;}
+.sect-panel h4 {font-size: 12px; margin-bottom: 13px; color: #cfceb6; font-weight: 400;}
+.sect-members {list-style: none; padding: 0; margin: 0;}
+.sect-members li {display: flex; align-items: center; gap: 16px; padding: 16px 0; border-top: 1px solid #aa965127;}
+.sect-members li>span {font: 20px Georgia,serif; color: #a38b57;}
+.sect-members strong {font-size: 12px; font-weight: 400; color: #d1d2ba;}
+.sect-members small {display: block; font-size: 9px; margin-top: 7px; color: #7b8b7c;}
+.sect-openModule {display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #222b23; background: linear-gradient(120deg,#d4bc88,#ab8d59); border: 1px solid #c4a770; border-radius: 3px; padding: 14px 18px; margin-top: 25px;}
+.sect-panel .sect-panelFoot {font-size: 9px; margin-top: 18px; text-align: center; color: #81917e;}
+.sect-masterPortrait {width: 140px; height: 140px; border: 1px solid #b7995c60; outline: 1px solid #b7995c20; outline-offset: 7px; border-radius: 50%; margin: 40px auto; display: grid; place-items: center; background: radial-gradient(#c6a55530,transparent); color: #d9b975;}
+.sect-masterPortrait span {font: 72px Georgia,serif;}
+@keyframes sect-reveal {from {opacity: .3; scale: 1.04;} to {opacity: 1; scale: 1;}}
+@keyframes sect-mist {to {transform: translateX(10%); opacity: .4;}}
+@media(min-width:1600px) {.sect-hero {min-height: 760px;} .sect-heroContent {margin-left: max(7%,calc((100vw - 1350px)/2));} .sect-hero h1 {font-size: 72px;}}
+@media(max-width:1100px) {.sect-teams {gap: 13px;} .sect-cardText {padding: 3px 12px 13px;} .sect-cardText h3 {font-size: 13px;} .sect-cardText>p {font-size: 9px;} .sect-cardFooter {font-size: 7px;} .sect-structure>div {padding-left: 20px; gap: 12px;} .sect-structure small {font-size: 8px;} .sect-structure strong {font-size: 30px;} .sect-flow li {font-size: 10px; gap: 8px;} .sect-teamsList .sect-cardImage {width: 120px;} .sect-teamsList .sect-cardText {padding: 12px;}}
+@media(max-width:850px) {.sect-header {height: 75px; gap: 16px;} .sect-header nav {gap: 22px; margin-right: 10px; font-size: 10px;} .sect-brand {font-size: 12px;} .sect-brand small {font-size: 6px;} .sect-brandSeal {width: 36px; height: 40px; font-size: 25px;} .sect-systemLink {font-size: 10px; padding: 9px 10px; gap: 7px;} .sect-hero {min-height: 600px;} .sect-heroArt {background-position: 58% center;} .sect-heroContent {margin-left: 6%;} .sect-hero h1 {font-size: 47px;} .sect-sceneLabel {display: none;} .sect-teams {grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px;} .sect-cardText h3 {font-size: 15px;} .sect-cardText>p {font-size: 10px;} .sect-cardFooter {font-size: 9px;} .sect-command {padding: 25px 23px; gap: 24px;} .sect-commandCopy h2 {font-size: 18px;} .sect-textButton {font-size: 9px; gap: 6px;} .sect-structure {grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: 25px;} .sect-structure>div:nth-child(3) {border-left: 0; padding-left: 0;} .sect-flow ol {grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px;} .sect-flow li {font-size: 11px;} .sect-flow li:nth-child(2)>svg {visibility: hidden;} .sect-footer {flex-wrap: wrap; gap: 15px;} .sect-footer p {order: 3; width: 100%; margin: 0; text-align: left;} .sect-footer a {margin-left: auto;} .sect-teamsList {grid-template-columns: repeat(2,minmax(0,1fr));} .sect-teamsList .sect-cardImage {width: 95px;} .sect-teamsList .sect-cardText h3 {font-size: 12px;} .sect-teamsList .sect-cardText>p {display: none;} .sect-teamsList .sect-cardFooter {font-size: 8px;} .sect-teamsList .sect-cardFooter>span:last-child {font-size: 0;} .sect-teamsList .sect-cardFooter>span:last-child svg {width: 13px;}}
+@media(max-width:600px) {.sect-header nav {display: none;} .sect-header {padding: 0 6%; height: 73px;} .sect-brand {gap: 10px; font-size: 12px;} .sect-brandSeal {width: 32px; height: 37px; font-size: 23px;} .sect-brand small {font-size: 5px; letter-spacing: 1.5px;} .sect-systemLink {font-size: 9px; gap: 6px; padding: 9px;} .sect-hero {min-height: 650px; align-items: flex-end;} .sect-heroArt {background-position: 67% 0; background-size: auto 68%; background-color: #0e1718;} .sect-hero:after {background: linear-gradient(0deg,#0c1111 1%,#0c1111ee 22%,#0c1111b3 45%,#0c111126 72%,#0c111133 100%);} .sect-heroContent {margin: 0; padding: 250px 7% 87px; width: 100%;} .sect-eyebrow {font-size: 7px; letter-spacing: 1.6px; gap: 9px;} .sect-eyebrow>span {width: 16px;} .sect-heroKicker {font-size: 10px; margin: 22px 0 12px; letter-spacing: 1.2px;} .sect-hero h1 {font-size: 40px; line-height: 1.4;} .sect-hero h1>span {font-size: 28px;} .sect-heroContent>p {font-size: 11px; line-height: 2; margin: 18px 0 22px;} .sect-primary {font-size: 11px; gap: 16px; padding: 12px 16px;} .sect-secondary {font-size: 10px;} .sect-heroActions {gap: 12px;} .sect-prototype {font-size: 8px; margin-top: 23px;} .sect-heroBottom {left: 7%; right: 7%; font-size: 6px; letter-spacing: 1.2px; bottom: 22px;} .sect-heroBottom>span:last-child {font-size: 7px; gap: 5px;} .sect-content {padding: 0 6%;} .sect-structure {padding: 22px 0; row-gap: 25px;} .sect-structure>div {gap: 13px; padding-left: 17px;} .sect-structure strong {font-size: 31px;} .sect-structure span {font-size: 10px;} .sect-structure small {font-size: 7px; margin-top: 6px;} .sect-humanReview svg {width: 24px; margin-right: 1px;} .sect-command {padding: 21px 18px; gap: 20px; flex-wrap: wrap; margin: 25px 0 36px;} .sect-commandSeal {width: 56px; height: 56px;} .sect-commandSeal>span {font-size: 25px;} .sect-commandSeal>small {font-size: 6px;} .sect-commandCopy {flex: 1; min-width: 150px;} .sect-commandCopy h2 {font-size: 15px; margin-top: 7px;} .sect-smallLabel {font-size: 7px; letter-spacing: 1.5px;} .sect-commandCopy p {font-size: 9px; line-height: 1.9;} .sect-textButton {padding: 0; font-size: 9px; margin-top: 2px; margin-left: 76px;} .sect-sectionHeading {margin-bottom: 19px; align-items: center;} .sect-sectionHeading h2 {font-size: 23px; line-height: 1.6; margin: 6px 0;} .sect-sectionHeading p {font-size: 10px; max-width: 240px;} .sect-count {font-size: 8px;} .sect-toolbar {flex-wrap: wrap; gap: 15px; padding-bottom: 16px; margin-bottom: 20px;} .sect-tabs button {font-size: 9px; gap: 6px; padding: 9px 10px;} .sect-search {width: 100%; font-size: 10px;} .sect-search input {font-size: 10px;} .sect-teams {grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px;} .sect-cardText {padding: 2px 11px 12px;} .sect-cardText h3 {font-size: 13px; margin: 6px 0 7px;} .sect-teamTitle {font-size: 7px; letter-spacing: .3px;} .sect-cardText>p {font-size: 9px; line-height: 1.9; margin-bottom: 13px;} .sect-teamNumber {font-size: 11px; left: 10px; top: 10px; padding: 3px 5px;} .sect-teamSymbol {font-size: 23px; right: 11px; bottom: 10px;} .sect-cardFooter {font-size: 7px; gap: 3px; padding-top: 10px;} .sect-cardFooter>span {gap: 3px;} .sect-cardFooter>span:last-child svg {width: 10px;} .sect-teamsList {grid-template-columns: 1fr; gap: 12px;} .sect-teamsList .sect-cardImage {width: 110px;} .sect-teamsList .sect-cardText {padding: 13px 14px;} .sect-teamsList .sect-cardText h3 {font-size: 14px;} .sect-teamsList .sect-cardFooter {font-size: 9px;} .sect-teamsList .sect-cardFooter>span:last-child {font-size: 8px;} .sect-flow {margin-top: 30px; padding: 24px 0;} .sect-flow>div {flex-wrap: wrap; row-gap: 9px; margin-bottom: 23px;} .sect-flow h2 {font-size: 12px;} .sect-flow>div>span {font-size: 8px; margin-left: 26px; width: 100%;} .sect-flow ol {grid-template-columns: 1fr; gap: 18px;} .sect-flow li {font-size: 11px; gap: 15px;} .sect-flow li>svg {display: none;} .sect-footer {padding-top: 23px; font-size: 8px;} .sect-footer>div {font-size: 9px;} .sect-footer p {font-size: 8px; line-height: 1.8;} .sect-panel {padding: 32px 25px;} .sect-panelPortrait {width: 220px;} .sect-panel h2 {font-size: 25px;} .sect-dialog {max-width: calc(100vw - 12px);}}
+@media(prefers-reduced-motion:reduce) {.sect-app *, .sect-app *:before, .sect-app *:after {animation: none !important; transition: none !important; scroll-behavior: auto !important;}}
+
+/* Immersive room dashboard: the scene is the workspace. */
+.guild-dashboard{display:flex;height:100dvh;min-height:0;overflow:hidden;background:#0c1b21;color:#e6e2cb}.guild-rail{width:78px;flex-shrink:0;height:100dvh;background:linear-gradient(180deg,#1d353a,#15272e);border-right:1px solid #a1b2a24a;display:flex;align-items:center;flex-direction:column;padding:16px 9px 12px;gap:14px;z-index:10;box-shadow:3px 0 20px #0003}.guild-rail button{cursor:pointer}.guild-railSeal{width:39px;height:40px;border:1px solid #c5a96b99;background:#11252b;border-radius:7px;font:26px Georgia,serif;color:#d9c18b;flex-shrink:0;box-shadow:inset 0 0 15px #dec16d12}.guild-coderTab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:46px;height:49px;flex-shrink:0;background:#6aa28d30;color:#d5e4c3;border:1px solid #a4c7aa80;border-radius:8px;box-shadow:0 0 16px #72b89a12}.guild-coderTab span{font-size:6px;letter-spacing:1px}.guild-railDivider{width:25px;height:1px;background:#bfb78c30;flex-shrink:0}.guild-rail nav{display:flex;flex-direction:column;align-items:center;gap:14px;overflow-y:auto;scrollbar-width:none;min-height:0;width:58px;padding:2px 0 8px}.guild-teamAvatar{position:relative;width:41px;height:41px;flex-shrink:0;border-radius:50%;border:1px solid #a3b8a855;box-shadow:0 2px 8px #0004;transition:border-color .2s,transform .2s}.guild-teamAvatar:hover{transform:scale(1.08);border-color:#e6c984}.guild-teamAvatar .sect-portrait{border-radius:50%;width:100%;height:100%;aspect-ratio:1}.guild-teamAvatar>span{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);font-size:5px;white-space:nowrap;max-width:58px;overflow:hidden;text-overflow:ellipsis;background:#172a30ef;color:#b9c8b9;padding:2px 4px;border-radius:3px}.guild-chiefTab{color:#c1b58e;margin-top:auto;padding:8px;flex-shrink:0}.guild-room{position:relative;flex:1;min-width:0;height:100%;overflow:hidden;background:#233b3a}.guild-brandPlaque{position:absolute;bottom:28px;left:24px;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#10282cce;backdrop-filter:blur(14px);border:1px solid #bfa36870;border-radius:4px;box-shadow:0 5px 20px #0004;z-index:6;pointer-events:none}.guild-brandPlaque>span{font:28px Georgia,serif;color:#ddc18b;padding-right:11px;border-right:1px solid #bfa36840}.guild-brandPlaque small{display:block;font-size:6px;letter-spacing:1.7px;color:#afbea4}.guild-brandPlaque strong{display:block;font-size:15px;font-weight:400;color:#ebd295;margin-top:5px}.guild-brandPlaque p{font-size:7px;color:#96ada0;margin-top:6px}.guild-systemLink{position:absolute;top:23px;right:25px;z-index:5;display:flex;align-items:center;gap:10px;font-size:10px;color:#e5d5ac;background:#10282caf;border:1px solid #bfa36860;border-radius:20px;padding:9px 14px;backdrop-filter:blur(14px)}.guild-dashboard .sect-dialog{z-index:20}.guild-dashboard .sect-dialog::backdrop{background:#0b232b90;backdrop-filter:blur(5px)}@media(max-width:850px){.guild-rail{width:64px;padding:14px 6px 8px;gap:12px}.guild-teamAvatar{width:37px;height:37px}.guild-rail nav{gap:15px;width:49px}.guild-railSeal{width:35px;height:36px;font-size:24px}.guild-coderTab{width:41px;height:44px}.guild-brandPlaque{bottom:82px;left:18px;padding:10px 12px}.guild-brandPlaque strong{font-size:13px}.guild-systemLink{top:18px;right:18px;font-size:9px}}@media(max-width:600px){.guild-rail{width:54px;padding:12px 4px 8px;gap:11px}.guild-rail nav{width:45px;gap:15px}.guild-teamAvatar{width:33px;height:33px}.guild-teamAvatar>span{font-size:5px;max-width:44px}.guild-railSeal{width:31px;height:33px;font-size:21px}.guild-coderTab{width:36px;height:40px}.guild-coderTab span{font-size:5px}.guild-brandPlaque{left:12px;bottom:87px;padding:9px 10px;gap:8px}.guild-brandPlaque>span{font-size:24px;padding-right:8px}.guild-brandPlaque small{font-size:5px;letter-spacing:1px}.guild-brandPlaque strong{font-size:12px;margin-top:4px}.guild-brandPlaque p{font-size:6px}.guild-systemLink{font-size:8px;padding:8px 10px;top:15px;right:12px;gap:6px}.guild-systemLink svg{width:12px}}

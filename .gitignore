@@ -62,3 +62,6 @@ service-account*.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local Rive authoring tool cache
+/work/rive-cli/
