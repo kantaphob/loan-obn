@@ -25,7 +25,10 @@ export type NavGroup = { title: string; items: NavItem[] };
 export const NAV_GROUPS: NavGroup[] = [
   {
     title: "ภาพรวม",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: House }],
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: House },
+      { label: "วิเคราะห์ข้อมูล", href: "/dashboard/analytics", icon: ReceiptText },
+    ],
   },
   {
     title: "Admin",
