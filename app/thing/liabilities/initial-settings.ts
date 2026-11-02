@@ -1,17 +1,18 @@
 import { balance, type BankLoan, type LoanRound, type RatePeriod } from '@/app/thing/_shared/model'
 
-export type InitialLoanSettings = { opening: number; creditLimit?: number; months: number; mrr: number; effectiveOn: string; referenceInterest: number; annualInstallments: number[]; rate: number; applyAnnualInstallments?: boolean; ratePeriods?: RatePeriod[]; insurance?: LoanRound['insurance']; customerType?: LoanRound['customerType']; roundName?: string; fee?: number; notes?: string }
+export type InitialLoanSettings = { opening: number; creditLimit?: number; months: number; mrr: number; effectiveOn: string; referenceInterest: number; annualInstallments: number[]; monthlyInstallments?: number[]; rate: number; applyAnnualInstallments?: boolean; ratePeriods?: RatePeriod[]; insurance?: LoanRound['insurance']; customerType?: LoanRound['customerType']; roundName?: string; fee?: number; notes?: string }
 
 /** Split rate periods at annual installment boundaries, retaining their interest terms. */
 export function configureInitialLoan(loan: BankLoan, input: InitialLoanSettings): BankLoan {
   if (!Number.isInteger(input.months) || input.months < 1 || input.months > 600 || !input.annualInstallments.length || input.annualInstallments.some(value => !Number.isFinite(value) || value <= 0)) throw new Error('ระยะเวลาหรือค่างวดไม่ถูกต้อง')
+  if (input.monthlyInstallments && (input.monthlyInstallments.length !== input.months || input.monthlyInstallments.some(value => !Number.isFinite(value) || value <= 0))) throw new Error('ระบุค่างวดรายเดือนให้ครบตามอายุสัญญา')
   const previous = loan.rounds[0]
   const periods: RatePeriod[] = []
   for (let month = 1; month <= input.months; month++) {
     const sources = input.ratePeriods ?? previous?.periods
     const source = sources?.find(p => p.from <= month && p.to >= month) ?? sources?.at(-1)
     const period = source ? { ...source } : { from: 1, to: input.months, rate: input.rate, installment: 0, floating: false, discount: 0 }
-    period.installment = input.applyAnnualInstallments === false && source ? source.installment : input.annualInstallments[Math.min(Math.floor((month - 1) / 12), input.annualInstallments.length - 1)]
+    period.installment = input.monthlyInstallments?.[month - 1] ?? (input.applyAnnualInstallments === false && source ? source.installment : input.annualInstallments[Math.min(Math.floor((month - 1) / 12), input.annualInstallments.length - 1)])
     const last = periods.at(-1)
     if (last && last.rate === period.rate && last.floating === period.floating && last.discount === period.discount && last.installment === period.installment) last.to = month
     else periods.push({ ...period, from: month, to: month })

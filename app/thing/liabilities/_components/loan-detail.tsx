@@ -12,6 +12,9 @@ import { CashEvidence, type CashEvidenceInfo } from './cash-evidence'
 import { getBankLoanCashEvidence } from '@/app/thing/liabilities/actions'
 import type { BankLoanCashInput } from '@/app/thing/liabilities/actions'
 import { type InitialLoanSettings } from '../initial-settings'
+import { RetentionForm } from './retention-form'
+import { RetentionHistory } from './retention-history'
+import type { LoanRetentionInput } from '../retention'
 import { ContractSettingsForm } from './contract-settings-form'
 import { BankCashForm } from './bank-cash-form'
 import { ContractorContracts } from './contractor-contracts'
@@ -19,14 +22,14 @@ import { VariationOrders } from './variation-orders'
 import { activeRound, balance, contractPaymentStages, money, outstanding, roundMoney, today, type BankLoan, type LoanDocument, type Payment } from '@/app/thing/_shared/model'
 
 const inputClass = 'mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900'
-const tabs = [['cashflow', 'รับจ่าย'], ['disbursements', 'งวดรับ'], ['contractors', 'สัญญาจ้างเหมา'], ['variations', 'งานเพิ่ม–งานลด'], ['land-contracts', 'สัญญาซื้อที่ดิน'], ['contract', 'สัญญาเงินกู้'], ['schedule', 'ตารางผ่อน'], ['payments', 'ชำระเงินจริง'], ['balance', 'ยอดหนี้คงเหลือ'], ['documents', 'เอกสาร / สลิป']] as const
+const tabs = [['cashflow', 'รับจ่าย'], ['disbursements', 'งวดรับ'], ['contractors', 'สัญญาจ้างเหมา'], ['variations', 'งานเพิ่ม–งานลด'], ['land-contracts', 'สัญญาซื้อที่ดิน'], ['contract', 'สัญญาเงินกู้'], ['retention', 'รีเทนชัน'], ['schedule', 'ตารางผ่อน'], ['payments', 'ชำระเงินจริง'], ['balance', 'ยอดหนี้คงเหลือ'], ['documents', 'เอกสาร / สลิป']] as const
 type Tab = typeof tabs[number][0]
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block text-xs font-medium text-slate-600">{label}{children}</label> }
 function Summary({ label, value }: { label: string; value: string }) { return <Card className="p-4"><p className="mb-2 text-xs text-slate-500">{label}</p><strong className="text-lg tabular-nums">{value}</strong></Card> }
 function Table({ headings, children }: { headings: string[]; children: ReactNode }) { return <div className="overflow-x-auto rounded-xl border border-slate-200"><table className="w-full whitespace-nowrap text-left text-xs"><thead className="bg-slate-100"><tr>{headings.map(h => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div> }
 const cell = 'px-4 py-3 tabular-nums'
 
-export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onSave, onSaveSettings }: { onSaveSettings: (settings: InitialLoanSettings) => Promise<void>; loan: BankLoan; canWrite: boolean; channels: { code: string; nameTh: string }[]; onRecordCash: (input: Omit<BankLoanCashInput, 'loanId' | 'revision'>, file?: File | null) => Promise<void>; onBack: () => void; onSave: (loan: BankLoan, reason: string) => Promise<void> }) {
+export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onSave, onSaveSettings, onRetention }: { onRetention: (input: LoanRetentionInput) => Promise<void>; onSaveSettings: (settings: InitialLoanSettings) => Promise<void>; loan: BankLoan; canWrite: boolean; channels: { code: string; nameTh: string }[]; onRecordCash: (input: Omit<BankLoanCashInput, 'loanId' | 'revision'>, file?: File | null) => Promise<void>; onBack: () => void; onSave: (loan: BankLoan, reason: string) => Promise<void> }) {
   const [evidence, setEvidence] = useState<CashEvidenceInfo[]>([])
   useEffect(() => {
     let current = true
@@ -34,6 +37,7 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
     return () => { current = false }
   }, [loan])
   const evidenceById = new Map(evidence.map(row => [row.entryId,row]))
+  const [retentionOpen, setRetentionOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('cashflow')
   const [modal, setModal] = useState<Tab | null>(null)
   const [busy, setBusy] = useState(false)
@@ -60,6 +64,13 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
     saving.current = true; setBusy(true); setError(''); setNotice('')
     try { await onSaveSettings(settings); setNotice('บันทึกข้อมูลสัญญาลง database แล้ว') }
     catch (e) { setError(e instanceof Error ? e.message : 'บันทึกสัญญาไม่สำเร็จ') }
+    finally { saving.current = false; setBusy(false) }
+  }
+  async function saveRetention(input: LoanRetentionInput) {
+    if (!canWrite || saving.current) return
+    saving.current = true; setBusy(true); setError(''); setNotice('')
+    try { await onRetention(input); setRetentionOpen(false); setTab('retention'); setNotice('บันทึกรีเทนชันและยอดหนี้ตามธนาคารแล้ว ไม่มีรายการเงินซ้ำใน Ledger') }
+    catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ') }
     finally { saving.current = false; setBusy(false) }
   }
   async function recordCash(input: Omit<BankLoanCashInput, 'loanId' | 'revision'>, file?: File | null) {
@@ -106,9 +117,10 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
 
   return <PageContainer>
     <Button className="mb-4" onClick={onBack} disabled={busy}><ArrowLeft size={14} aria-hidden="true" />กลับไปหนี้สิน</Button>
+    {canWrite ? <Button className="mb-4 ml-2" variant="primary" disabled={busy} onClick={() => setRetentionOpen(true)}><Plus size={14} aria-hidden="true" />ทำรีเทนชัน</Button> : null}
     <Header title={loan.name} description={`${loan.bank} · สัญญา ${loan.accountNumber || 'ยังไม่ระบุ'}`} icon={<Landmark size={21} aria-hidden="true" />} />
     <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Summary label="เงินต้นหนี้ธนาคารคงเหลือ" value={`${money(outstanding(loan))} บาท`} /><Summary label="รับเงินจากธนาคารแล้ว" value={`${money(received)} บาท`} /><Summary label="จ่ายค่าที่ดิน / ผู้รับเหมาแล้ว" value={`${money(contractorPaid)} บาท`} /><Summary label="รับหักจ่ายตามสมุดเงินสด" value={`${money(received - contractorPaid - total('amount'))} บาท`} /></div>
-    <nav aria-label="รายละเอียดเงินกู้" className="mb-5 flex flex-wrap gap-2">{tabs.filter(([key]) => key === 'cashflow' || key === 'disbursements' || key === 'contractors' || key === 'variations' || key === 'land-contracts' || key === 'contract').map(([key, label]) => <Button key={key} variant={tab === key ? 'primary' : 'secondary'} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</Button>)}</nav>
+    <nav aria-label="รายละเอียดเงินกู้" className="mb-5 flex flex-wrap gap-2">{tabs.filter(([key]) => key === 'cashflow' || key === 'disbursements' || key === 'contractors' || key === 'land-contracts' || key === 'contract' || key === 'retention').map(([key, label]) => <Button key={key} variant={tab === key ? 'primary' : 'secondary'} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</Button>)}</nav>
     <Card className="space-y-5 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">{tab === 'cashflow' ? 'รายการรับ–จ่าย' : tabs.find(([key]) => key === tab)?.[1]}</h2>{(tab === 'cashflow' || tab === 'disbursements') && canWrite ? <Button variant="primary" disabled={busy} onClick={() => open(tab)}><Plus size={14} aria-hidden="true" />{tab === 'disbursements' ? 'เพิ่มงวดรับ' : 'เพิ่มรายการรับ–จ่าย'}</Button> : null}</div>
       {tab === 'cashflow' ? <>
@@ -121,7 +133,8 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
       {tab === 'variations' ? <VariationOrders loan={loan} canWrite={canWrite} busy={busy} onContracts={() => setTab('contractors')} onSave={(contractId, variation) => commit({ ...loan, contractorContracts: loan.contractorContracts?.map(contract => contract.id === contractId ? { ...contract, variations: contract.variations?.some(row => row.id === variation.id) ? contract.variations.map(row => row.id === variation.id ? variation : row) : [...(contract.variations ?? []), variation] } : contract) }, `บันทึกงานเพิ่ม–งานลด ${variation.code}`)} /> : null}
       {tab === 'contractors' ? <ContractorContracts loan={loan} canWrite={canWrite} busy={busy} onSave={contract => commit({ ...loan, contractorContracts: loan.contractorContracts?.some(c => c.id === contract.id) ? loan.contractorContracts.map(c => c.id === contract.id ? contract : c) : [...(loan.contractorContracts ?? []), contract] }, `บันทึกสัญญาจ้างเหมา ${contract.code}`)} /> : null}
       {tab === 'land-contracts' ? <ContractorContracts kind="land_purchase" loan={loan} canWrite={canWrite} busy={busy} onSave={contract => commit({ ...loan, contractorContracts: loan.contractorContracts?.some(c => c.id === contract.id) ? loan.contractorContracts.map(c => c.id === contract.id ? contract : c) : [...(loan.contractorContracts ?? []), contract] }, `บันทึกสัญญาซื้อที่ดิน ${contract.code}`)} /> : null}
-      {tab === 'contract' ? <ContractSettingsForm key={JSON.stringify(loan.rounds[0] ?? null)} loan={loan} canWrite={canWrite} busy={busy} onSave={saveSettings} /> : null}
+      {tab === 'retention' ? <RetentionHistory loan={loan} canWrite={canWrite} busy={busy} onCreate={() => setRetentionOpen(true)} /> : null}
+      {tab === 'contract' ? <ContractSettingsForm key={JSON.stringify(loan.rounds[0] ?? null)} loan={loan} canWrite={canWrite && loan.rounds.length < 2} busy={busy} onSave={saveSettings} /> : null}
       {tab === 'disbursements' ? <div className="mt-4 space-y-6">
         <p className="m-0 max-w-3xl text-sm leading-6 text-slate-500">ติดตามเงินที่ธนาคารโอนให้ แยกรับค่าที่ดินและค่าก่อสร้างบ้าน พร้อมประวัติรายรับใน Ledger</p>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -152,6 +165,7 @@ export function LoanDetail({ loan, canWrite, channels, onRecordCash, onBack, onS
         {!loan.documents?.length ? <p className="text-sm text-slate-500">ยังไม่มีเอกสารแนบ</p> : null}
       </> : null}
     </Card>
+    <Modal open={retentionOpen} title="ทำรีเทนชัน / รับยอดหนี้จากธนาคาร" className="!max-w-4xl" onClose={() => { if (!busy) setRetentionOpen(false) }}><RetentionForm key={`${loan.id}-${loan.rounds.length}`} loan={loan} busy={busy} onSave={saveRetention} onContract={() => { setRetentionOpen(false); setTab('contract') }} /></Modal>
     <Modal open={modal !== null} title={modal === 'disbursements' ? 'เพิ่มงวดรับเงินจากธนาคาร' : modal === 'cashflow' ? 'เพิ่มรายการรับ–จ่าย' : modal === 'payments' ? 'จ่ายชำระค่างวดธนาคาร' : modal === 'documents' ? 'แนบเอกสาร / สลิป' : 'รับเงินกู้จากธนาคาร'} onClose={() => { if (!busy) setModal(null) }}>
       {error ? <p role="alert" className="mb-4 text-sm text-red-700">{error}</p> : null}
       {modal === 'cashflow' || modal === 'disbursements' ? <BankCashForm key={requestKey} initialDirection={modal === 'disbursements' ? 'IN' : 'OUT'} fixedDirection={modal === 'disbursements'} loan={loan} channels={channels} requestKey={requestKey} busy={busy} onSave={recordCash} onContract={() => { setModal(null); setTab('contract') }} onContractor={() => { setModal(null); setTab('contractors') }} onLand={() => { setModal(null); setTab('land-contracts') }} /> : null}

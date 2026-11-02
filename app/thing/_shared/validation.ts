@@ -483,6 +483,7 @@ export function validateAssetData(data: AssetData) {
     if (home.openingBalance !== undefined) { amount(home.openingBalance); if (!home.rounds[0] || home.openingBalance !== home.rounds[0].opening) fail('ยอดหนี้ตั้งต้นไม่ตรงกับสัญญาแรก') }
     for (let index = 0; index < home.rounds.length; index++) {
       const r = home.rounds[index]; id(r.id); text(r.name); text(r.notes); date(r.effectiveOn, index === 0)
+      if (index === 0 && r.retention) fail('รอบแรกไม่ใช่รอบรีเทนชัน')
       if (!r.name.trim()) fail('กรุณาระบุชื่อรอบสัญญา')
       amount(r.opening, r.creditLimit === undefined); amount(r.mrr); amount(r.fee); amount(r.referenceInterest)
       if (r.creditLimit !== undefined) { amount(r.creditLimit, true); if (r.opening > r.creditLimit) fail('ยอดหนี้ตั้งต้นต้องไม่เกินยอดกู้ทั้งหมด') }
@@ -499,7 +500,12 @@ export function validateAssetData(data: AssetData) {
       if (index > 0) {
         const previous = home.rounds[index - 1]
         if (!previous.effectiveOn || r.effectiveOn <= previous.effectiveOn) fail('วันที่รีเทนชันต้องหลังรอบเดิม')
-        if (Math.abs(r.opening - balance(home, previous)) > .01) fail('ยอดยกมารีเทนชันต้องตรงกับเงินต้นคงเหลือรอบก่อน')
+        const expected = balance(home, previous)
+        if (r.retention) {
+          const proof = r.retention
+          text(proof.reference); text(proof.reason); amount(proof.systemOpening); amount(proof.bankOpening, true)
+          if (proof.previousRoundId !== previous.id || Math.abs(proof.systemOpening - expected) > .009 || proof.bankOpening !== r.opening || !Number.isFinite(proof.difference) || Math.abs(roundMoney(proof.bankOpening - proof.systemOpening) - proof.difference) > .009 || !proof.reference.trim() || Math.abs(proof.difference) > .009 && !proof.reason.trim()) fail('ข้อมูลกระทบยอดรีเทนชันไม่ตรงกับหนี้เดิม กรุณาระบุยอดธนาคาร เอกสารอ้างอิง และเหตุผลส่วนต่าง')
+        } else if (Math.abs(r.opening - expected) > .01) fail('ยอดยกมารีเทนชันต้องตรงกับเงินต้นคงเหลือรอบก่อน')
       }
     }
     const duplicates = new Set<string>()

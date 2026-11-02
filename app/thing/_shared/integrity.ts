@@ -54,6 +54,7 @@ export function validateHistory(next: AssetData, previous: AssetData, options: {
     if (loan.rounds.length > 1 && JSON.stringify(updated.disbursements) !== JSON.stringify(loan.disbursements)) throw new Error('เงินกู้ที่มีรีเทนชันแล้วแก้ยอดเบิกเดิมไม่ได้')
     if (loan.disbursements === undefined && updated.disbursements !== undefined && loan.payments.length) throw new Error('เงินกู้เดิมที่มีการชำระแล้วต้องคงยอดยกมาเดิม')
     for (const round of loan.rounds) {
+      if (round.retention && JSON.stringify(updated.rounds.find(row => row.id === round.id)) !== JSON.stringify(round)) throw new Error('รอบรีเทนชันที่บันทึกแล้วต้องเก็บประวัติไว้ กรุณาเพิ่มรอบใหม่')
       if (options.allowContractEdits) continue
       if (!loan.payments.some(p => p.roundId === round.id) && !(round.id === loan.rounds[0]?.id && loan.disbursements?.length) && round.id === loan.rounds.at(-1)?.id) continue
       const replacement = updated.rounds.find(r => r.id === round.id)

@@ -569,3 +569,41 @@ test('construction and post-combination variations preserve origin and one share
  Object.assign(invalid.homes[0].buildingChangeOrders![1],{context:'unknown'})
  assert.throws(()=>validateAssetData(invalid),/ขอบเขตงาน/)
 })
+
+test('loan monthly installment terms preserve monthly differences and expand across contract duration', async () => {
+  const { configureInitialLoan } = await import('../app/thing/liabilities/initial-settings')
+  const loan=initialData().loans[0]
+  const monthly=Array.from({length:60},(_,i)=>i<3?7100:i<12?8300:12600)
+  const input={opening:2600000,creditLimit:3000000,months:60,mrr:6.145,effectiveOn:'',referenceInterest:0,annualInstallments:[7100,12600,12600,12600,12600],monthlyInstallments:monthly,rate:0.73}
+  const next=configureInitialLoan(loan,input)
+  assert.equal(next.rounds[0].months,5*12)
+  assert.deepEqual(Array.from({length:60},(_,i)=>next.rounds[0].periods.find(p=>p.from<=i+1&&p.to>=i+1)!.installment),monthly)
+  const preserved=configureInitialLoan(next,{...input,monthlyInstallments:undefined,applyAnnualInstallments:false})
+  assert.deepEqual(preserved.rounds[0].periods,next.rounds[0].periods)
+  assert.throws(()=>configureInitialLoan(loan,{...input,monthlyInstallments:monthly.slice(1)}),/รายเดือน/)
+  assert.throws(()=>configureInitialLoan(loan,{...input,monthlyInstallments:monthly.map((value,i)=>i===3?0:value)}),/รายเดือน/)
+})
+
+test('retention carries bank-confirmed principal with audited difference and preserves old cash history', async () => {
+  const {appendLoanRetention,retentionRemainingMonths,retentionSystemOpening}=await import('../app/thing/liabilities/retention')
+  const data=initialData(),loan=data.loans[0]
+  loan.rounds[0]={...loan.rounds[0],effectiveOn:'2020-01-01',opening:3000000,months:360,periods:[{from:1,to:360,rate:5,discount:0,floating:false,installment:20000}]}
+  loan.payments=[{id:'retention-old-pay',date:'2022-12-01',roundId:loan.rounds[0].id,amount:1000000,principal:1000000,interest:0,reference:'old'}]
+  const original=structuredClone(loan)
+  assert.equal(retentionSystemOpening(loan,'2023-01-01'),2000000)
+  assert.equal(retentionRemainingMonths(loan,'2023-01-01'),324)
+  const input={name:'RT-001',effectiveOn:'2023-01-01',bankOpening:1950000,months:324,mrr:6,periods:[{from:1,to:36,rate:3,discount:0,floating:false,installment:12000},{from:37,to:324,rate:0,discount:1,floating:true,installment:13000}],reference:'Bank statement 2023-01-01',reason:'Historical payment reconciliation',notes:'',confirmed:true}
+  const next=appendLoanRetention(loan,input);data.loans[0]=next;validateAssetData(data);validateHistory(data,{...data,loans:[original]})
+  assert.equal(outstanding(next,'2023-01-01'),1950000)
+  assert.deepEqual(next.rounds[0],original.rounds[0]);assert.deepEqual(next.payments,original.payments);assert.deepEqual(next.disbursements,original.disbursements)
+  assert.deepEqual(next.rounds[1].retention,{previousRoundId:loan.rounds[0].id,systemOpening:2000000,bankOpening:1950000,difference:-50000,reference:input.reference,reason:input.reason})
+  assert.equal(outstanding(next,'2022-12-31'),2000000)
+  assert.throws(()=>appendLoanRetention(loan,{...input,reason:''}),/เหตุผล/)
+  assert.throws(()=>appendLoanRetention(loan,{...input,effectiveOn:'2022-12-01'}),/รายการรับหรือชำระ/)
+  assert.throws(()=>appendLoanRetention(loan,{...input,confirmed:false}),/ยืนยัน/)
+  const malformed=structuredClone(data);malformed.loans[0].rounds[1].retention!.systemOpening=123
+  assert.throws(()=>validateAssetData(malformed),/กระทบยอด/)
+  const edited=structuredClone(data);edited.loans[0].rounds[1].notes='changed'
+  assert.throws(()=>validateHistory(edited,data),/เก็บประวัติ/)
+  assert.throws(()=>validateHistory(edited,data,{allowContractEdits:true}),/เก็บประวัติ/)
+})

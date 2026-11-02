@@ -44,11 +44,20 @@ async function ClosingContent({ searchParams }: Props) {
   const annual = await prisma.$transaction(tx => annualSnapshot(tx, reportYear))
   const locked = locks.find(lock => lock.month === selectedMonth)
   const review = locked ? { snapshot: JSON.parse(locked.snapshotJson) as Awaited<ReturnType<typeof getMonthReview>>['snapshot'], reviewToken: '' } : await getMonthReview(selectedMonth)
-  const [documents, index, workpaper] = await prisma.$transaction(async tx => Promise.all([
-    closingDocuments(tx, selectedMonth),
-    Promise.all(annual.months.map(async row => ({ month: row.month, documents: row.future ? 0 : (await closingDocuments(tx, row.month)).length, preparation: await tx.accountingPreparation.findUnique({ where: { month: row.month }, select: { checklistJson: true } }) }))),
-    loadYearWorkpaper(tx, reportYear),
-  ]), { timeout: 30000 })
+  const [documents, index, workpaper] = await prisma.$transaction(async tx => {
+    // An interactive PostgreSQL transaction uses one connection. Keep its
+    // queries sequential; Promise.all here makes node-postgres queue concurrent
+    // client.query() calls on that same connection.
+    const documents = await closingDocuments(tx, selectedMonth)
+    const index = []
+    for (const row of annual.months) {
+      const monthDocuments = row.future ? [] : await closingDocuments(tx, row.month)
+      const preparation = await tx.accountingPreparation.findUnique({ where: { month: row.month }, select: { checklistJson: true } })
+      index.push({ month: row.month, documents: monthDocuments.length, preparation })
+    }
+    const workpaper = await loadYearWorkpaper(tx, reportYear)
+    return [documents, index, workpaper] as const
+  }, { timeout: 30000 })
   const yearClose = closes.find(c => c.startOn === `${reportYear}-01-01` && c.endOn === `${reportYear}-12-31`)
   const archivedWorkpaper = yearClose?.workpaperSnapshotJson ? JSON.parse(yearClose.workpaperSnapshotJson) as typeof workpaper : workpaper
   const prep = review.snapshot.preparation

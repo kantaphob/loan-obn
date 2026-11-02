@@ -9,7 +9,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useFeedbackToast } from '@/components/ui/use-feedback-toast'
 import { Modal } from '@/components/ui/modal'
-import { saveAssetWorkspace, saveBankLoanContractSettings } from '@/app/thing/_shared/actions'
+import { saveAssetWorkspace, saveBankLoanContractSettings, createBankLoanRetention } from '@/app/thing/_shared/actions'
+import type { LoanRetentionInput } from '@/app/thing/liabilities/retention'
 import { money, outstanding, loanAssetIds, type AssetData, type BankLoan } from '@/app/thing/_shared/model'
 import { BankLoanForm, type BankLoanFields } from './bank-loan-form'
 import { LoanDetail } from '@/app/thing/liabilities/_components/loan-detail'
@@ -32,10 +33,15 @@ export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial
 
   useEffect(() => {
     if (queryHandled.current || !requestedAssetId || !data.homes.some(home => home.id === requestedAssetId)) return
-    queryHandled.current = true
-    setInitialAssetIds([requestedAssetId])
-    if (canWrite) show()
-    else setSelectedId(data.loans.find(loan => loanAssetIds(loan).includes(requestedAssetId))?.id ?? null)
+    let active = true
+    queueMicrotask(() => {
+      if (!active || queryHandled.current) return
+      queryHandled.current = true
+      setInitialAssetIds([requestedAssetId])
+      if (canWrite) { setEditing(null); setError(''); setOpen(true) }
+      else setSelectedId(data.loans.find(loan => loanAssetIds(loan).includes(requestedAssetId))?.id ?? null)
+    })
+    return () => { active = false }
   }, [canWrite, data.homes, data.loans, requestedAssetId])
 
   async function persistLoan(loan: BankLoan, reason: string) {
@@ -59,6 +65,13 @@ export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial
     setData(result.data)
   }
 
+  async function persistRetention(input: LoanRetentionInput) {
+    if (!selectedId) throw new Error('กรุณาเลือกเงินกู้')
+    const result = await createBankLoanRetention(selectedId, data.revision, input)
+    if (!result.data) throw new Error(result.error || 'บันทึกรีเทนชันไม่สำเร็จ')
+    setData(result.data)
+  }
+
   function show(loan?: BankLoan) { setEditing(loan ?? null); setInitialAssetIds(loan ? loanAssetIds(loan) : initialAssetIds); setError(''); setOpen(true) }
   function close() { if (!busy) setOpen(false) }
   async function save(fields: BankLoanFields) {
@@ -75,7 +88,7 @@ export function BankLoanRegistry({ initial, canWrite, channels = [] }: { initial
   }
 
   const selected = data.loans.find(loan => loan.id === selectedId)
-  if (selected) return <LoanDetail loan={selected} canWrite={canWrite} channels={channels} onRecordCash={recordCash} onBack={() => setSelectedId(null)} onSave={persistLoan} onSaveSettings={persistSettings} />
+  if (selected) return <LoanDetail loan={selected} canWrite={canWrite} channels={channels} onRecordCash={recordCash} onBack={() => setSelectedId(null)} onSave={persistLoan} onSaveSettings={persistSettings} onRetention={persistRetention} />
 
   return <PageContainer>
     <Header title="Liabilities" description="ข้อมูลหนี้สิน เงินกู้ธนาคารและสินทรัพย์ที่เกี่ยวข้อง" icon={<Landmark size={21} aria-hidden="true" />} actions={canWrite ? <Button variant="primary" disabled={busy} onClick={() => show()}><Plus size={15} aria-hidden="true" />เพิ่มเงินกู้ธนาคาร</Button> : undefined} />

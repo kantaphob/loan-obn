@@ -14,6 +14,7 @@ import { assignAssetCodes, validateCategories, validatePropertyCategories } from
 import { initialData, migrateAssetData, money, type AssetData, type VehicleDownPayment } from './model'
 import { validateAssetData } from './validation'
 import { assetLedgerIds, validateHistory, validateLedgerLinks } from './integrity'
+import { appendLoanRetention, type LoanRetentionInput } from '../liabilities/retention'
 import { configureInitialLoan, type InitialLoanSettings } from '../liabilities/initial-settings'
 
 const requireFromProject = createRequire(path.join(process.cwd(), 'package.json'))
@@ -393,9 +394,22 @@ export async function saveBankLoanContractSettings(loanId: string, revision: num
     if (current.revision !== revision) throw new Error('ข้อมูลเปลี่ยนจากอีกหน้าต่าง กรุณาโหลดหน้าใหม่')
     const loan = current.loans.find(row => row.id === loanId)
     if (!loan) throw new Error('ไม่พบสัญญาเงินกู้')
+    if (loan.rounds.length > 1) throw new Error('มีรอบรีเทนชันแล้ว กรุณาเก็บสัญญาเดิมและเพิ่มรอบใหม่แทนการแก้สัญญาแรก')
     const updated = configureInitialLoan(loan, settings)
     return await persistAssetWorkspace({ ...current, loans: current.loans.map(row => row.id === loanId ? updated : row) }, `แก้ไขข้อมูลสัญญาธนาคาร: ${loan.name}`, true)
   } catch (error) { return { error: error instanceof Error ? error.message : 'บันทึกสัญญาไม่สำเร็จ' } }
+}
+
+export async function createBankLoanRetention(loanId: string, revision: number, input: LoanRetentionInput): Promise<{ data?: AssetData; error?: string }> {
+  try {
+    const user = await operator(true)
+    const current = await load(user.id)
+    if (current.revision !== revision) throw new Error('ข้อมูลเปลี่ยนจากอีกหน้าต่าง กรุณาโหลดหน้าใหม่')
+    const loan = current.loans.find(row => row.id === loanId)
+    if (!loan) throw new Error('ไม่พบสัญญาเงินกู้')
+    const updated = appendLoanRetention(loan, input)
+    return await persistAssetWorkspace({ ...current, loans: current.loans.map(row => row.id === loanId ? updated : row) }, `บันทึกรีเทนชัน: ${loan.name} · ${input.name} · อ้างอิง ${input.reference}`.slice(0,500))
+  } catch (error) { return { error: error instanceof Error ? error.message : 'บันทึกรีเทนชันไม่สำเร็จ' } }
 }
 
 async function persistAssetWorkspace(input: AssetData, reason: string, allowContractEdits = false): Promise<{ data?: AssetData; error?: string }> {

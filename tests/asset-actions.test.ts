@@ -369,7 +369,25 @@ test('assets, independent debt, immutable terms, audit snapshots and ledger reco
   assert.equal(closedRepair.data.homes.find(row => row.id === home.id)!.buildingWorks!.find(row => row.id === repairId)!.status, 'completed')
   assert.equal(assetCosts(closedRepair.data.homes.find(row => row.id === home.id)!).total, baselineCost)
 
+  const { createBankLoanRetention } = await import('../app/thing/_shared/actions')
+  const retentionBefore = (await getAssetWorkspace()).data
+  const retentionLoan = retentionBefore.loans.find(row => row.id === 'draw-loan')!
+  const entryCount = await prisma.ledgerEntry.count()
+  const retentionInput = {name:'RT-001',effectiveOn:'2021-01-01',bankOpening:20000,months:300,mrr:6,periods:[{from:1,to:300,rate:3,discount:0,floating:false,installment:1000}],reference:'RETENTION-BANK-STATEMENT',reason:'Bank-confirmed historical principal',notes:'',confirmed:true}
+  const retained = await createBankLoanRetention(retentionLoan.id,retentionBefore.revision,retentionInput)
+  assert.ok(retained.data,retained.error)
+  const retainedLoan = retained.data.loans.find(row=>row.id===retentionLoan.id)!
+  assert.equal(retainedLoan.rounds.at(-1)!.opening,20000)
+  assert.deepEqual(retainedLoan.payments,retentionLoan.payments)
+  assert.deepEqual(retainedLoan.disbursements,retentionLoan.disbursements)
+  assert.equal(await prisma.ledgerEntry.count(),entryCount,'retention reconciliation is not a receipt or payment')
+  assert.deepEqual((await getAssetWorkspace()).data,retained.data)
+  assert.equal(JSON.parse(await getAssetRevision(retained.data.revision)).loans.find((row:{id:string})=>row.id===retentionLoan.id).rounds.at(-1).retention.bankOpening,20000)
+  const staleRetention=await createBankLoanRetention(retentionLoan.id,retentionBefore.revision,{...retentionInput,name:'stale'})
+  assert.ok(staleRetention.error)
+  assert.match((await saveBankLoanContractSettings(retentionLoan.id,retained.data.revision,contractSettings)).error??'',/รีเทนชัน/)
   await prisma.user.update({ where: { id: user.id }, data: { role: 'REVIEWER' } })
+  assert.match((await createBankLoanRetention(retentionLoan.id,retained.data.revision,{...retentionInput,effectiveOn:'2022-01-01'})).error??'',/ไม่มีสิทธิ์/)
   assert.match((await createPropertyCashEntry({ ...cashInput, requestKey: crypto.randomUUID() })).error ?? '', /ไม่มีสิทธิ์/)
   assert.match((await createBuildingProjectPayment({ ...repairPayment, existingLedgerId: undefined, requestKey: crypto.randomUUID(), paymentId: crypto.randomUUID() })).error ?? '', /ไม่มีสิทธิ์/)
   assert.match((await saveBankLoanContractSettings('draw-loan', amended.data.revision, contractSettings)).error ?? '', /ไม่มีสิทธิ์/)
