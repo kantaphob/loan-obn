@@ -7,6 +7,7 @@ import "./workspace-white.css";
 import "./data-loading.css";
 import "./workspace-glassose.css";
 import "./workspace-structure.css";
+import "./workspace-xianxia.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -25,6 +25,7 @@
     "db:backfill-land": "tsx scripts/backfill-land-register.ts",
     "db:backfill-building-boq": "tsx scripts/backfill-building-boq.ts",
     "db:setup-postgres": "node scripts/setup-local-postgres.mjs",
+    "test:utilities": "node tests/run-utilities.mjs",
     "test:recurring": "node tests/run-recurring.mjs",
     "test:payroll": "node tests/run-payroll.mjs",
     "test:postgres": "node tests/run-postgres.mjs",

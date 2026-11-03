@@ -1561,3 +1561,31 @@ model ReimbursementEvent {
   @@index([voucherId])
   @@map("reimbursement_event")
 }
+
+model UtilityHome {
+  electricityMeter String @default("")
+  waterMeter String @default("")
+  id Int @id @default(autoincrement())
+  operatorId String
+  name String
+  address String @default("")
+  bills UtilityBill[]
+  @@unique([operatorId, name])
+}
+
+model UtilityBill {
+  id Int @id @default(autoincrement())
+  operatorId String
+  kind String
+  meter String
+  location String
+  period String
+  previousReading Float
+  currentReading Float
+  amountSatang Int
+  invoice String @default("")
+  note String @default("")
+  homeId Int
+  home UtilityHome @relation(fields: [homeId], references: [id], onDelete: Restrict)
+  @@unique([operatorId, homeId, kind, meter, period])
+}

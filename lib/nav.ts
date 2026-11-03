@@ -19,6 +19,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { label: 'ลูกหนี้ค้างรับ', href: '/dashboard/receivables', icon: BanknoteArrowUp, description: 'ติดตามเงินที่ต้องรับและการชำระนอกสินเชื่อ', keywords: 'receivables' },
     { label: 'สำรองจ่ายและเบิกคืน', href: '/dashboard/reimbursements', icon: ReceiptText, description: 'บันทึกเงินสำรองจ่าย ตรวจยอดค้าง และการคืนเงิน', keywords: 'reimbursement' },
     { label: 'เงินเดือนและรายได้ประจำ', href: '/dashboard/payroll', icon: BanknoteCheck, description: 'จัดการเงินเดือนและรายได้ที่ได้รับเป็นประจำ', keywords: 'payroll salary' },
+    { label: 'สาธารณูปโภค', href: '/dashboard/utilities', icon: ReceiptText, description: 'แยกบ้าน บันทึกมิเตอร์และค่าน้ำ–ค่าไฟรายเดือน', keywords: 'water electricity meter ค่าน้ำ ค่าไฟ' },
     { label: 'รายการรับ–จ่ายประจำ', href: '/dashboard/recurring', icon: ClipboardClock, description: 'กำหนดรายการและติดตามรอบรับ–จ่ายที่เกิดซ้ำ', keywords: 'recurring' },
   ], workflow: ['/dashboard/ledger', '/dashboard/receivables', '/dashboard/reimbursements'] },
   { id: 'loans', title: 'สินเชื่อ', href: '/dashboard/workspace/loans', icon: HandCoins, description: 'ดูแลผู้กู้ ตั้งแต่ตรวจข้อมูล สร้างสัญญา จ่ายเงิน จนถึงรับคืน', items: [

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { FocusMode } from './focus-mode'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, Search, X, LayoutGrid } from 'lucide-react'
@@ -37,6 +38,7 @@ export function WorkspaceBar() {
         <span aria-current="page">{isHub ? group?.title : page?.label ?? 'พื้นที่ทำงาน'}</span>
       </>}
     </nav>
+    <div className="workspace-bar-actions"><FocusMode />
     <div className="workspace-nav-search" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false) }}>
       <Search size={15} aria-hidden="true" />
       <input ref={field} aria-label="ค้นหาหน้าและเมนู" aria-controls={expanded && query.trim() ? 'workspace-search-results' : undefined} placeholder="ค้นหาหน้าและเมนู…" value={query} onFocus={() => setExpanded(true)} onChange={event => { setQuery(event.target.value); setExpanded(true) }} onKeyDown={event => {
@@ -57,6 +59,6 @@ export function WorkspaceBar() {
         <div className="workspace-search-caption" aria-live="polite">{matches.length} หน้าที่เกี่ยวข้อง</div>
         {matches.length ? matches.map(result => <Link key={result.href} href={result.href} onClick={closeSearch}><result.icon size={16} aria-hidden="true" /><span>{result.label}<small>{result.description}</small></span><ChevronRight size={12} aria-hidden="true" /></Link>) : <p>ไม่พบหน้าที่ค้นหา ลองชื่อเมนูหรือคำอื่น</p>}
       </div>}
-    </div>
+    </div></div>
   </div>
 }

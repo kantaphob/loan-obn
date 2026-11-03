@@ -1,0 +1,183 @@
+/* Immortal pavilion: jade glass, parchment data and restrained gold qi. */
+.workspace-theme.dashboard-shell {
+  --workspace-text: #203e37;
+  --workspace-muted: #51665a;
+  --glass-surface: #f9f6e6ba;
+  --glass-edge: #e6d4a6d9;
+  --surface-border: #d3c493;
+  --surface-shadow: inset 0 1px 0 #ffffecd9, 0 4px 18px #123e2e18;
+  background-color: #bad1bc;
+  background-image: linear-gradient(#e6f3e26b, #dce8ce45), url('/ai-sect/scholar-pavilion-v1.webp');
+  background-size: cover;
+  background-position: center;
+}
+.workspace-theme.dashboard-shell > main { background: #f3f5df22; border-color: #efe4b7; box-shadow: inset 0 1px 0 #ffffdf, 0 8px 30px #153e2e26; }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel { background: #edf4e6c2; border-color: #e9dab0; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.workspace-theme.dashboard-shell .workspace-bar,
+.workspace-theme.dashboard-shell .workspace-section-nav { background: #f4f5e5ab; border-color: #d4c69e; }
+.workspace-theme.dashboard-shell :is(.workspace-bar-path,.workspace-section-nav a) { color: #4b6254; }
+.workspace-theme.dashboard-shell .workspace-bar-path a { color: #1a604c; }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel nav a { background: #f9f6e538; color: #365546; }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel nav a:hover { background: #e4f0dfb3; color: #1a604c; }
+.workspace-theme.dashboard-shell .liquid-sidebar-panel a[aria-current='page'],
+.workspace-theme.dashboard-shell .workspace-section-nav a[aria-current='page'] { background: #205e4d; color: #fff4ce; border-color: #cdb77e; box-shadow: inset 3px 0 #d6ba72, inset 0 1px 0 #fff2b54d, 0 0 12px #d6ba721c; }
+.workspace-theme.dashboard-shell .page-header { background: #f9f6e6a8; border-color: #e6d4a6d9; }
+.workspace-theme.dashboard-shell .page-header h1 { color: #254638; }
+.workspace-theme.dashboard-shell .page-header :is(p,small) { color: #51665a; }
+.workspace-theme.dashboard-shell .page-header::after { display: block; content: ''; position: absolute; inset: auto 18% 0; height: 1px; background: linear-gradient(90deg, transparent, #b5984f, transparent); pointer-events: none; }
+.workspace-theme.dashboard-shell .page-header-emblem::before { background: conic-gradient(#d4b96b, #4dba95, #d4b96b); }
+.workspace-theme.dashboard-shell .page-header-emblem-face { background: #f9f4dd; color: #21614b; box-shadow: inset 0 1px 0 #fffce8, 0 0 12px #48ae8233; }
+.workspace-theme.dashboard-shell :is(.borrower-metric-icon,.forecast-icon,.dash-dashboard .dash-icon) { background: #e5efe0c9; color: #21614b; border-color: #cdbd8e; }
+.workspace-theme.dashboard-shell :is(.borrower-directory-header,.repayment-directory-heading,.invoice-panel-heading) { background: #f6f5e661; border-color: #d3caa7; }
+.workspace-theme.dashboard-shell :is(.borrower-toolbar,.invoice-search,.borrower-form-nav,.borrower-form-footer,.borrower-pagination,.invoice-footer,.ledger-directory-caption,.ledger-entry-summary,.ledger-year-nav) { background: #edf0dba8; border-color: #cec7a3; }
+.workspace-theme.dashboard-shell :is(.workspace-nav-search,.borrower-view-bar > div:not(.borrower-refresh),.repayment-tabs) { background: #f8f5e5c9; border-color: #c4c5a1; }
+.workspace-theme.dashboard-shell .action-button { background: #f9f5e5d9; color: #375846; border-color: #b7bd98; }
+.workspace-theme.dashboard-shell .action-button--primary { background: #205e4d; color: #fff4ce; border-color: #bca568; box-shadow: inset 0 1px 0 #fff2b533, 0 2px 8px #205e4d26; }
+.workspace-theme.dashboard-shell .action-button--primary:enabled:hover { background: #174b3d; border-color: #c9ae64; box-shadow: 0 0 0 3px #d6ba721c, 0 3px 12px #205e4d26; }
+.workspace-theme.dashboard-shell .action-button--edit { background: #e6f3e8e6; color: #21614b; border-color: #a6c5ac; }
+.workspace-theme.dashboard-shell .action-button--danger { background: #fbece2e6; color: #9f4435; border-color: #d7ad98; }
+.workspace-theme.dashboard-shell :is(input:not([type='checkbox']):not([type='radio']):not([type='file']),select,textarea) { background-color: #fcfaeede !important; border-color: #b8bea2 !important; color: #284536; }
+.workspace-theme.dashboard-shell :is(input,select,textarea):focus-visible { outline-color: #397d61; }
+.workspace-theme.dashboard-shell table thead th,
+.workspace-theme.dashboard-shell .borrower-table-scroll th:last-child { background: #e6e8d3e8; color: #49604d; }
+.workspace-theme.dashboard-shell table td { color: #304c3d; border-color: #ced4b9; }
+.workspace-theme.dashboard-shell table tbody tr,
+.workspace-theme.dashboard-shell .ledger-directory-table tbody tr,
+.workspace-theme.dashboard-shell .borrower-page .borrower-overview tbody tr { background: #faf8e8a6; }
+.workspace-theme.dashboard-shell table tbody tr:nth-child(even),
+.workspace-theme.dashboard-shell .ledger-directory-table tbody tr:nth-child(even),
+.workspace-theme.dashboard-shell .borrower-page .borrower-overview tbody tr:nth-child(even) { background: #e9efdc9e; }
+.workspace-theme.dashboard-shell table tbody tr:hover,
+.workspace-theme.dashboard-shell .ledger-directory-table tbody tr:hover,
+.workspace-theme.dashboard-shell .borrower-page .borrower-overview tbody tr:hover { background: #e0efd5e6; }
+.workspace-theme.dashboard-shell .borrower-page .borrower-person-details strong { color: #274734; }
+.workspace-theme.dashboard-shell .borrower-page .borrower-person-details :is(span,small) { color: #55694f; }
+.workspace-theme.dashboard-shell .ledger-year-current { background: #205e4d; color: #fff4ce; }
+.workspace-theme.dashboard-shell .ledger-year-history { background: #f9f5e599; color: #49604d; border-color: #d1c99e; }
+.workspace-theme.dashboard-shell :is(dialog,.workspace-modal,[role='dialog']) { background: #f8f8edf5; border-color: #dacb96; box-shadow: inset 0 1px 0 #ffffe8, 0 18px 60px #163e2e40; }
+.workspace-theme.dashboard-shell dialog::backdrop { background: #143e324d; }
+.workspace-toast,.file-transfer-card { background: #f8f8edf5; border-color: #c7c99f; color: #274734; }
+.workspace-theme.dashboard-shell .dash-action-grid a { background: #f5f5e6ad; border-color: #d6cc9e; }
+.data-loading--screen { background: #e7eddd; }
+.data-loading-panel { background: #f8f8eddd; border-color: #d6c68b; }
+.data-loading-caption { color: #51654e; }
+.data-loading-pill { background: #e8f0df; color: #21614b; border-color: #b9c79e; }
+.data-loading-ring { border-top-color: #b5984f; border-right-color: #397d61; }
+@media(prefers-reduced-transparency:reduce) {
+ .workspace-theme.dashboard-shell { background-image: none; background-color: #e1e8d6; }
+ .workspace-theme.dashboard-shell :is(.liquid-sidebar-panel,.page-header,.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat) { background: #f8f8ed; }
+}
+.workspace-theme.dashboard-shell::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); background: #eff4e314; }
+.workspace-theme.dashboard-shell .borrower-page table thead th { background: #e6e8d3e8; color: #49604d; }
+.workspace-theme.dashboard-shell .borrower-page .borrower-view-bar button[aria-pressed='true'] { background: #e2ebd5; color: #21614b; border-color: #b9c79e; }
+
+/* Jade and gold qi traces follow the frame without covering its contents. */
+@property --qi-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.workspace-theme.dashboard-shell :is(.page-header,.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat,.property-portfolio) {
+  position: relative;
+  --qi-glow: #39ba9233;
+  box-shadow: inset 0 1px 0 #ffffecd9, 0 0 0 1px #ddc88530, 0 0 13px var(--qi-glow), 0 4px 18px #123e2e18;
+}
+.workspace-theme.dashboard-shell :is(.page-header,.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat,.property-portfolio)::after {
+  content: '';
+  display: block;
+  position: absolute;
+  inset: -1px;
+  width: auto;
+  height: auto;
+  padding: 1.5px;
+  border: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  background: conic-gradient(from var(--qi-angle), #a1ddbd30 0deg, #a1ddbd30 45deg, #43d6aa 72deg, #f9edb0 91deg, #d6b35f 108deg, #a1ddbd30 135deg, #a1ddbd30 225deg, #62cfb1 255deg, #fff4bd 275deg, #a1ddbd30 310deg);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: qi-frame-orbit 9s linear infinite;
+}
+.workspace-theme.dashboard-shell .page-header::after { padding: 2px; animation-duration: 7s; }
+.workspace-theme.dashboard-shell :is(.borrower-metric,.repayment-metric,.asset-stat):nth-child(2n)::after { animation-delay: -3s; }
+.workspace-theme.dashboard-shell :is(.borrower-metric,.repayment-metric,.asset-stat):nth-child(3n)::after { animation-delay: -6s; }
+.workspace-theme.dashboard-shell :is(.liquid-glass,.borrower-metric,.repayment-metric,.asset-stat):hover { --qi-glow: #49c59b4d; }
+@keyframes qi-frame-orbit { to { --qi-angle: 360deg; } }
+@media(prefers-reduced-motion:reduce) {
+  .workspace-theme.dashboard-shell :is(.page-header,.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat,.property-portfolio)::after { animation: none; --qi-angle: 45deg; }
+}
+@supports not (mask-composite: exclude) {
+  .workspace-theme.dashboard-shell :is(.page-header,.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat,.property-portfolio)::after { display: none; }
+}
+
+/* Functional seals and attention frames. */
+.workspace-bar-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.workspace-focus-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 5px 10px; border: 1px solid #b7bd98; border-radius: 999px; color: #375846; background: #f9f5e5d9; font-size: 11px; white-space: nowrap; cursor: pointer; }
+.workspace-focus-toggle[aria-pressed='true'] { background: #205e4d; color: #fff4ce; border-color: #cdb77e; }
+.workspace-focus-toggle:focus-visible { outline: 2px solid #397d61; outline-offset: 2px; }
+.workspace-theme.dashboard-shell :is(.xian-status-seal,.borrower-loan-chip) { border-radius: 5px; border: 1px solid #8fb39c; outline: 1px solid #8fb39c55; outline-offset: -4px; padding: 7px 11px; background: #e7f2e5; color: #205e4d; font-size: 10px; font-weight: 600; box-shadow: inset 0 0 0 1px #ffffe8; }
+.workspace-theme.dashboard-shell .borrower-loan-chip[data-neutral='true'],
+.workspace-theme.dashboard-shell .xian-status-seal:is([data-status='PENDING'],[data-status='UNDER_REVIEW'],[data-status='NEEDS_DOCUMENTS']) { background: #f9efd2; color: #805a17; border-color: #c2a25b; outline-color: #c2a25b55; }
+.workspace-theme.dashboard-shell .borrower-loan-chip[data-overdue='true'],
+.workspace-theme.dashboard-shell .xian-status-seal:is([data-status='REJECTED'],[data-status='INACTIVE']) { background: #f8e6df; color: #9b4136; border-color: #ca8f7d; outline-color: #ca8f7d55; }
+/* Ordinary frames stay still; only actionable states and the header orbit. */
+.workspace-theme.dashboard-shell :is(.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat,.property-portfolio)::after { animation: none; --qi-angle: 45deg; opacity: .6; }
+.workspace-theme.dashboard-shell :is(.liquid-glass,.invoice-panel,.asset-panel):has([data-overdue='true'],.xian-status-seal[data-status='REJECTED']) { --qi-glow: #c7785140; }
+.workspace-theme.dashboard-shell :is(.liquid-glass,.invoice-panel,.asset-panel):has([data-overdue='true'],.xian-status-seal[data-status='REJECTED'])::after { animation: qi-frame-orbit 9s linear infinite; opacity: 1; background: conic-gradient(from var(--qi-angle), #c7785126, #d79064 70deg, #fff0af 95deg, #c7785126 135deg); }
+.workspace-theme.dashboard-shell :is(.liquid-glass,.invoice-panel,.asset-panel):has(.xian-status-seal[data-status='PENDING'],.xian-status-seal[data-status='UNDER_REVIEW'])::after { animation: qi-frame-orbit 12s linear infinite; opacity: 1; }
+html[data-workspace-focus='true'] .workspace-theme.dashboard-shell { background-image: none; background-color: #e7ecdf; }
+html[data-workspace-focus='true'] .workspace-theme.dashboard-shell::before { display: none; }
+html[data-workspace-focus='true'] .workspace-theme.dashboard-shell :is(.liquid-sidebar-panel,.page-header,.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat,.property-portfolio) { background: #f9faf2; box-shadow: 0 1px 3px #143e320c; backdrop-filter: none; }
+html[data-workspace-focus='true'] .workspace-theme.dashboard-shell :is(.page-header,.liquid-glass,.borrower-metric,.repayment-metric,.invoice-panel,.asset-panel,.asset-stat,.property-portfolio)::after { animation: none; opacity: 0; }
+html[data-workspace-focus='true'] .workspace-theme.dashboard-shell .page-header-emblem::before,
+html[data-workspace-focus='true'] .workspace-theme.dashboard-shell .page-header-emblem::after { animation: none; }
+@media(max-width:600px) { .workspace-focus-toggle span { display: none; } .workspace-focus-toggle { min-width: 36px; min-height: 36px; } }
+@media(prefers-reduced-motion:reduce) {
+ .workspace-theme.dashboard-shell :is(.liquid-glass,.invoice-panel,.asset-panel)::after { animation: none !important; }
+}
+
+/* Jade artifact buttons: small bevel, engraved gold edge, clear action colors. */
+.workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle) {
+  --button-ink: #355744;
+  --button-fill: #f6f4df;
+  --button-edge: #b7b888;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 34px; padding: 7px 13px;
+  border: 1px solid var(--button-edge); border-radius: 9px;
+  background: var(--button-fill); color: var(--button-ink);
+  font-size: 11px; font-weight: 600; line-height: 1.4; text-decoration: none;
+  box-shadow: inset 0 1px 0 #ffffecba, inset 0 -2px 0 #41604710, 0 2px 4px #123e2e12;
+  transition: transform 140ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+.workspace-theme.dashboard-shell .action-button--primary,
+.workspace-theme.dashboard-shell .asset-button:not(.secondary),
+.workspace-theme.dashboard-shell .workspace-focus-toggle[aria-pressed='true'] {
+  --button-fill: #205e4d; --button-ink: #fff4ce; --button-edge: #c4aa65;
+  box-shadow: inset 0 1px 0 #fff3b53d, inset 0 -2px 0 #082f2870, 0 2px 6px #123e2e26;
+}
+.workspace-theme.dashboard-shell .action-button--edit { --button-fill: #e4f0dd; --button-ink: #21614b; --button-edge: #8bb491; }
+.workspace-theme.dashboard-shell .action-button--danger { --button-fill: #f8e8df; --button-ink: #9b4136; --button-edge: #ce9b87; }
+.workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle)::before {
+  display: block; content: ''; position: absolute; inset: 3px; z-index: -1;
+  border: 1px solid currentColor; border-radius: 5px; opacity: .1; pointer-events: none; background: none;
+}
+.workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle):not(:disabled):hover {
+  background: var(--button-fill); color: var(--button-ink); border-color: #b79d57;
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 #ffffec99, 0 0 0 2px #d6ba721a, 0 4px 10px #245b3f26;
+}
+.workspace-theme.dashboard-shell .action-button--danger:not(:disabled):hover { border-color: #b76854; box-shadow: inset 0 1px 0 #fff5ed, 0 0 0 2px #c778511a, 0 4px 10px #8e3d2920; }
+.workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle):not(:disabled):active { transform: translateY(0); box-shadow: inset 0 2px 4px #123e2e26; }
+.workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle):focus-visible { outline: 2px solid #397d61; outline-offset: 3px; }
+.workspace-theme.dashboard-shell :is(.action-button,.asset-button):disabled { background: #e9ecdf; color: #798373; border-color: #cbd0bc; box-shadow: none; opacity: .7; cursor: not-allowed; transform: none; }
+.workspace-theme.dashboard-shell table .action-button { min-height: 30px; padding: 5px 9px; border-radius: 7px; }
+html[data-workspace-focus='true'] .workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle) { box-shadow: none; }
+@media(max-width:760px) { .workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle), .workspace-theme.dashboard-shell table .action-button { min-height: 40px; } }
+@media(prefers-reduced-motion:reduce) {
+ .workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle) { transition: none; }
+ .workspace-theme.dashboard-shell :is(.action-button,.asset-button,.workspace-focus-toggle):not(:disabled):hover { transform: none; }
+}

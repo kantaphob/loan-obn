@@ -45,7 +45,8 @@ export function StatusBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[9px] font-semibold shadow-[inset_0_1px_0_#ffffff80] backdrop-blur-md ${statusStyles[status]}`}
+      data-status={status}
+      className={`xian-status-seal inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[9px] font-semibold shadow-[inset_0_1px_0_#ffffff80] backdrop-blur-md ${statusStyles[status]}`}
     >
       <i
         aria-hidden="true"
