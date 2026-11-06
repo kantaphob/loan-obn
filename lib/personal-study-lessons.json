@@ -1,0 +1,2513 @@
+[
+  {
+    "completed": true,
+    "course": "Planner การเรียนฉบับพี่บัส",
+    "chapter": "แนะนำ Planner",
+    "title": "แนะนำ Planner",
+    "duration": "0:02:07",
+    "durationSeconds": 127,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "Planner การเรียนฉบับพี่บัส",
+    "chapter": "วิธีการใช้งาน App Planner",
+    "title": "วิธีการใช้งาน App Planner",
+    "duration": "0:06:20",
+    "durationSeconds": 380,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "Planner การเรียนฉบับพี่บัส",
+    "chapter": "วิธีติดตั้ง App Planner",
+    "title": "วิธีติดตั้ง App Planner",
+    "duration": "0:00:23",
+    "durationSeconds": 23,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "บทนำ",
+    "chapter": "ภาพรวมก่อนเริ่มเรียน 1",
+    "title": "ภาพรวมก่อนเริ่มเรียน 1",
+    "duration": "0:07:57",
+    "durationSeconds": 477,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "บทนำ",
+    "chapter": "ภาพรวมก่อนเริ่มเรียน 2",
+    "title": "ภาพรวมก่อนเริ่มเรียน 2",
+    "duration": "0:09:50",
+    "durationSeconds": 590,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "บทนำ",
+    "chapter": "ภาพรวมก่อนเริ่มเรียน 3",
+    "title": "ภาพรวมก่อนเริ่มเรียน 3",
+    "duration": "0:07:36",
+    "durationSeconds": 456,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "บทนำ",
+    "chapter": "ภาพรวมก่อนเริ่มเรียน 4",
+    "title": "ภาพรวมก่อนเริ่มเรียน 4",
+    "duration": "0:05:24",
+    "durationSeconds": 324,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ บทนำ - Pretest",
+    "title": "คอร์สตั้งไข่บทที่ บทนำ - Pretest",
+    "duration": "0:05:11",
+    "durationSeconds": 311,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 1 เลขยกกำลัง",
+    "title": "คอร์สตั้งไข่บทที่ 1 เลขยกกำลัง",
+    "duration": "0:39:13",
+    "durationSeconds": 2353,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 2 บวก ลบ คูณ หาร จำนวนเต็ม",
+    "title": "คอร์สตั้งไข่บทที่ 2 บวก ลบ คูณ หาร จำนวนเต็ม",
+    "duration": "0:19:53",
+    "durationSeconds": 1193,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 3 บวก ลบ คูณ หาร เศษส่วน",
+    "title": "คอร์สตั้งไข่บทที่ 3 บวก ลบ คูณ หาร เศษส่วน",
+    "duration": "0:31:27",
+    "durationSeconds": 1887,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 4 บวก ลบ คูณ หาร ทศนิยม",
+    "title": "คอร์สตั้งไข่บทที่ 4 บวก ลบ คูณ หาร ทศนิยม",
+    "duration": "0:30:08",
+    "durationSeconds": 1808,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 5 ทศนิยม เลขซ้ำ",
+    "title": "คอร์สตั้งไข่บทที่ 5 ทศนิยม เลขซ้ำ",
+    "duration": "0:26:27",
+    "durationSeconds": 1587,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 6 รากที่สองและรากที่สาม",
+    "title": "คอร์สตั้งไข่บทที่ 6 รากที่สองและรากที่สาม",
+    "duration": "0:23:10",
+    "durationSeconds": 1390,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 7 บัญญัติไตรยางค์",
+    "title": "คอร์สตั้งไข่บทที่ 7 บัญญัติไตรยางค์",
+    "duration": "0:17:42",
+    "durationSeconds": 1062,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 8 สมการตัวแปรเดียว",
+    "title": "คอร์สตั้งไข่บทที่ 8 สมการตัวแปรเดียว",
+    "duration": "0:22:03",
+    "durationSeconds": 1323,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 9 สมการสองตัวแปร",
+    "title": "คอร์สตั้งไข่บทที่ 9 สมการสองตัวแปร",
+    "duration": "0:29:03",
+    "durationSeconds": 1743,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 10 การแก้สมการกำลังสอง",
+    "title": "คอร์สตั้งไข่บทที่ 10 การแก้สมการกำลังสอง",
+    "duration": "0:26:53",
+    "durationSeconds": 1613,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 11 ร้อยละอย่างง่าย",
+    "title": "คอร์สตั้งไข่บทที่ 11 ร้อยละอย่างง่าย",
+    "duration": "0:39:52",
+    "durationSeconds": 2392,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "คอร์สตั้งไข่",
+    "chapter": "คอร์สตั้งไข่บทที่ 12 สถิติพื้นฐานสอง",
+    "title": "คอร์สตั้งไข่บทที่ 12 สถิติพื้นฐานสอง",
+    "duration": "0:11:17",
+    "durationSeconds": 677,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "ภาพรวมก่อนเริ่มเรียน วิชาความสามารถทั่วไป",
+    "title": "ภาพรวมก่อนเริ่มเรียน วิชาความสามารถทั่วไป",
+    "duration": "0:07:19",
+    "durationSeconds": 439,
+    "suggestedDate": ""
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 1 (อนุกรม)",
+    "title": "บทที่ 1 (อนุกรม) Part 1",
+    "duration": "0:33:06",
+    "durationSeconds": 1986,
+    "suggestedDate": "05/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 1 (อนุกรม)",
+    "title": "บทที่ 1 (อนุกรม) Part 2",
+    "duration": "0:20:05",
+    "durationSeconds": 1205,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 1 (อนุกรม)",
+    "title": "บทที่ 1 (อนุกรม) Part 3",
+    "duration": "0:27:15",
+    "durationSeconds": 1635,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 2 (อุปมา-อุปไมย)",
+    "title": "บทที่ 2 (อุปมา-อุปไมย) Part 1",
+    "duration": "0:14:24",
+    "durationSeconds": 864,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 2 (อุปมา-อุปไมย)",
+    "title": "บทที่ 2 (อุปมา-อุปไมย) Part 2",
+    "duration": "0:11:30",
+    "durationSeconds": 690,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 2 (อุปมา-อุปไมย)",
+    "title": "บทที่ 2 (อุปมา-อุปไมย) Part 3",
+    "duration": "0:18:11",
+    "durationSeconds": 1091,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 3 (รูปภาพ)",
+    "title": "บทที่ 3 (รูปภาพ) Part 1",
+    "duration": "0:25:10",
+    "durationSeconds": 1510,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 3 (รูปภาพ)",
+    "title": "บทที่ 3 (รูปภาพ) Part 2",
+    "duration": "0:26:39",
+    "durationSeconds": 1599,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 4 (IQ) เนื้อหา",
+    "title": "บทที่ 4 (IQ) เนื้อหา Part 1",
+    "duration": "0:16:23",
+    "durationSeconds": 983,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 4 (IQ) เนื้อหา",
+    "title": "บทที่ 4 (IQ) เนื้อหา Part 2",
+    "duration": "0:31:14",
+    "durationSeconds": 1874,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 5 (เลขพื้นฐาน)",
+    "title": "บทที่ 5 (เลขพื้นฐาน) Part 1",
+    "duration": "0:42:50",
+    "durationSeconds": 2570,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 5 (เลขพื้นฐาน)",
+    "title": "บทที่ 5 (เลขพื้นฐาน) Part 2",
+    "duration": "0:19:18",
+    "durationSeconds": 1158,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 6 (ห.ร.ม และ ค.ร.น)",
+    "title": "บทที่ 6 (ห.ร.ม และ ค.ร.น) Part 1",
+    "duration": "0:25:12",
+    "durationSeconds": 1512,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 6 (ห.ร.ม และ ค.ร.น)",
+    "title": "บทที่ 6 (ห.ร.ม และ ค.ร.น) Part 2",
+    "duration": "0:27:05",
+    "durationSeconds": 1625,
+    "suggestedDate": "06/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 7 (อัตราส่วน)",
+    "title": "บทที่ 7 (อัตราส่วน) Part 1",
+    "duration": "0:11:44",
+    "durationSeconds": 704,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 7 (อัตราส่วน)",
+    "title": "บทที่ 7 (อัตราส่วน) Part 2",
+    "duration": "0:27:16",
+    "durationSeconds": 1636,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 8 (ร้อยละ)",
+    "title": "บทที่ 8 (ร้อยละ) Part 1",
+    "duration": "0:32:52",
+    "durationSeconds": 1972,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 8 (ร้อยละ)",
+    "title": "บทที่ 8 (ร้อยละ) Part 2",
+    "duration": "0:46:17",
+    "durationSeconds": 2777,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 9 (สมการ)",
+    "title": "บทที่ 9 (สมการ) Part 1",
+    "duration": "0:52:33",
+    "durationSeconds": 3153,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 9 (สมการ)",
+    "title": "บทที่ 9 (สมการ) Part 2",
+    "duration": "0:21:51",
+    "durationSeconds": 1311,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 9 (สมการ)",
+    "title": "บทที่ 9 (สมการ) Part 3",
+    "duration": "0:25:47",
+    "durationSeconds": 1547,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 9 (สมการ)",
+    "title": "บทที่ 9 (สมการ) Part 4",
+    "duration": "0:21:30",
+    "durationSeconds": 1290,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 9 (สมการ)",
+    "title": "บทที่ 9 (สมการ) Part 5",
+    "duration": "0:17:12",
+    "durationSeconds": 1032,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 10 (เลขกกำลังและพหุนาม)",
+    "title": "บทที่ 10 (เลขกกำลังและพหุนาม) Part 1",
+    "duration": "0:35:00",
+    "durationSeconds": 2100,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 10 (เลขกกำลังและพหุนาม)",
+    "title": "บทที่ 10 (เลขกกำลังและพหุนาม) Part 2",
+    "duration": "0:45:50",
+    "durationSeconds": 2750,
+    "suggestedDate": "07/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 11 (อสมการ)",
+    "title": "บทที่ 11 (อสมการ)",
+    "duration": "0:26:58",
+    "durationSeconds": 1618,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 12 (ความน่าจะเป็น)",
+    "title": "บทที่ 12 (ความน่าจะเป็น) Part 1",
+    "duration": "0:07:03",
+    "durationSeconds": 423,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 12 (ความน่าจะเป็น)",
+    "title": "บทที่ 12 (ความน่าจะเป็น) Part 2",
+    "duration": "0:26:43",
+    "durationSeconds": 1603,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 12 (ความน่าจะเป็น)",
+    "title": "บทที่ 12 (ความน่าจะเป็น) Part 3",
+    "duration": "0:20:28",
+    "durationSeconds": 1228,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 13 เลขคณิตและเรขาคณิต",
+    "title": "บทที่ 13 เลขคณิตและเรขาคณิต Part 1",
+    "duration": "0:35:45",
+    "durationSeconds": 2145,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 13 เลขคณิตและเรขาคณิต",
+    "title": "บทที่ 13 เลขคณิตและเรขาคณิต Part 2",
+    "duration": "0:30:42",
+    "durationSeconds": 1842,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 14 (พื้นที่และปริมาตร)",
+    "title": "บทที่ 14 (พื้นที่และปริมาตร) Part 1",
+    "duration": "0:27:14",
+    "durationSeconds": 1634,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 14 (พื้นที่และปริมาตร)",
+    "title": "บทที่ 14 (พื้นที่และปริมาตร) Part 2",
+    "duration": "0:35:45",
+    "durationSeconds": 2145,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 15 (สามเหลี่ยม)",
+    "title": "บทที่ 15 (สามเหลี่ยม) Part 1",
+    "duration": "0:19:23",
+    "durationSeconds": 1163,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 15 (สามเหลี่ยม)",
+    "title": "บทที่ 15 (สามเหลี่ยม) Part 2",
+    "duration": "0:39:45",
+    "durationSeconds": 2385,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 16 (เลขฐาน)",
+    "title": "บทที่ 16 (เลขฐาน) Part 1",
+    "duration": "0:23:32",
+    "durationSeconds": 1412,
+    "suggestedDate": "08/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 17 เลข สถิติ",
+    "title": "บทที่ 17 เลข สถิติ Part 1",
+    "duration": "0:44:00",
+    "durationSeconds": 2640,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 17 เลข สถิติ",
+    "title": "บทที่ 17 เลข สถิติ Part 2",
+    "duration": "0:41:19",
+    "durationSeconds": 2479,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 18 เลข เซต",
+    "title": "บทที่ 18 เลข เซต Part 1",
+    "duration": "0:20:43",
+    "durationSeconds": 1243,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 18 เลข เซต",
+    "title": "บทที่ 18 เลข เซต Part 2",
+    "duration": "0:31:27",
+    "durationSeconds": 1887,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 19 ตรรกศาสตร์",
+    "title": "บทที่ 19 ตรรกศาสตร์ Part 1",
+    "duration": "0:33:56",
+    "durationSeconds": 2036,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 19 ตรรกศาสตร์",
+    "title": "บทที่ 19 ตรรกศาสตร์ Part 2",
+    "duration": "0:34:03",
+    "durationSeconds": 2043,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "บทที่ 20 การให้เหตุผล (จบ)",
+    "title": "บทที่ 20 การให้เหตุผล (จบ)",
+    "duration": "0:24:45",
+    "durationSeconds": 1485,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "ตะลุยโจทย์ท้ายวิชา เลข ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชา เลข ชุดที่ 1 Part 1",
+    "duration": "0:25:21",
+    "durationSeconds": 1521,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "ตะลุยโจทย์ท้ายวิชา เลข ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชา เลข ชุดที่ 1 Part 2",
+    "duration": "0:34:51",
+    "durationSeconds": 2091,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาเลขชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชาเลขชุดที่ 2 Part 1",
+    "duration": "0:27:24",
+    "durationSeconds": 1644,
+    "suggestedDate": "09/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาเลขชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชาเลขชุดที่ 2 Part 2",
+    "duration": "0:35:12",
+    "durationSeconds": 2112,
+    "suggestedDate": "10/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "ตะลุยโจทย์ท้ายวิชา ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชา ชุดที่ 3 Part 1",
+    "duration": "0:28:41",
+    "durationSeconds": 1721,
+    "suggestedDate": "10/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ความสามารถทั่วไป",
+    "chapter": "ตะลุยโจทย์ท้ายวิชา ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชา ชุดที่ 3 Part 2",
+    "duration": "0:34:24",
+    "durationSeconds": 2064,
+    "suggestedDate": "10/11/2026"
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ) ภาพรวม",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) ภาพรวม",
+    "duration": "0:05:37",
+    "durationSeconds": 337,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ)",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) Part 1",
+    "duration": "0:26:27",
+    "durationSeconds": 1587,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ)",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) Part 2",
+    "duration": "0:40:08",
+    "durationSeconds": 2408,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ)",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) Part 3",
+    "duration": "0:22:10",
+    "durationSeconds": 1330,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ)",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) Part 4",
+    "duration": "0:17:24",
+    "durationSeconds": 1044,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ)",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) Part 5",
+    "duration": "0:21:39",
+    "durationSeconds": 1299,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ)",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) Part 6",
+    "duration": "0:19:40",
+    "durationSeconds": 1180,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 1 (วิเคราะห์บทความ)",
+    "title": "บทที่ 1 (วิเคราะห์บทความ) Part 7",
+    "duration": "0:24:31",
+    "durationSeconds": 1471,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 2 (โวหารการเขียน)",
+    "title": "บทที่ 2 (โวหารการเขียน) Part 1",
+    "duration": "0:14:44",
+    "durationSeconds": 884,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 2 (โวหารการเขียน)",
+    "title": "บทที่ 2 (โวหารการเขียน) Part 2",
+    "duration": "0:13:55",
+    "durationSeconds": 835,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 3 (โวหารภาพพจน์)",
+    "title": "บทที่ 3 (โวหารภาพพจน์) Part 1",
+    "duration": "0:12:34",
+    "durationSeconds": 754,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 3 (โวหารภาพพจน์)",
+    "title": "บทที่ 3 (โวหารภาพพจน์) Part 2",
+    "duration": "0:12:25",
+    "durationSeconds": 745,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 4 (ภาษาไทย) ระดับภาษา",
+    "title": "บทที่ 4 (ภาษาไทย) ระดับภาษา Part 1",
+    "duration": "0:18:07",
+    "durationSeconds": 1087,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 4 (ภาษาไทย) ระดับภาษา",
+    "title": "บทที่ 4 (ภาษาไทย) ระดับภาษา Part 2",
+    "duration": "0:13:00",
+    "durationSeconds": 780,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 5 การใช้คำตรงความหมาย",
+    "title": "บทที่ 5 การใช้คำตรงความหมาย Part 1",
+    "duration": "0:21:08",
+    "durationSeconds": 1268,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 5 การใช้คำตรงความหมาย",
+    "title": "บทที่ 5 การใช้คำตรงความหมาย Part 2",
+    "duration": "0:27:20",
+    "durationSeconds": 1640,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 6 สำนวน สุภาษิต",
+    "title": "บทที่ 6 สำนวน สุภาษิต Part 1",
+    "duration": "0:13:40",
+    "durationSeconds": 820,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 6 สำนวน สุภาษิต",
+    "title": "บทที่ 6 สำนวน สุภาษิต Part 2",
+    "duration": "0:21:34",
+    "durationSeconds": 1294,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 7 อุดมคติ คำคม คำขวัญ คติพจน์",
+    "title": "บทที่ 7 อุดมคติ คำคม คำขวัญ คติพจน์",
+    "duration": "0:16:13",
+    "durationSeconds": 973,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 8 สะกดคำและคำทับศัพท์",
+    "title": "บทที่ 8 สะกดคำและคำทับศัพท์ Part 1",
+    "duration": "0:13:38",
+    "durationSeconds": 818,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 8 สะกดคำและคำทับศัพท์",
+    "title": "บทที่ 8 สะกดคำและคำทับศัพท์ Part 2",
+    "duration": "0:14:24",
+    "durationSeconds": 864,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 9 คำราชาศัพท์",
+    "title": "บทที่ 9 คำราชาศัพท์ Part 1",
+    "duration": "0:43:56",
+    "durationSeconds": 2636,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 9 คำราชาศัพท์",
+    "title": "บทที่ 9 คำราชาศัพท์ Part 2",
+    "duration": "0:14:02",
+    "durationSeconds": 842,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 10 การใช้ภาษาไทยในชีวิตประจำวัน",
+    "title": "บทที่ 10 การใช้ภาษาไทยในชีวิตประจำวัน Part 1",
+    "duration": "0:24:37",
+    "durationSeconds": 1477,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 10 การใช้ภาษาไทยในชีวิตประจำวัน",
+    "title": "บทที่ 10 การใช้ภาษาไทยในชีวิตประจำวัน Part 2",
+    "duration": "0:08:26",
+    "durationSeconds": 506,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 11 ข้อบกพร่องทางภาษา",
+    "title": "บทที่ 11 ข้อบกพร่องทางภาษา Part 1",
+    "duration": "0:17:26",
+    "durationSeconds": 1046,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 11 ข้อบกพร่องทางภาษา",
+    "title": "บทที่ 11 ข้อบกพร่องทางภาษา Part 2",
+    "duration": "0:16:03",
+    "durationSeconds": 963,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 12 คำสุภาพและคำไวพจน์",
+    "title": "บทที่ 12 คำสุภาพและคำไวพจน์ Part 1",
+    "duration": "0:12:02",
+    "durationSeconds": 722,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 13 หลักภาษาอื่นๆ 1",
+    "title": "บทที่ 13 หลักภาษาอื่นๆ 1 Part 1",
+    "duration": "0:30:43",
+    "durationSeconds": 1843,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 13 หลักภาษาอื่นๆ 1",
+    "title": "บทที่ 13 หลักภาษาอื่นๆ 1 Part 2",
+    "duration": "0:19:53",
+    "durationSeconds": 1193,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 14 หลักภาษาอื่นๆ 2",
+    "title": "บทที่ 14 หลักภาษาอื่นๆ 2 Part 1",
+    "duration": "0:31:41",
+    "durationSeconds": 1901,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "บทที่ 14 หลักภาษาอื่นๆ 2",
+    "title": "บทที่ 14 หลักภาษาอื่นๆ 2 Part 2",
+    "duration": "0:20:55",
+    "durationSeconds": 1255,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาภาษาไทย ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชาภาษาไทย ชุดที่ 1",
+    "duration": "0:44:51",
+    "durationSeconds": 2691,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาภาษาไทย ชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชาภาษาไทย ชุดที่ 2",
+    "duration": "0:41:16",
+    "durationSeconds": 2476,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา ภาษาไทย",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาภาษาไทย ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชาภาษาไทย ชุดที่ 3",
+    "duration": "0:49:42",
+    "durationSeconds": 2982,
+    "suggestedDate": ""
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "ภาพรวม วิชาภาษาอังกฤษ",
+    "title": "ภาพรวม วิชาภาษาอังกฤษ",
+    "duration": "0:08:55",
+    "durationSeconds": 535,
+    "suggestedDate": "10/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 1 (Conversation)",
+    "title": "บทที่ 1 (Conversation) Part 1",
+    "duration": "0:43:28",
+    "durationSeconds": 2608,
+    "suggestedDate": "10/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 1 (Conversation)",
+    "title": "บทที่ 1 (Conversation) Part 2",
+    "duration": "1:16:55",
+    "durationSeconds": 4615,
+    "suggestedDate": "10/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 1 (Conversation)",
+    "title": "บทที่ 1 (Conversation) Part 3",
+    "duration": "1:12:21",
+    "durationSeconds": 4341,
+    "suggestedDate": "10/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 2 (Vocabulary)",
+    "title": "บทที่ 2 (Vocabulary) Part 1",
+    "duration": "0:29:20",
+    "durationSeconds": 1760,
+    "suggestedDate": "11/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 2 (Vocabulary)",
+    "title": "บทที่ 2 (Vocabulary) Part 2",
+    "duration": "0:55:10",
+    "durationSeconds": 3310,
+    "suggestedDate": "11/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 2 (Vocabulary)",
+    "title": "บทที่ 2 (Vocabulary) Part 3",
+    "duration": "0:29:49",
+    "durationSeconds": 1789,
+    "suggestedDate": "11/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 3 (Reading)",
+    "title": "บทที่ 3 (Reading) Part 1",
+    "duration": "0:33:42",
+    "durationSeconds": 2022,
+    "suggestedDate": "11/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 3 (Reading)",
+    "title": "บทที่ 3 (Reading) Part 2",
+    "duration": "1:21:54",
+    "durationSeconds": 4914,
+    "suggestedDate": "11/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 3 (Reading)",
+    "title": "บทที่ 3 (Reading) Part 3",
+    "duration": "1:02:28",
+    "durationSeconds": 3748,
+    "suggestedDate": "11/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 4 (Grammar 1)",
+    "title": "บทที่ 4 (Grammar 1) Part 1",
+    "duration": "1:04:23",
+    "durationSeconds": 3863,
+    "suggestedDate": "11/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 4 (Grammar 1 )",
+    "title": "บทที่ 4 (Grammar 1 ) Part 2",
+    "duration": "1:03:21",
+    "durationSeconds": 3801,
+    "suggestedDate": "12/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 4 (Grammar 1)",
+    "title": "บทที่ 4 (Grammar 1) Part 3",
+    "duration": "0:53:11",
+    "durationSeconds": 3191,
+    "suggestedDate": "12/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 5 (Grammar 2)",
+    "title": "บทที่ 5 (Grammar 2) Part 1",
+    "duration": "0:49:44",
+    "durationSeconds": 2984,
+    "suggestedDate": "12/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 5 (Grammar 2)",
+    "title": "บทที่ 5 (Grammar 2) Part 2",
+    "duration": "1:03:53",
+    "durationSeconds": 3833,
+    "suggestedDate": "12/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 6 (Grammar 3)",
+    "title": "บทที่ 6 (Grammar 3) Part 1",
+    "duration": "1:07:55",
+    "durationSeconds": 4075,
+    "suggestedDate": "12/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 6 (Grammar 3)",
+    "title": "บทที่ 6 (Grammar 3) Part 2",
+    "duration": "0:31:25",
+    "durationSeconds": 1885,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 6 (Grammar 3)",
+    "title": "บทที่ 6 (Grammar 3) Part 3",
+    "duration": "0:44:41",
+    "durationSeconds": 2681,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 7 (Grammar 4 )",
+    "title": "บทที่ 7 (Grammar 4 ) Part 1",
+    "duration": "1:07:58",
+    "durationSeconds": 4078,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 7 (Grammar 4 )",
+    "title": "บทที่ 7 (Grammar 4 ) Part 2",
+    "duration": "1:01:12",
+    "durationSeconds": 3672,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "บทที่ 8 (Grammar 5 )",
+    "title": "บทที่ 8 (Grammar 5 )",
+    "duration": "1:00:09",
+    "durationSeconds": 3609,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาภาษาอังกฤษ ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชาภาษาอังกฤษ ชุดที่ 1",
+    "duration": "0:53:26",
+    "durationSeconds": 3206,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาภาษาอังกฤษ ชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชาภาษาอังกฤษ ชุดที่ 2",
+    "duration": "0:41:28",
+    "durationSeconds": 2488,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ภาษาอังกฤษ",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาภาษาอังกฤษ ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชาภาษาอังกฤษ ชุดที่ 3",
+    "duration": "0:48:27",
+    "durationSeconds": 2907,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "ภาพรวม วิชาคอมพิวเตอร์",
+    "title": "ภาพรวม วิชาคอมพิวเตอร์",
+    "duration": "0:02:27",
+    "durationSeconds": 147,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 1 (วิวัฒนาการคอมพิวเตอร์)",
+    "title": "บทที่ 1 (วิวัฒนาการคอมพิวเตอร์) Part 1",
+    "duration": "0:39:04",
+    "durationSeconds": 2344,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 1 (วิวัฒนาการคอมพิวเตอร์)",
+    "title": "บทที่ 1 (วิวัฒนาการคอมพิวเตอร์) Part 2",
+    "duration": "0:19:08",
+    "durationSeconds": 1148,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 2 (ข้อมูลและสารสนเทศ)",
+    "title": "บทที่ 2 (ข้อมูลและสารสนเทศ) Part 1",
+    "duration": "0:28:07",
+    "durationSeconds": 1687,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 2 (ข้อมูลและสารสนเทศ)",
+    "title": "บทที่ 2 (ข้อมูลและสารสนเทศ) Part 2",
+    "duration": "0:27:13",
+    "durationSeconds": 1633,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 3 ( IPOS Cycle )",
+    "title": "บทที่ 3 ( IPOS Cycle ) Part 1",
+    "duration": "0:48:19",
+    "durationSeconds": 2899,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 3 ( IPOS Cycle )",
+    "title": "บทที่ 3 ( IPOS Cycle ) Part 2",
+    "duration": "0:28:30",
+    "durationSeconds": 1710,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 4 (Hardware&Software)",
+    "title": "บทที่ 4 (Hardware&Software) Part 1",
+    "duration": "0:34:03",
+    "durationSeconds": 2043,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 4 (Hardware&Software)",
+    "title": "บทที่ 4 (Hardware&Software) Part 2",
+    "duration": "0:25:16",
+    "durationSeconds": 1516,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 5 (Data&People)",
+    "title": "บทที่ 5 (Data&People) Part 1",
+    "duration": "0:37:58",
+    "durationSeconds": 2278,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 5 (Data&People)",
+    "title": "บทที่ 5 (Data&People) Part 2",
+    "duration": "0:24:25",
+    "durationSeconds": 1465,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 6 (Procedure)",
+    "title": "บทที่ 6 (Procedure) Part 1",
+    "duration": "0:20:52",
+    "durationSeconds": 1252,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 6 (Procedure)",
+    "title": "บทที่ 6 (Procedure) Part 2",
+    "duration": "0:13:20",
+    "durationSeconds": 800,
+    "suggestedDate": ""
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 7 ระบบเครือข่ายคอมพิวเตอร์",
+    "title": "บทที่ 7 ระบบเครือข่ายคอมพิวเตอร์ Part 1",
+    "duration": "0:38:58",
+    "durationSeconds": 2338,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 7 ระบบเครือข่ายคอมพิวเตอร์",
+    "title": "บทที่ 7 ระบบเครือข่ายคอมพิวเตอร์ Part 2",
+    "duration": "0:42:28",
+    "durationSeconds": 2548,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 7 ระบบเครือข่ายคอมพิวเตอร์",
+    "title": "บทที่ 7 ระบบเครือข่ายคอมพิวเตอร์ Part 3",
+    "duration": "0:25:40",
+    "durationSeconds": 1540,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 8 ระบบอินเตอร์เน็ต",
+    "title": "บทที่ 8 ระบบอินเตอร์เน็ต Part 1",
+    "duration": "0:30:19",
+    "durationSeconds": 1819,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 8 ระบบอินเตอร์เน็ต",
+    "title": "บทที่ 8 ระบบอินเตอร์เน็ต Part 2",
+    "duration": "0:20:17",
+    "durationSeconds": 1217,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 9 พาณิชย์อิเล็กทรอนิกส์",
+    "title": "บทที่ 9 พาณิชย์อิเล็กทรอนิกส์ Part 1",
+    "duration": "0:26:32",
+    "durationSeconds": 1592,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 9 พาณิชย์อิเล็กทรอนิกส์",
+    "title": "บทที่ 9 พาณิชย์อิเล็กทรอนิกส์ Part 2",
+    "duration": "0:13:35",
+    "durationSeconds": 815,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 10 ความปลอดภัยของระบบคอมพิวเตอร์",
+    "title": "บทที่ 10 ความปลอดภัยของระบบคอมพิวเตอร์ Part 1",
+    "duration": "0:21:35",
+    "durationSeconds": 1295,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 10 ความปลอดภัยของระบบคอมพิวเตอร์",
+    "title": "บทที่ 10 ความปลอดภัยของระบบคอมพิวเตอร์ Part 2",
+    "duration": "0:25:38",
+    "durationSeconds": 1538,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 10 ความปลอดภัยของระบบคอมพิวเตอร์",
+    "title": "บทที่ 10 ความปลอดภัยของระบบคอมพิวเตอร์ Part 3",
+    "duration": "0:17:41",
+    "durationSeconds": 1061,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 11 Microsoft Word เนื้อหา",
+    "title": "บทที่ 11 Microsoft Word เนื้อหา Part 1",
+    "duration": "0:38:52",
+    "durationSeconds": 2332,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 11 Microsoft Word เนื้อหา",
+    "title": "บทที่ 11 Microsoft Word เนื้อหา Part 2",
+    "duration": "0:32:11",
+    "durationSeconds": 1931,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 11 Microsoft Word เนื้อหา",
+    "title": "บทที่ 11 Microsoft Word เนื้อหา Part 3",
+    "duration": "0:16:01",
+    "durationSeconds": 961,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 12 Microsoft Excel",
+    "title": "บทที่ 12 Microsoft Excel Part 1",
+    "duration": "0:26:38",
+    "durationSeconds": 1598,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 12 Microsoft Excel",
+    "title": "บทที่ 12 Microsoft Excel Part 2",
+    "duration": "0:38:12",
+    "durationSeconds": 2292,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 12 Microsoft Excel",
+    "title": "บทที่ 12 Microsoft Excel Part 3",
+    "duration": "0:19:36",
+    "durationSeconds": 1176,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 13 Microsoft PowerPoint",
+    "title": "บทที่ 13 Microsoft PowerPoint Part 1",
+    "duration": "0:34:04",
+    "durationSeconds": 2044,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 13 Microsoft PowerPoint",
+    "title": "บทที่ 13 Microsoft PowerPoint Part 2",
+    "duration": "0:18:29",
+    "durationSeconds": 1109,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 14 social",
+    "title": "บทที่ 14 social Part 1",
+    "duration": "0:27:49",
+    "durationSeconds": 1669,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 14 social",
+    "title": "บทที่ 14 social Part 2",
+    "duration": "0:22:38",
+    "durationSeconds": 1358,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "บทที่ 14 social",
+    "title": "บทที่ 14 social Part 3",
+    "duration": "0:17:43",
+    "durationSeconds": 1063,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาคอมพิวเตอร์ ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชาคอมพิวเตอร์ ชุดที่ 1",
+    "duration": "0:29:30",
+    "durationSeconds": 1770,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาคอมพิวเตอร์ ชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชาคอมพิวเตอร์ ชุดที่ 2",
+    "duration": "0:25:15",
+    "durationSeconds": 1515,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาคอมพิวเตอร์ ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชาคอมพิวเตอร์ ชุดที่ 3",
+    "duration": "0:24:33",
+    "durationSeconds": 1473,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา คอมพิวเตอร์",
+    "chapter": "ข้อสอบท้ายบทชุดพิเศษ วิชาคอมพิวเตอร์ .",
+    "title": "ข้อสอบท้ายบทชุดพิเศษ วิชาคอมพิวเตอร์ .",
+    "duration": "1:14:09",
+    "durationSeconds": 4449,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "ภาพรวมวิชาสังคม",
+    "title": "ภาพรวมวิชาสังคม",
+    "duration": "0:06:21",
+    "durationSeconds": 381,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 1 สังคมวิทยา",
+    "title": "บทที่ 1 สังคมวิทยา Part 1",
+    "duration": "0:27:00",
+    "durationSeconds": 1620,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 2 สังคมวิทยา",
+    "title": "บทที่ 2 สังคมวิทยา Part 2",
+    "duration": "0:14:52",
+    "durationSeconds": 892,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 2 วัฒนธรรม ประเพณี และสังคมไทย",
+    "title": "บทที่ 2 วัฒนธรรม ประเพณี และสังคมไทย Part 1",
+    "duration": "0:24:25",
+    "durationSeconds": 1465,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 2 วัฒนธรรม ประเพณี และสังคมไทย",
+    "title": "บทที่ 2 วัฒนธรรม ประเพณี และสังคมไทย Part 2",
+    "duration": "0:13:07",
+    "durationSeconds": 787,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 3 หลักธรรมาภิบาล",
+    "title": "บทที่ 3 หลักธรรมาภิบาล",
+    "duration": "0:11:03",
+    "durationSeconds": 663,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 4 ศาสนา",
+    "title": "บทที่ 4 ศาสนา Part 1",
+    "duration": "0:13:37",
+    "durationSeconds": 817,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 4 ศาสนา",
+    "title": "บทที่ 4 ศาสนา Part 2",
+    "duration": "0:39:42",
+    "durationSeconds": 2382,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 4 ศาสนา",
+    "title": "บทที่ 4 ศาสนา Part 3",
+    "duration": "0:45:43",
+    "durationSeconds": 2743,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 4 ศาสนา",
+    "title": "บทที่ 4 ศาสนา Part 4",
+    "duration": "0:28:01",
+    "durationSeconds": 1681,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 5 Thailand ยุทธศาสตร์ แผนพัฒนา",
+    "title": "บทที่ 5 Thailand ยุทธศาสตร์ แผนพัฒนา",
+    "duration": "0:30:38",
+    "durationSeconds": 1838,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 6 เศรษฐกิจพอเพียง",
+    "title": "บทที่ 6 เศรษฐกิจพอเพียง",
+    "duration": "0:24:31",
+    "durationSeconds": 1471,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 7 ประวัติศาสตร์ และบุคคลสำคัญ",
+    "title": "บทที่ 7 ประวัติศาสตร์ และบุคคลสำคัญ",
+    "duration": "0:35:52",
+    "durationSeconds": 2152,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 8 ภูมิศาสตร์",
+    "title": "บทที่ 8 ภูมิศาสตร์",
+    "duration": "0:41:47",
+    "durationSeconds": 2507,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 9 เศรษฐศาสตร์พื้นฐาน",
+    "title": "บทที่ 9 เศรษฐศาสตร์พื้นฐาน",
+    "duration": "0:14:53",
+    "durationSeconds": 893,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 10 อาเซียน",
+    "title": "บทที่ 10 อาเซียน Part 1",
+    "duration": "0:23:37",
+    "durationSeconds": 1417,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 10 อาเซียน ตอนที่ 2",
+    "title": "บทที่ 10 อาเซียน ตอนที่ 2",
+    "duration": "0:15:57",
+    "durationSeconds": 957,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 10 อาเซียน ตอนที่ 3",
+    "title": "บทที่ 10 อาเซียน ตอนที่ 3",
+    "duration": "0:17:45",
+    "durationSeconds": 1065,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "บทที่ 10 อาเซียน ตอนที่ 4",
+    "title": "บทที่ 10 อาเซียน ตอนที่ 4",
+    "duration": "0:23:07",
+    "durationSeconds": 1387,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาสังคม ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชาสังคม ชุดที่ 1",
+    "duration": "0:16:44",
+    "durationSeconds": 1004,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาสังคม ชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชาสังคม ชุดที่ 2",
+    "duration": "0:12:22",
+    "durationSeconds": 742,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา สังคม",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาสังคม ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชาสังคม ชุดที่ 3",
+    "duration": "0:15:56",
+    "durationSeconds": 956,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "ภาพรวม กฎหมาย",
+    "title": "ภาพรวม กฎหมาย",
+    "duration": "0:04:53",
+    "durationSeconds": 293,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 1 (ความหมายและประเภทของกฎหมาย )",
+    "title": "บทที่ 1 (ความหมายและประเภทของกฎหมาย ) Part 1",
+    "duration": "0:23:11",
+    "durationSeconds": 1391,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 1 (ความหมายและประเภทของกฎหมาย )",
+    "title": "บทที่ 1 (ความหมายและประเภทของกฎหมาย ) Part 2",
+    "duration": "0:22:17",
+    "durationSeconds": 1337,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 1 (ความหมายและประเภทของกฎหมาย )",
+    "title": "บทที่ 1 (ความหมายและประเภทของกฎหมาย ) Part 3",
+    "duration": "0:13:25",
+    "durationSeconds": 805,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 2 (กฎหมายไทย)",
+    "title": "บทที่ 2 (กฎหมายไทย) Part 1",
+    "duration": "0:28:37",
+    "durationSeconds": 1717,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 2 (กฎหมายไทย)",
+    "title": "บทที่ 2 (กฎหมายไทย) Part 2",
+    "duration": "0:33:46",
+    "durationSeconds": 2026,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 2 (กฎหมายไทย)",
+    "title": "บทที่ 2 (กฎหมายไทย) Part 3",
+    "duration": "0:20:26",
+    "durationSeconds": 1226,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 3 (รัฐธรรมนูญ)",
+    "title": "บทที่ 3 (รัฐธรรมนูญ) Part 1",
+    "duration": "0:29:41",
+    "durationSeconds": 1781,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 3 (รัฐธรรมนูญ)",
+    "title": "บทที่ 3 (รัฐธรรมนูญ) Part 2",
+    "duration": "0:34:25",
+    "durationSeconds": 2065,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 3 (รัฐธรรมนูญ)",
+    "title": "บทที่ 3 (รัฐธรรมนูญ) Part 3",
+    "duration": "0:35:16",
+    "durationSeconds": 2116,
+    "suggestedDate": ""
+  },
+  {
+    "completed": true,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 3 (รัฐธรรมนูญ)",
+    "title": "บทที่ 3 (รัฐธรรมนูญ) Part 4",
+    "duration": "0:24:50",
+    "durationSeconds": 1490,
+    "suggestedDate": ""
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "Bonus พิเศษ กฎหมายปกครอง",
+    "title": "Bonus พิเศษ กฎหมายปกครอง Part 1",
+    "duration": "0:31:35",
+    "durationSeconds": 1895,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "Bonus พิเศษ กฎหมายปกครอง",
+    "title": "Bonus พิเศษ กฎหมายปกครอง Part 2",
+    "duration": "0:19:02",
+    "durationSeconds": 1142,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "Bonus พิเศษ กฎหมายปกครอง",
+    "title": "Bonus พิเศษ กฎหมายปกครอง Part 3",
+    "duration": "0:17:33",
+    "durationSeconds": 1053,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 4 กฎหมายแพ่ง (บุคคล)",
+    "title": "บทที่ 4 กฎหมายแพ่ง (บุคคล) Part 1",
+    "duration": "0:29:05",
+    "durationSeconds": 1745,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 4 กฎหมายแพ่ง (บุคคล)",
+    "title": "บทที่ 4 กฎหมายแพ่ง (บุคคล) Part 2",
+    "duration": "0:30:14",
+    "durationSeconds": 1814,
+    "suggestedDate": "13/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 4 กฎหมายแพ่ง (บุคคล)",
+    "title": "บทที่ 4 กฎหมายแพ่ง (บุคคล) Part 3",
+    "duration": "0:17:01",
+    "durationSeconds": 1021,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์)",
+    "title": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์) Part 1",
+    "duration": "0:31:17",
+    "durationSeconds": 1877,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์)",
+    "title": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์) Part 2",
+    "duration": "0:32:34",
+    "durationSeconds": 1954,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์)",
+    "title": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์) Part 3",
+    "duration": "0:23:32",
+    "durationSeconds": 1412,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์)",
+    "title": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์) Part 4",
+    "duration": "0:40:19",
+    "durationSeconds": 2419,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์)",
+    "title": "บทที่ 5 กฎหมายแพ่ง (ทรัพย์) Part 5",
+    "duration": "0:31:46",
+    "durationSeconds": 1906,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 6 กฎหมายแพ่ง (สัญญา)",
+    "title": "บทที่ 6 กฎหมายแพ่ง (สัญญา) Part 1",
+    "duration": "0:27:51",
+    "durationSeconds": 1671,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 6 กฎหมายแพ่ง (สัญญา)",
+    "title": "บทที่ 6 กฎหมายแพ่ง (สัญญา) Part 2",
+    "duration": "0:37:48",
+    "durationSeconds": 2268,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 6 กฎหมายแพ่ง (สัญญา)",
+    "title": "บทที่ 6 กฎหมายแพ่ง (สัญญา) Part 3",
+    "duration": "0:32:03",
+    "durationSeconds": 1923,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 6 กฎหมายแพ่ง (สัญญา)",
+    "title": "บทที่ 6 กฎหมายแพ่ง (สัญญา) Part 4",
+    "duration": "0:33:45",
+    "durationSeconds": 2025,
+    "suggestedDate": "14/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว)",
+    "title": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว) Part 1",
+    "duration": "0:32:50",
+    "durationSeconds": 1970,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว)",
+    "title": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว) Part 2",
+    "duration": "0:39:00",
+    "durationSeconds": 2340,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว)",
+    "title": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว) Part 3",
+    "duration": "0:42:48",
+    "durationSeconds": 2568,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว)",
+    "title": "บทที่ 7 กฎหมายแพ่ง (ครอบครัว) Part 4",
+    "duration": "0:23:49",
+    "durationSeconds": 1429,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 8 อาญา (โทษ)",
+    "title": "บทที่ 8 อาญา (โทษ) Part 1",
+    "duration": "0:17:08",
+    "durationSeconds": 1028,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 8 อาญา (โทษ)",
+    "title": "บทที่ 8 อาญา (โทษ) Part 2",
+    "duration": "0:27:20",
+    "durationSeconds": 1640,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 8 อาญา (โทษ)",
+    "title": "บทที่ 8 อาญา (โทษ) Part 3",
+    "duration": "0:32:39",
+    "durationSeconds": 1959,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 8 อาญา (โทษ)",
+    "title": "บทที่ 8 อาญา (โทษ) Part 4",
+    "duration": "0:36:34",
+    "durationSeconds": 2194,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 8 อาญา (โทษ)",
+    "title": "บทที่ 8 อาญา (โทษ) Part 5",
+    "duration": "0:16:16",
+    "durationSeconds": 976,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 9 อาญา (บุคคล)",
+    "title": "บทที่ 9 อาญา (บุคคล) Part 1",
+    "duration": "0:18:03",
+    "durationSeconds": 1083,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 9 อาญา (บุคคล)",
+    "title": "บทที่ 9 อาญา (บุคคล) Part 2",
+    "duration": "0:23:29",
+    "durationSeconds": 1409,
+    "suggestedDate": "15/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 9 อาญา (บุคคล)",
+    "title": "บทที่ 9 อาญา (บุคคล) Part 3",
+    "duration": "0:10:41",
+    "durationSeconds": 641,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 10 กฎหมาย (แรงงาน)",
+    "title": "บทที่ 10 กฎหมาย (แรงงาน) Part 1",
+    "duration": "0:22:24",
+    "durationSeconds": 1344,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 10 กฎหมาย (แรงงาน)",
+    "title": "บทที่ 10 กฎหมาย (แรงงาน) Part 2",
+    "duration": "0:15:55",
+    "durationSeconds": 955,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 10 กฎหมาย (แรงงาน)",
+    "title": "บทที่ 10 กฎหมาย (แรงงาน) Part 3",
+    "duration": "0:05:26",
+    "durationSeconds": 326,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 11 กฎหมาย (ในชีวิตประจำวัน)",
+    "title": "บทที่ 11 กฎหมาย (ในชีวิตประจำวัน) Part 1",
+    "duration": "0:27:28",
+    "durationSeconds": 1648,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "บทที่ 11 กฎหมาย (ในชีวิตประจำวัน)",
+    "title": "บทที่ 11 กฎหมาย (ในชีวิตประจำวัน) Part 2 (จบ)",
+    "duration": "0:09:43",
+    "durationSeconds": 583,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "ตะลุยโจทย์ท้ายวิชากฎหมาย ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชากฎหมาย ชุดที่ 1",
+    "duration": "0:14:49",
+    "durationSeconds": 889,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "ตะลุยโจทย์ท้ายวิชากฎหมาย ชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชากฎหมาย ชุดที่ 2",
+    "duration": "0:13:37",
+    "durationSeconds": 817,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา กฎหมาย",
+    "chapter": "ตะลุยโจทย์ท้ายวิชากฎหมาย ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชากฎหมาย ชุดที่ 3",
+    "duration": "0:18:41",
+    "durationSeconds": 1121,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "ภาพรวม วิชางานสารบรรณ",
+    "title": "ภาพรวม วิชางานสารบรรณ",
+    "duration": "0:04:28",
+    "durationSeconds": 268,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 1 บทนำและนิยาม",
+    "title": "บทที่ 1 บทนำและนิยาม Part 1",
+    "duration": "0:28:11",
+    "durationSeconds": 1691,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 1 บทนำและนิยาม",
+    "title": "บทที่ 1 บทนำและนิยาม Part 2",
+    "duration": "0:22:19",
+    "durationSeconds": 1339,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 2 มาตราฐานแบบพิมพ์ ตราครุฑ",
+    "title": "บทที่ 2 มาตราฐานแบบพิมพ์ ตราครุฑ",
+    "duration": "0:45:29",
+    "durationSeconds": 2729,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 3 หนังสือภายนอก หนังสือภายใน หนังสือประทับตา",
+    "title": "บทที่ 3 หนังสือภายนอก หนังสือภายใน หนังสือประทับตา Part 1",
+    "duration": "0:43:39",
+    "durationSeconds": 2619,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 3 หนังสือภายนอก หนังสือภายใน หนังสือประทับตา",
+    "title": "บทที่ 3 หนังสือภายนอก หนังสือภายใน หนังสือประทับตา Part 2",
+    "duration": "0:22:41",
+    "durationSeconds": 1361,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 3 หนังสือภายนอก หนังสือภายใน หนังสือประทับตา",
+    "title": "บทที่ 3 หนังสือภายนอก หนังสือภายใน หนังสือประทับตา Part 3",
+    "duration": "0:29:29",
+    "durationSeconds": 1769,
+    "suggestedDate": "16/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 4 หนังสือสั่งการ",
+    "title": "บทที่ 4 หนังสือสั่งการ Part 1",
+    "duration": "0:39:24",
+    "durationSeconds": 2364,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 5 หนังสือประชาสัมพันธ์",
+    "title": "บทที่ 5 หนังสือประชาสัมพันธ์ Part 1",
+    "duration": "0:37:05",
+    "durationSeconds": 2225,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 6 หนังสือที่เจ้าหน้าที่จัดทำขึ้นหรือรับไว้เป็นหลักฐานในราชการ",
+    "title": "บทที่ 6 หนังสือที่เจ้าหน้าที่จัดทำขึ้นหรือรับไว้เป็นหลักฐานในราชการ Part 1",
+    "duration": "0:34:56",
+    "durationSeconds": 2096,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 7 เบ็ดเตล็ด สำเนา สำเนาคู่ฉบับ หนังสือราชการภาษาอังกฤษ",
+    "title": "บทที่ 7 เบ็ดเตล็ด สำเนา สำเนาคู่ฉบับ หนังสือราชการภาษาอังกฤษ",
+    "duration": "0:45:54",
+    "durationSeconds": 2754,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 8 การรับส่งหนังสือ",
+    "title": "บทที่ 8 การรับส่งหนังสือ Part 1",
+    "duration": "0:27:05",
+    "durationSeconds": 1625,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 8 การรับส่งหนังสือ",
+    "title": "บทที่ 8 การรับส่งหนังสือ Part 2",
+    "duration": "0:20:00",
+    "durationSeconds": 1200,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 9 การเก็บรักษา",
+    "title": "บทที่ 9 การเก็บรักษา Part 1",
+    "duration": "0:33:09",
+    "durationSeconds": 1989,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 9 การเก็บรักษา",
+    "title": "บทที่ 9 การเก็บรักษา Part 2",
+    "duration": "0:19:35",
+    "durationSeconds": 1175,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 10 การยืม",
+    "title": "บทที่ 10 การยืม Part 1",
+    "duration": "0:25:42",
+    "durationSeconds": 1542,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 11 การทำลาย",
+    "title": "บทที่ 11 การทำลาย Part 1",
+    "duration": "0:15:25",
+    "durationSeconds": 925,
+    "suggestedDate": "17/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 11 การทำลาย",
+    "title": "บทที่ 11 การทำลาย Part 2",
+    "duration": "0:19:18",
+    "durationSeconds": 1158,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 12 ระบบสารบรรณอิเล็กทรอนิกส์",
+    "title": "บทที่ 12 ระบบสารบรรณอิเล็กทรอนิกส์ Part 1",
+    "duration": "0:32:18",
+    "durationSeconds": 1938,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 12 ระบบสารบรรณอิเล็กทรอนิกส์",
+    "title": "บทที่ 12 ระบบสารบรรณอิเล็กทรอนิกส์ Part 2",
+    "duration": "0:30:37",
+    "durationSeconds": 1837,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "บทที่ 12 ระบบสารบรรณอิเล็กทรอนิกส์",
+    "title": "บทที่ 12 ระบบสารบรรณอิเล็กทรอนิกส์ Part 3",
+    "duration": "0:26:10",
+    "durationSeconds": 1570,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาสารบรรณ ชุดที่ 1",
+    "title": "ตะลุยโจทย์ท้ายวิชาสารบรรณ ชุดที่ 1",
+    "duration": "0:31:32",
+    "durationSeconds": 1892,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาสารบรรณ ชุดที่ 2",
+    "title": "ตะลุยโจทย์ท้ายวิชาสารบรรณ ชุดที่ 2",
+    "duration": "0:33:53",
+    "durationSeconds": 2033,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา งานสารบรรณ",
+    "chapter": "ตะลุยโจทย์ท้ายวิชาสารบรรณ ชุดที่ 3",
+    "title": "ตะลุยโจทย์ท้ายวิชาสารบรรณ ชุดที่ 3",
+    "duration": "0:34:52",
+    "durationSeconds": 2092,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "ภาพรวม วิชาลักษณะ54",
+    "title": "ภาพรวม วิชาลักษณะ54",
+    "duration": "0:04:08",
+    "durationSeconds": 248,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 1 งานสารบรรณตำรวจ",
+    "title": "บทที่ 1 งานสารบรรณตำรวจ Part 1",
+    "duration": "0:16:00",
+    "durationSeconds": 960,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 1 งานสารบรรณตำรวจ",
+    "title": "บทที่ 1 งานสารบรรณตำรวจ Part 2",
+    "duration": "0:15:43",
+    "durationSeconds": 943,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 2 การใช้บันทึกข้อความ",
+    "title": "บทที่ 2 การใช้บันทึกข้อความ Part 1",
+    "duration": "0:21:17",
+    "durationSeconds": 1277,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 2 การใช้บันทึกข้อความ",
+    "title": "บทที่ 2 การใช้บันทึกข้อความ Part 2",
+    "duration": "0:10:57",
+    "durationSeconds": 657,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 3 การจัดทำหนังสือ",
+    "title": "บทที่ 3 การจัดทำหนังสือ Part 1",
+    "duration": "0:20:10",
+    "durationSeconds": 1210,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 3 การจัดทำหนังสือ",
+    "title": "บทที่ 3 การจัดทำหนังสือ Part 2",
+    "duration": "0:16:28",
+    "durationSeconds": 988,
+    "suggestedDate": "18/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 4 การนำเสนองาน",
+    "title": "บทที่ 4 การนำเสนองาน",
+    "duration": "0:13:19",
+    "durationSeconds": 799,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 5 การรับและส่งหนังสือ",
+    "title": "บทที่ 5 การรับและส่งหนังสือ ตอน 1",
+    "duration": "0:14:45",
+    "durationSeconds": 885,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 5 การรับและส่งหนังสือ",
+    "title": "บทที่ 5 การรับและส่งหนังสือ ตอน 2 (จบ)",
+    "duration": "0:08:12",
+    "durationSeconds": 492,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 6 การคัดลอกสำเนา ลงชื่อตรวจ และการรับผิดชอบในหนังสือราชการ",
+    "title": "บทที่ 6 การคัดลอกสำเนา ลงชื่อตรวจ และการรับผิดชอบในหนังสือราชการ Part 1",
+    "duration": "0:13:53",
+    "durationSeconds": 833,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 6 การคัดลอกสำเนา ลงชื่อตรวจ และการรับผิดชอบในหนังสือราชการ",
+    "title": "บทที่ 6 การคัดลอกสำเนา ลงชื่อตรวจ และการรับผิดชอบในหนังสือราชการ Part 2",
+    "duration": "0:07:42",
+    "durationSeconds": 462,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 7 กำหนดเลขที่ประจำหน่วยงานภายในสำนักงานตำรวจแห่งชาติ",
+    "title": "บทที่ 7 กำหนดเลขที่ประจำหน่วยงานภายในสำนักงานตำรวจแห่งชาติ Part 1",
+    "duration": "0:25:19",
+    "durationSeconds": 1519,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 7 กำหนดเลขที่ประจำหน่วยงานภายในสำนักงานตำรวจแห่งชาติ",
+    "title": "บทที่ 7 กำหนดเลขที่ประจำหน่วยงานภายในสำนักงานตำรวจแห่งชาติ Part 2",
+    "duration": "0:22:31",
+    "durationSeconds": 1351,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 8 การใช้คำย่อในราชการตำรวจ",
+    "title": "บทที่ 8 การใช้คำย่อในราชการตำรวจ Part 1",
+    "duration": "0:23:46",
+    "durationSeconds": 1426,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 8 การใช้คำย่อในราชการตำรวจ",
+    "title": "บทที่ 8 การใช้คำย่อในราชการตำรวจ Part 2",
+    "duration": "0:21:47",
+    "durationSeconds": 1307,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 9 การบัญญัติศัพท์อังกฤษ",
+    "title": "บทที่ 9 การบัญญัติศัพท์อังกฤษ Part 1",
+    "duration": "0:19:51",
+    "durationSeconds": 1191,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 9 การบัญญัติศัพท์อังกฤษ",
+    "title": "บทที่ 9 การบัญญัติศัพท์อังกฤษ Part 2",
+    "duration": "0:13:41",
+    "durationSeconds": 821,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 10 การออกประกาศ ระเบียบ ข้อบังคับพนักงานจราจร",
+    "title": "บทที่ 10 การออกประกาศ ระเบียบ ข้อบังคับพนักงานจราจร Part 1",
+    "duration": "0:18:56",
+    "durationSeconds": 1136,
+    "suggestedDate": "19/11/2026"
+  },
+  {
+    "completed": false,
+    "course": "วิชา ลักษณะที่ 54",
+    "chapter": "บทที่ 11 ไปรษณีย์สนามของตำรวจชายแดน",
+    "title": "บทที่ 11 ไปรษณีย์สนามของตำรวจชายแดน Part 1",
+    "duration": "0:22:15",
+    "durationSeconds": 1335,
+    "suggestedDate": "19/11/2026"
+  }
+]

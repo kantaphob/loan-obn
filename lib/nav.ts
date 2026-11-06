@@ -14,6 +14,10 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: 'overview', title: 'ภาพรวม', href: '/dashboard', icon: House, description: 'ยอดรวม สถานะวันนี้ และงานที่ต้องติดตาม', items: [
     { label: 'Dashboard', href: '/dashboard', icon: House, description: 'รับ จ่าย สุทธิ เงินทุน สินเชื่อ และทรัพย์สินในหน้าเดียว', keywords: 'home dashboard ภาพรวม' },
   ] },
+  { id: 'personal', title: 'ส่วนตัว', href: '/dashboard/workspace/personal', icon: FolderUser, description: 'รายรับ–รายจ่ายส่วนตัวและ Guru Academy', items: [
+    { label: 'รายรับ–รายจ่าย', href: '/dashboard/personal', icon: FolderUser, description: 'รายรับ–รายจ่ายส่วนตัว งบประมาณ และวิเคราะห์ค่าใช้จ่าย', keywords: 'personal ส่วนตัว งบประมาณ' },
+    { label: 'Guru Academy', href: '/dashboard/personal/guru-academy', icon: FolderUser, description: 'Checklist การเรียน guruacademy และบันทึกคะแนน examgurupolice' },
+  ] },
   { id: 'finance', title: 'การเงิน', href: '/dashboard/workspace/finance', icon: WalletCards, description: 'บันทึกรับ–จ่าย ติดตามยอดค้าง และจัดการรายการประจำ', items: [
     { label: 'บัญชีรับ–จ่าย', href: '/dashboard/ledger', icon: Banknote, description: 'รายการเงินจริงทุกปี พร้อมหมวด หลักฐาน และประวัติ', keywords: 'ledger cashbook เงินสด' },
     { label: 'ลูกหนี้ค้างรับ', href: '/dashboard/receivables', icon: BanknoteArrowUp, description: 'ติดตามเงินที่ต้องรับและการชำระนอกสินเชื่อ', keywords: 'receivables' },
@@ -59,6 +63,7 @@ export const WORKSPACE_HOME: NavItem = { label: 'พื้นที่ทำง�
 
 /** Child pages remain reachable in search and have precise breadcrumbs. */
 export const NAV_CHILD_PAGES: (NavItem & { parentHref: string })[] = [
+  ...['guruacademy', 'examgurupolice'].map(label => ({ label, href: `/dashboard/personal/${label}`, parentHref: '/dashboard/personal/guru-academy', icon: FolderUser, description: label === 'guruacademy' ? 'Checklist สิ่งที่เรียนแล้ว' : 'บันทึกคะแนนข้อสอบและความแม่นยำ 6 วิชา' })),
   { label: 'สร้างสัญญาสินเชื่อ', href: '/dashboard/contracts/new', parentHref: '/dashboard/contracts', icon: ReceiptText, description: 'เลือกผู้กู้เพื่อเริ่มสร้างสัญญา', keywords: 'new contract' },
   ...[
     ['boq', 'ประมาณราคา BOQ'], ['built-in', 'งาน Built-in'], ['inventory', 'วัสดุและสินค้าคงคลัง'], ['valuations', 'ประเมินมูลค่า'], ['history', 'ประวัติการขาย'],

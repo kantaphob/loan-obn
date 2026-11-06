@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, LayoutGrid, Menu, X } from 'lucide-react'
-import { getWorkspaceContext, NAV_GROUPS, WORKSPACE_HOME } from '@/lib/nav'
+import { getWorkspaceContext, NAV_CHILD_PAGES, NAV_GROUPS, WORKSPACE_HOME } from '@/lib/nav'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -42,7 +42,7 @@ export function Sidebar() {
             <Link href={group.href} className="workspace-group-link" title={collapsed ? group.title : undefined} aria-label={collapsed ? group.title : undefined} aria-current={pathname === group.href ? 'page' : undefined} onClick={() => setMobileOpen(false)}><Icon size={18} aria-hidden="true" /><span>{group.title}</span></Link>
             {group.id !== 'overview' && <button type="button" className="workspace-group-toggle" aria-label={`${open ? 'ย่อ' : 'ขยาย'}หมวด${group.title}`} aria-expanded={open} aria-controls={`workspace-group-${group.id}`} onClick={() => setExpanded(state => ({...state,[group.id]:!open}))}><ChevronDown size={14} aria-hidden="true" /></button>}
           </div>
-          {group.id !== 'overview' && <div id={`workspace-group-${group.id}`} className="sidebar-group-motion" data-open={open} inert={!open}><ul>{group.items.map(item => <li key={item.href}><Link href={item.href} aria-current={currentItem?.href === item.href ? 'page' : undefined} onClick={() => setMobileOpen(false)}>{item.label}</Link></li>)}</ul></div>}
+          {group.id !== 'overview' && <div id={`workspace-group-${group.id}`} className="sidebar-group-motion" data-open={open} inert={!open}><ul>{group.items.map(item => <li key={item.href}><Link href={item.href} aria-current={currentItem?.href === item.href ? 'page' : undefined} onClick={() => setMobileOpen(false)}>{item.label}</Link>{group.id === 'personal' && item.href.endsWith('/guru-academy') && <ul aria-label="Guru Academy" style={{ paddingLeft: 14 }}>{NAV_CHILD_PAGES.filter(child => child.parentHref === item.href).map(child => <li key={child.href}><Link href={child.href} aria-current={pathname === child.href ? 'page' : undefined} onClick={() => setMobileOpen(false)}>{child.label}</Link></li>)}</ul>}</li>)}</ul></div>}
         </section>
       })}
     </nav>

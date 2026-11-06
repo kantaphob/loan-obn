@@ -173,7 +173,7 @@ async function saveLedgerForAccount(input: LedgerInput, file: File | null | unde
         }
       }
     })
-    revalidatePath('/dashboard/capital'); revalidatePath('/dashboard'); revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
+    revalidatePath('/dashboard/capital'); revalidatePath('/dashboard'); revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/personal'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     const saved = await prisma.ledgerEntry.findUnique({ where: { requestKey: input.requestKey }, select: { id: true, contractId: true, contract: { select: { borrowerCode: true } } } })
     if (saved) {
       try {
@@ -230,7 +230,7 @@ export async function voidLedger(id: number, reason: string) {
       publishCreditBureauChanged()
     }
     revalidatePath('/dashboard/recurring'); revalidatePath('/dashboard/payroll'); revalidatePath('/dashboard/persuaders/shares')
-    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
+    revalidatePath('/dashboard/invoice'); revalidatePath('/dashboard/ap'); revalidatePath('/dashboard/repayments'); revalidatePath('/dashboard/receivables'); revalidatePath('/dashboard/personal'); revalidatePath('/dashboard/ledger'); revalidatePath('/dashboard/contracts')
     return { success: true }
   } catch (error) { return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'ยกเลิกไม่สำเร็จ กรุณาลองใหม่' } }
 }
@@ -317,7 +317,7 @@ export async function editLedger(input: {
       await syncGoogleContract(saved.contractId)
       publishCreditBureauChanged()
     }
-    for (const path of ['/dashboard/ledger', '/dashboard/repayments', '/dashboard/receivables', '/dashboard/contracts', '/dashboard/ap', '/dashboard/persuaders/shares']) revalidatePath(path)
+    for (const path of ['/dashboard/personal', '/dashboard/ledger', '/dashboard/repayments', '/dashboard/receivables', '/dashboard/contracts', '/dashboard/ap', '/dashboard/persuaders/shares']) revalidatePath(path)
     return { success: true }
   } catch (error) { return { error: error instanceof Error && 'code' in error && error.code === 'P2002' ? 'หลักฐานหรือเลขอ้างอิงซ้ำกับรายการที่บันทึกแล้ว' : error instanceof Error && !error.name.startsWith('Prisma') ? error.message : 'แก้ไขไม่สำเร็จ กรุณาลองใหม่' } }
 }

@@ -1,0 +1,68 @@
+[
+  {
+    "title": "Planner การเรียนฉบับพี่บัส",
+    "total": 3,
+    "initialCompleted": 3,
+    "remainingHours": 0.0
+  },
+  {
+    "title": "บทนำ",
+    "total": 4,
+    "initialCompleted": 4,
+    "remainingHours": 0.0
+  },
+  {
+    "title": "คอร์สตั้งไข่",
+    "total": 13,
+    "initialCompleted": 13,
+    "remainingHours": 0.0
+  },
+  {
+    "title": "วิชา ความสามารถทั่วไป",
+    "total": 50,
+    "initialCompleted": 1,
+    "remainingHours": 15.4
+  },
+  {
+    "title": "วิชา ภาษาไทย",
+    "total": 35,
+    "initialCompleted": 35,
+    "remainingHours": 0.0
+  },
+  {
+    "title": "วิชา ภาษาอังกฤษ",
+    "total": 24,
+    "initialCompleted": 0,
+    "remainingHours": 14.1
+  },
+  {
+    "title": "วิชา คอมพิวเตอร์",
+    "total": 38,
+    "initialCompleted": 13,
+    "remainingHours": 7.9
+  },
+  {
+    "title": "วิชา สังคม",
+    "total": 22,
+    "initialCompleted": 22,
+    "remainingHours": 0.0
+  },
+  {
+    "title": "วิชา กฎหมาย",
+    "total": 46,
+    "initialCompleted": 11,
+    "remainingHours": 9.8
+  },
+  {
+    "title": "วิชา งานสารบรรณ",
+    "total": 24,
+    "initialCompleted": 0,
+    "remainingHours": 7.8
+  },
+  {
+    "title": "วิชา ลักษณะที่ 54",
+    "total": 20,
+    "initialCompleted": 0,
+    "remainingHours": 3.7
+  }
+]

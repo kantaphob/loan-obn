@@ -8,7 +8,7 @@ test('every destination has a page and occurs in exactly one work area', () => {
   const pages = [...NAV_GROUPS.flatMap(group=>group.items),...NAV_CHILD_PAGES]
   assert.equal(new Set(pages.map(page=>page.href)).size,pages.length)
   for (const page of pages) assert.ok(existsSync(join(process.cwd(),'app',page.href,'page.tsx')),page.href)
-  assert.equal(new Set(NAV_GROUPS.map(group=>group.id)).size,7)
+  assert.equal(new Set(NAV_GROUPS.map(group=>group.id)).size,8)
   for (const group of NAV_GROUPS) {
     for (const href of group.workflow ?? []) assert.ok(group.items.some(page=>page.href===href),href)
   }

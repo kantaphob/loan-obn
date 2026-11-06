@@ -439,6 +439,8 @@ model ContractDocumentSignature {
 
 // Cash movements are immutable; voids retain the original record and operator.
 model LedgerEntry {
+  personalPlanId String?
+  personalPlan PersonalPlan? @relation(fields: [personalPlanId], references: [id], onDelete: Restrict)
   reimbursementVoucher ReimbursementVoucher?
   recurringPayment RecurringPayment?
   payrollReceipt PayrollRecord?
@@ -1588,4 +1590,60 @@ model UtilityBill {
   homeId Int
   home UtilityHome @relation(fields: [homeId], references: [id], onDelete: Restrict)
   @@unique([operatorId, homeId, kind, meter, period])
+}
+
+model PersonalPlan {
+  id String @id @default(cuid())
+  operatorId String
+  title String
+  category String
+  status String @default("PLANNED")
+  targetDate String @default("")
+  destination String @default("")
+  note String @default("")
+  budgetSatang Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expenses LedgerEntry[]
+  @@index([operatorId, targetDate])
+  @@map("personal_plan")
+}
+
+model PersonalExamScore {
+  id String @id @default(cuid())
+  operatorId String
+  subject String
+  examName String
+  occurredOn String
+  correct Int
+  total Int
+  note String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([operatorId, occurredOn])
+  @@map("personal_exam_score")
+}
+
+model PersonalStudyCourse {
+  id String @id @default(cuid())
+  operatorId String
+  title String
+  total Int
+  initialCompleted Int @default(0)
+  remainingHours Float @default(0)
+  lessons PersonalStudyLesson[]
+  @@unique([operatorId, title])
+  @@map("personal_study_course")
+}
+
+model PersonalStudyLesson {
+  id String @id @default(cuid())
+  courseId String
+  course PersonalStudyCourse @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  title String
+  position Int
+  completed Boolean @default(false)
+  completedAt DateTime?
+  @@unique([courseId, position])
+  @@map("personal_study_lesson")
 }
