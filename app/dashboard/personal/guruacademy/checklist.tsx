@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react'
 import { updateStudyLesson, type getStudyChecklist } from './actions'
 
+
 type Data = Awaited<ReturnType<typeof getStudyChecklist>>
 
 function Lesson({ lesson, canWrite }: { lesson: Data['courses'][number]['lessons'][number]; canWrite: boolean }) {

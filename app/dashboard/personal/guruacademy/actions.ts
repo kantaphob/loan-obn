@@ -20,6 +20,7 @@ export async function updateStudyLesson(id: string, completed: boolean, title?: 
     const changed = await prisma.personalStudyLesson.updateMany({ where: { id, course: { operatorId: user.id } }, data: { completed, completedAt: completed ? new Date() : null, ...(title !== undefined ? { title: title.trim() } : {}) } })
     if (!changed.count) throw new Error('ไม่พบบทเรียน')
     revalidatePath('/dashboard/personal/guruacademy')
+    revalidatePath('/dashboard/personal/guru-academy')
     return { ok: true, error: '' }
   } catch (e) { return { ok: false, error: e instanceof Error && !e.name.startsWith('Prisma') ? e.message : 'บันทึกไม่สำเร็จ กรุณาลองใหม่' } }
 }
