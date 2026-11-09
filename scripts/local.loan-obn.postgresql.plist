@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>local.loan-obn.postgresql</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/node</string>
+		<string>/Users/ohmz/Documents/loan-obn/scripts/supervise-local-postgres.mjs</string>
+	</array>
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>LC_ALL</key>
+		<string>C</string>
+		<key>LANG</key>
+		<string>C</string>
+	</dict>
+	<key>StandardErrorPath</key>
+	<string>/Users/ohmz/Documents/loan-obn/private/postgres/startup-error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/ohmz/Documents/loan-obn/private/postgres/startup.log</string>
+	<key>WorkingDirectory</key>
+	<string>/Users/ohmz/Documents/loan-obn</string>
+</dict>
+</plist>

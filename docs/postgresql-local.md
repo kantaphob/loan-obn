@@ -20,9 +20,12 @@ is `private/postgres/data`. Keep this directory in place while the server runs.
   test databases, using the private local admin connection. These databases are
   removed after testing. This command must never point at a shared production server.
 
-The Mac login startup job is `local.loan-obn.postgresql`, configured in
-`~/Library/LaunchAgents/local.loan-obn.postgresql.plist`. It starts this cluster
-when the user logs in; it does not expose PostgreSQL to other computers.
+The Mac login job is `local.loan-obn.postgresql`, configured from
+`scripts/local.loan-obn.postgresql.plist` in
+`~/Library/LaunchAgents/local.loan-obn.postgresql.plist`. It checks the cluster
+every five seconds and starts it again if it stops. PostgreSQL only listens on
+`127.0.0.1`, so it is not exposed to other computers. To intentionally stop it,
+unload the LaunchAgent before stopping the cluster.
 
 `prisma/schema.prisma` is authoritative for future schema changes. The generation
 script derives `prisma/schema.sqlite.prisma` from it for regression testing and

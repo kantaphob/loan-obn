@@ -6,6 +6,7 @@ const directory = path.join(root, 'private/postgres')
 const command = '/opt/homebrew/opt/postgresql@18/bin/pg_ctl'
 const args = ['-D', path.join(directory,'data')]
 if (spawnSync(command, [...args,'status'], {stdio:'ignore'}).status !== 0) {
-  const result=spawnSync(command,[...args,'-l',path.join(directory,'server.log'),'-o',`-p 55432 -h 127.0.0.1 -k ${path.join(directory,'socket')}`,'start'], {stdio:'inherit'})
+  const env = { ...process.env, LC_ALL: 'C', LANG: 'C' }
+  const result=spawnSync(command,[...args,'-l',path.join(directory,'server.log'),'-o',`-p 55432 -h 127.0.0.1 -k ${path.join(directory,'socket')}`,'-w','-t','30','start'], {stdio:'inherit', env})
   process.exitCode = result.status ?? 1
 }
